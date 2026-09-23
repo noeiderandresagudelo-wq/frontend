@@ -784,7 +784,7 @@
                                     </div>
                                     <div>
                                         <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Celular Contacto</label>
-                                        <input type="text" id="manage-celular" placeholder="300XXXXXXX" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none">
+                                        <input type="tel" id="manage-celular" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" autocomplete="tel" placeholder="3001234567" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,10)" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none">
                                     </div>
                                 </div>
 
@@ -4844,8 +4844,15 @@
             const username = document.getElementById('manage-username').value.trim();
             const password = document.getElementById('manage-password').value.trim();
             const rol = document.getElementById('manage-rol').value;
-            const celular = document.getElementById('manage-celular').value.trim();
+            let celular = document.getElementById('manage-celular').value.replace(/\\D/g, '').slice(0, 10);
             const vehiculo = document.getElementById('manage-vehiculo').value.trim();
+
+            // Los celulares colombianos se guardan como 10 dígitos (3XXXXXXXXX).
+            // Evita valores demasiado largos que Supabase pueda rechazar.
+            if (celular && !/^3\\d{9}$/.test(celular)) {
+                showToast("Celular inválido", "Ingresa un número colombiano de 10 dígitos, por ejemplo 3001234567.", true);
+                return;
+            }
             const ciudad = document.getElementById('manage-ciudad').value;
 
             // Verificar si el usuario ya existe en otra cuenta al crear una nueva
