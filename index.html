@@ -5783,18 +5783,49 @@
         }
 
         /** Sube (crea o actualiza) una fila a Supabase. No bloquea la UI ni rompe nada si falla. */
+        function supabaseConflictKey(tabla) {
+            const keys = {
+                servicios: "consecutivo",
+                clientes: "id",
+                cotizaciones: "codigo",
+                inventario: "codigo",
+                usuarios: "id",
+                tecnicos: "id",
+                zonas: "id",
+                supervision_posts: "id",
+                supervision_visits: "id",
+                supervision_security_studies: "id"
+            };
+            return keys[tabla] || "id";
+        }
+
         async function syncPush(tabla, row) {
-            if (!supabaseClient || !currentUser || !currentUser.tenant_id) return false;
+            if (!supabaseClient || !currentUser || !currentUser.tenant_id) {
+                console.error("[Alarvix/Supabase] No se guardó", tabla, "porque falta sesión autenticada o tenant_id.");
+                return false;
+            }
             try {
                 const payload = { ...row, tenant_id: row.tenant_id || currentUser.tenant_id };
-                const { error } = await supabaseClient.from(tabla).upsert(payload);
+                const conflictKey = supabaseConflictKey(tabla);
+                const { error } = await supabaseClient
+                    .from(tabla)
+                    .upsert(payload, { onConflict: conflictKey });
+
                 if (error) {
-                    console.warn(`[Alarvix/Supabase] Error al sincronizar '${tabla}':`, error.message, error.code || "");
+                    console.error(`[Alarvix/Supabase] Error al guardar '${tabla}'`, {
+                        message: error.message,
+                        code: error.code,
+                        details: error.details,
+                        hint: error.hint,
+                        payload
+                    });
+                    showToast("No se guardó en la nube", `${tabla}: ${error.message}`, true);
                     return false;
                 }
                 return true;
             } catch (e) {
-                console.warn(`[Alarvix/Supabase] Excepción al sincronizar '${tabla}':`, e);
+                console.error(`[Alarvix/Supabase] Excepción al guardar '${tabla}':`, e);
+                showToast("Error de nube", `No se pudo guardar en ${tabla}.`, true);
                 return false;
             }
         }
@@ -5810,7 +5841,8 @@
             if (!filas || filas.length === 0) return true;
             try {
                 const payload = filas.map(row => ({ ...row, tenant_id: row.tenant_id || currentUser.tenant_id }));
-                const { error } = await supabaseClient.from(tabla).upsert(payload);
+                const conflictKey = supabaseConflictKey(tabla);
+                const { error } = await supabaseClient.from(tabla).upsert(payload, { onConflict: conflictKey });
                 if (error) {
                     console.error(`[Alarvix/Supabase] Error al subir lote a '${tabla}':`, error.message, error.code || "");
                     return false;
@@ -6084,8 +6116,8 @@
         }
 
         /**
-         * Carga inicial: si la nube ya tiene datos, esos mandan (para que todos arranquen iguales).
-         * Si la nube está vacía (primera vez), sube los datos locales de ejemplo para "sembrarla".
+         * Carga inicial: Supabase es la fuente persistente. Si la nube está vacía,
+         * la aplicación no inventa ni vuelve a sembrar datos locales automáticamente.
          */
         /**
          * Carga una sola tabla de la nube de forma aislada: si esta tabla falla (por ejemplo,
