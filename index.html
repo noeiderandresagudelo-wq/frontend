@@ -10154,10 +10154,26 @@
             };
 
             window.addEventListener('beforeinstallprompt', (event) => {
+                // Chrome puede emitir este evento después de que la página ya cargó
+                // (por ejemplo, después de cumplir sus señales de interacción).
+                // No lo perdemos ni dejamos visible el aviso genérico.
                 event.preventDefault();
                 deferredInstallPrompt = event;
                 clearTimeout(bannerTimer);
-                bannerTimer = setTimeout(mostrarAvisoInstalacion, 500);
+
+                const banner = document.getElementById('alarvix-install-banner');
+                if (banner) {
+                    const texto = banner.querySelector('p.text-\\[11px\\]');
+                    const boton = document.getElementById('alarvix-install-btn');
+                    if (texto) {
+                        texto.textContent = 'Instálala en tu teléfono para abrir Alarvix directamente como una aplicación.';
+                    }
+                    if (boton) {
+                        boton.textContent = 'Instalar ahora';
+                    }
+                } else {
+                    mostrarAvisoInstalacion();
+                }
             });
 
             window.addEventListener('appinstalled', () => {
