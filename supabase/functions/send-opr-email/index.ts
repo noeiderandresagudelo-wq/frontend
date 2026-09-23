@@ -48,7 +48,14 @@ serve(async (req) => {
     const to = String(body?.to || "").trim();
     const opr = body?.opr || {};
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+    const partesCorreo = to.split("@");
+    const correoValido = to.length >= 3 &&
+      partesCorreo.length === 2 &&
+      partesCorreo[0].length > 0 &&
+      partesCorreo[1].length > 0 &&
+      !/\s/.test(to);
+
+    if (!correoValido) {
       return json({ error: "El correo del cliente no es válido." }, 400);
     }
     if (!opr.consecutivo) return json({ error: "Falta el consecutivo del OPR." }, 400);
