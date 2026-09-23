@@ -10089,68 +10089,127 @@
         };
     </script>
 
-    <!-- Aviso de instalación de Alarvix como aplicación -->
+    <!-- Instalación PWA de Alarvix: Android/Chrome + guía para iPhone -->
     <script>
         (() => {
             let deferredInstallPrompt = null;
+            let bannerTimer = null;
 
             const esAppInstalada = () =>
                 window.matchMedia('(display-mode: standalone)').matches ||
                 window.navigator.standalone === true;
+
+            const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+            const quitarAviso = () => {
+                clearTimeout(bannerTimer);
+                document.getElementById('alarvix-install-banner')?.remove();
+            };
 
             const mostrarAvisoInstalacion = () => {
                 if (esAppInstalada() || document.getElementById('alarvix-install-banner')) return;
 
                 const banner = document.createElement('div');
                 banner.id = 'alarvix-install-banner';
-                banner.className = 'fixed bottom-4 left-4 right-4 sm:left-auto sm:right-5 sm:max-w-sm z-[100000] bg-slate-900 border border-violet-500/40 rounded-2xl p-4 shadow-2xl shadow-black/40';
-                banner.innerHTML = \
+                banner.className = 'fixed bottom-3 left-3 right-3 sm:left-auto sm:right-5 sm:max-w-sm z-[100000] bg-slate-900 border border-violet-500/50 rounded-2xl p-4 shadow-2xl shadow-black/50';
+                const texto = deferredInstallPrompt
+                    ? 'Instálala en tu teléfono para abrir Alarvix directamente como una aplicación.'
+                    : esIOS
+                        ? 'En Safari: pulsa Compartir y luego “Añadir a pantalla de inicio”.'
+                        : 'Abre el menú ⋮ del navegador y elige “Instalar aplicación” o “Añadir a pantalla de inicio”.';
+
+                banner.innerHTML =
                     '<div class="flex items-start gap-3">' +
-                        '<img src="icons/icon-192.png" alt="Alarvix" class="w-11 h-11 rounded-xl shrink-0">' +
+                        '<img src="icons/icon-192.png" alt="Alarvix" class="w-11 h-11 rounded-xl shrink-0 border border-slate-700">' +
                         '<div class="min-w-0 flex-1">' +
-                            '<p class="text-sm font-extrabold text-white">Instala Alarvix en tu teléfono</p>' +
-                            '<p class="text-[11px] text-slate-400 mt-1">Accede más rápido como una aplicación y úsala desde la pantalla de inicio.</p>' +
+                            '<p class="text-sm font-extrabold text-white">Instala Alarvix</p>' +
+                            '<p class="text-[11px] leading-4 text-slate-400 mt-1">' + texto + '</p>' +
                             '<div class="flex gap-2 mt-3">' +
-                                '<button id="alarvix-install-btn" class="flex-1 bg-violet-600 hover:bg-violet-500 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg">Instalar</button>' +
-                                '<button id="alarvix-install-close" class="px-3 py-2.5 text-slate-400 hover:text-white text-xs font-bold">Ahora no</button>' +
+                                '<button id="alarvix-install-btn" class="flex-1 bg-violet-600 hover:bg-violet-500 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg">' +
+                                    (deferredInstallPrompt ? 'Instalar ahora' : (esIOS ? 'Cómo instalar' : 'Ver instrucciones')) +
+                                '</button>' +
+                                '<button id="alarvix-install-close" class="px-3 py-2.5 text-slate-400 hover:text-white text-xs font-bold">Cerrar</button>' +
                             '</div>' +
                         '</div>' +
                     '</div>';
+
                 document.body.appendChild(banner);
 
                 document.getElementById('alarvix-install-btn').onclick = async () => {
-                    if (!deferredInstallPrompt) return;
-                    deferredInstallPrompt.prompt();
-                    await deferredInstallPrompt.userChoice;
-                    deferredInstallPrompt = null;
-                    banner.remove();
+                    if (deferredInstallPrompt) {
+                        deferredInstallPrompt.prompt();
+                        const resultado = await deferredInstallPrompt.userChoice;
+                        deferredInstallPrompt = null;
+                        if (resultado?.outcome === 'accepted') quitarAviso();
+                        return;
+                    }
+                    if (esIOS) {
+                        alert('Para instalar Alarvix en iPhone/iPad: pulsa Compartir en Safari y selecciona “Añadir a pantalla de inicio”.');
+                    } else {
+                        alert('Para instalar Alarvix: abre el menú ⋮ de Chrome y busca “Instalar aplicación” o “Añadir a pantalla de inicio”.');
+                    }
                 };
-                document.getElementById('alarvix-install-close').onclick = () => banner.remove();
+
+                document.getElementById('alarvix-install-close').onclick = quitarAviso;
             };
 
             window.addEventListener('beforeinstallprompt', (event) => {
                 event.preventDefault();
                 deferredInstallPrompt = event;
-                setTimeout(mostrarAvisoInstalacion, 1200);
+                clearTimeout(bannerTimer);
+                bannerTimer = setTimeout(mostrarAvisoInstalacion, 500);
             });
 
             window.addEventListener('appinstalled', () => {
                 deferredInstallPrompt = null;
-                document.getElementById('alarvix-install-banner')?.remove();
+                quitarAviso();
                 console.log('[Alarvix] Aplicación instalada correctamente.');
+            });
+
+            window.addEventListener('load', () => {
+                const registrar = () => {
+                    if (!('serviceWorker' in navigator)) {
+                        bannerTimer = setTimeout(mostrarAvisoInstalacion, 1500);
+                        return;
+                    }
+
+                    navigator.serviceWorker.register('./sw.js', { scope: './' })
+                        .then(reg => {
+                            console.log('[Alarvix] Service Worker registrado:', reg.scope);
+                            if (!esAppInstalada()) {
+                                // Damos tiempo a Chrome para emitir beforeinstallprompt.
+                                bannerTimer = setTimeout(mostrarAvisoInstalacion, 1800);
+                            }
+                        })
+                        .catch(err => {
+                            console.warn('[Alarvix] Service Worker no registrado:', err);
+                            if (!esAppInstalada()) {
+                                bannerTimer = setTimeout(mostrarAvisoInstalacion, 1800);
+                            }
+                        });
+                };
+                registrar();
             });
         })();
     </script>
 
-    <!-- Registro del Service Worker para funcionamiento como PWA (offline + instalable) -->
+    <!-- El aviso de instalación es propio de Alarvix; Chrome mostrará su diálogo nativo
+         cuando el sitio cumpla sus criterios de instalación. -->
+
     <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('[Alarvix] Service Worker registrado con éxito', reg))
-                    .catch(err => console.warn('[Alarvix] No se pudo registrar el Service Worker (necesita HTTPS):', err));
-            });
-        }
+        // Diagnóstico PWA visible en consola para detectar problemas de instalación.
+        window.addEventListener('load', async () => {
+            try {
+                const manifest = await fetch('./manifest.json', { cache: 'no-store' });
+                console.log('[Alarvix PWA] manifest:', manifest.ok ? 'OK' : 'ERROR ' + manifest.status);
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    console.log('[Alarvix PWA] service workers:', registrations.map(r => r.scope));
+                }
+            } catch (e) {
+                console.warn('[Alarvix PWA] diagnóstico:', e);
+            }
+        });
     </script>
 
 </body>
