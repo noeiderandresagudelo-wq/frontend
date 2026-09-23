@@ -7,7 +7,6 @@ type Page = 'dashboard' | 'clientes' | 'servicios';
 type Auth = { role: UserRole; tenantId: string; branchId?: string };
 
 const TOKEN_KEY = 'alarvix.dev-access-token';
-const TOKEN_STORAGE = 'localStorage';
 const api = createApiClient();
 
 function getTokenSubject(token: string) {
