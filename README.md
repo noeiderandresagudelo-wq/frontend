@@ -1,63 +1,39 @@
 # Alarvix ERP Frontend
 
-Aplicación React para administrar clientes, servicios y órdenes de trabajo del tenant autenticado. El dashboard y los informes derivan sus métricas de la API: no se incluyen datos de demostración.
+Frontend React/Vite de Alarvix. La aplicación consulta Supabase directamente desde el navegador mediante @supabase/supabase-js y las políticas RLS del proyecto.
 
 ## Configuración
 
-Crea un archivo `.env.local` en esta carpeta:
+En Vercel configura:
 
-```dotenv
-# Desarrollo local: el navegador consume el proxy same-origin de Vite.
-VITE_API_PROXY_TARGET=http://127.0.0.1:3000
+    VITE_SUPABASE_URL
+    VITE_SUPABASE_ANON_KEY
 
-# Producción o API en otro origen (opcional):
-# VITE_API_URL=https://api.example.com
-```
+Usa únicamente la clave pública/publishable de Supabase en el frontend. Nunca expongas una service_role o una clave sb_secret_.
 
-En desarrollo, no definas `VITE_API_URL`: Vite reenvía `/api/*` a `VITE_API_PROXY_TARGET`, evitando los bloqueos CORS y el error `Failed to fetch`. Reinicia `npm run dev` después de cambiar `.env.local`.
+## Autenticación
 
-En producción, si el backend comparte el origen mediante un reverse proxy, tampoco definas `VITE_API_URL`. Si está en otro origen, define `VITE_API_URL` con el origen del backend, sin `/api/v1` al final, y configura CORS en el backend. La aplicación consume:
+La versión actual permite conectar un access token de Supabase desde la pantalla de sesión. El JWT debe contener en app_metadata:
 
-- `GET | POST | PUT | DELETE /api/v1/clients` (mostrado como **Clientes** en la interfaz)
-- `GET | POST | PUT | DELETE /api/v1/services`
-- `GET | POST | PUT | DELETE /api/v1/work-orders`
+    {
+      "tenant_id": "uuid-del-tenant",
+      "role": "admin | manager | supervisor | technician | client | viewer"
+    }
 
-El backend debe permitir el origen del frontend mediante CORS.
+Las operaciones se ejecutan directamente contra las tablas de Supabase y quedan protegidas por RLS.
 
-## Access token de desarrollo
+## Mapa
 
-Al iniciar, abre **Token API** e ingresa un access token de Supabase. `admin` y `123` no son credenciales válidas para este flujo: el backend no dispone de un endpoint de autenticación por usuario/contraseña y solo acepta un JWT Bearer emitido por Supabase. Se verifica localmente que el JWT tenga estos claims exclusivamente dentro de `app_metadata`:
+El dashboard utiliza un mapa embebido de OpenStreetMap. No se usa Google Maps, Mapbox ni una API key de mapas.
 
-```json
-{
-  "tenant_id": "uuid-del-tenant",
-  "branch_id": "uuid-de-la-sucursal",
-  "role": "admin | manager | supervisor | technician | client | viewer"
-}
-```
+## Desarrollo
 
-El token viaja en `Authorization: Bearer <token>`. Por defecto queda solo en memoria; la casilla de la interfaz permite conservarlo en `sessionStorage` hasta que se cierre la sesión del navegador. Nunca se guarda en `localStorage`, archivos `.env` ni repositorio. Los roles limitan las acciones visibles y la API es la autoridad final para autorizar cada operación.
+    npm install
+    npm run dev
 
-Permisos representados en la interfaz:
+## Validación
 
-| Recurso | Crear/editar | Eliminar |
-| --- | --- | --- |
-| Órdenes | `admin`, `manager` | `admin` |
-| Clientes | `admin`, `manager`, `supervisor` | `admin` |
-| Servicios | `admin`, `manager`, `supervisor` | `admin` |
+    npm run lint
+    npm run build
 
-Al crear un servicio se solicita el `client_site_id` porque es una relación obligatoria del modelo de datos.
-
-## Ejecución
-
-```bash
-npm install
-npm run dev
-```
-
-## Validación y build
-
-```bash
-npm run lint
-npm run build
-```
+Vercel usa Node 22 o superior según el campo engines de package.json.
