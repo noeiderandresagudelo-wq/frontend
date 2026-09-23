@@ -685,3 +685,36 @@ code {
 
 .map-panel { overflow: hidden; }
 .map-frame { width: 100%; min-height: 420px; border: 0; border-radius: 12px; background: #0f172a; }
+
+.location-feedback {
+  margin: -4px 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  color: #fecaca;
+  font-size: 0.84rem;
+}
+
+.location-sharing {
+  margin: -4px 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #a7f3d0;
+  font-size: 0.84rem;
+}
+
+.live-map {
+  display: block;
+  min-height: 460px;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.leaflet-container {
+  width: 100%;
+  height: 460px;
+  border-radius: 12px;
+  font-family: inherit;
+}
