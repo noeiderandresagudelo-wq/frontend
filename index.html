@@ -2476,7 +2476,6 @@
 
                 <!-- Sección 5.5: Evidencia Fotográfica -->
                 <div id="opr-foto-evidencia-section" class="hidden">
-                    <span id="opr-email-status" class="text-[9px] text-slate-500 italic"></span>
                     <span class="text-[8px] font-black text-slate-500 uppercase tracking-wider block mb-1.5">Evidencia Fotográfica del Técnico</span>
                     <img id="opr-foto-evidencia-img" class="w-full max-h-64 object-cover rounded-lg border border-slate-800" />
                 </div>
@@ -2499,7 +2498,8 @@
             </div>
 
             <!-- Botones de Acción de OPR -->
-            <div class="flex gap-2 justify-end pt-4 border-t border-slate-800">
+            <div class="flex flex-wrap items-center gap-2 justify-end pt-4 border-t border-slate-800">
+                <span id="opr-email-status" class="text-[9px] mr-auto"></span>
                 
                 <button onclick="enviarOPRPorCorreo(document.getElementById('opr-consecutivo').innerText)" class="bg-blue-600/10 hover:bg-blue-600 hover:text-white border border-blue-500/30 text-blue-400 px-4 py-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 uppercase">
                     <i class="fa-solid fa-envelope"></i> Enviar por correo
