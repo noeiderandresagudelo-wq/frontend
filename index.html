@@ -6421,7 +6421,7 @@
          * la vea en vivo desde CUALQUIER otro dispositivo — no solo dentro de esta misma sesión.
          */
         async function subirUbicacionTecnicoASupabase(tecnicoId, nombre, lat, lng, estado) {
-            if (!supabaseClient) return;
+            if (!supabaseClient || !currentUser || !currentUser.tenant_id) return;
             // La tabla 'tecnicos' actual no contiene latitud/longitud.
             // No enviamos columnas inexistentes a PostgREST; el GPS sigue disponible
             // localmente hasta que el esquema de Supabase incorpore esos campos.
