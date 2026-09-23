@@ -7891,11 +7891,17 @@
                     .trim()
                     .toLowerCase();
 
-                // Validación robusta para Android y navegadores móviles.
-                const emailValido = /^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(destino);
+                // Validación flexible: acepta Gmail, Outlook, dominios corporativos,
+                // subdominios, alias con + y otros formatos sin imponer un patrón rígido.
+                const partesCorreo = destino.split("@");
+                const emailValido = destino.length >= 3 &&
+                    partesCorreo.length === 2 &&
+                    partesCorreo[0].length > 0 &&
+                    partesCorreo[1].length > 0 &&
+                    !/\\s/.test(destino);
 
                 if (!emailValido) {
-                    showToast("Correo inválido", "Escribe un correo como cliente@empresa.com.", true);
+                    showToast("Correo inválido", "Revisa que el correo tenga usuario y dominio separados por @.", true);
                     return;
                 }
 
