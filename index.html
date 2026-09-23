@@ -2702,7 +2702,7 @@
                 id: sessionUser.id,
                 nombre: metadata.nombre || sessionUser.email || "Usuario",
                 username: sessionUser.email || "",
-                rol: metadata.role || metadata.rol || "",
+                rol: String(metadata.role || metadata.rol || "").toUpperCase(),
                 activo: metadata.activo !== false,
                 tenant_id: metadata.tenant_id || metadata.tenantId || null,
                 tecnicoId: metadata.tecnico_id || metadata.tecnicoId || null,
