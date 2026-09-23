@@ -177,7 +177,17 @@ export default function App() {
 }
 
 function Dashboard({ customers, services, activeServices }: { customers: Customer[]; services: Service[]; activeServices: number }) {
-  return <><section className="stats-grid"><article className="stat-card"><span>Clientes</span><strong>{customers.length}</strong><em>tenant actual</em></article><article className="stat-card"><span>Servicios</span><strong>{services.length}</strong><em>registros</em></article><article className="stat-card"><span>Servicios activos</span><strong>{activeServices}</strong><em>según estado</em></article><article className="stat-card"><span>Incomunicados</span><strong>{customers.filter(c => c.incomunicada).length}</strong><em>clientes</em></article></section><section className="content-grid"><div className="panel large-panel"><div className="panel-header"><div><p className="eyebrow">Clientes</p><h3>Últimos registros</h3></div></div>{customers.slice(0,6).map(c => <article className="data-item" key={c.id}><div><span className="code">{c.id}</span><h3>{c.nombre}</h3><p>{c.ciudad || 'Sin ciudad'} · {c.sector || 'Sin sector'}</p></div></article>)}</div><div className="panel company-panel"><div className="panel-header"><div><p className="eyebrow">Operación</p><h3>Servicios recientes</h3></div></div>{services.slice(0,6).map(s => <article className="data-item" key={s.consecutivo}><div><span className="code">{s.consecutivo}</span><h3>{s.tipo}</h3><p>{s.estado} · prioridad {s.prioridad}</p></div></article>)}</div></section></>;
+  return <>
+    <section className="stats-grid"><article className="stat-card"><span>Clientes</span><strong>{customers.length}</strong><em>tenant actual</em></article><article className="stat-card"><span>Servicios</span><strong>{services.length}</strong><em>registros</em></article><article className="stat-card"><span>Servicios activos</span><strong>{activeServices}</strong><em>según estado</em></article><article className="stat-card"><span>Incomunicados</span><strong>{customers.filter(c => c.incomunicada).length}</strong><em>clientes</em></article></section>
+    <section className="content-grid">
+      <div className="panel large-panel"><div className="panel-header"><div><p className="eyebrow">Clientes</p><h3>Últimos registros</h3></div></div>{customers.slice(0,6).map(c => <article className="data-item" key={c.id}><div><span className="code">{c.id}</span><h3>{c.nombre}</h3><p>{c.ciudad || 'Sin ciudad'} · {c.sector || 'Sin sector'}</p></div></article>)}</div>
+      <div className="panel company-panel"><div className="panel-header"><div><p className="eyebrow">Operación</p><h3>Servicios recientes</h3></div></div>{services.slice(0,6).map(s => <article className="data-item" key={s.consecutivo}><div><span className="code">{s.consecutivo}</span><h3>{s.tipo}</h3><p>{s.estado} · prioridad {s.prioridad}</p></div></article>)}</div>
+    </section>
+    <section className="panel map-panel">
+      <div className="panel-header"><div><p className="eyebrow">Geolocalización</p><h3>Mapa operativo</h3></div><span>OpenStreetMap · sin API key</span></div>
+      <iframe className="map-frame" title="Mapa operativo de Alarvix" src="https://www.openstreetmap.org/export/embed.html?bbox=-74.86%2C10.88%2C-74.70%2C11.04&layer=mapnik&marker=10.9639%2C-74.7964" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+    </section>
+  </>;
 }
 
 function Customers({ customers, canWrite, editing, setEditing, onSave, onDelete }: {
