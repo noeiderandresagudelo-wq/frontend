@@ -179,8 +179,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-    window.SUPABASE_URL = window.SUPABASE_URL || localStorage.getItem('SUPABASE_URL') || 'https://YOUR_PROJECT.supabase.co';
-    window.SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || localStorage.getItem('SUPABASE_ANON_KEY') || 'YOUR_ANON_KEY';
+    window.SUPABASE_URL = window.SUPABASE_URL || localStorage.getItem('SUPABASE_URL') || '%VITE_SUPABASE_URL%';
+    window.SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || localStorage.getItem('SUPABASE_ANON_KEY') || '%VITE_SUPABASE_ANON_KEY%';
 </script>
 <body class="bg-slate-950 text-slate-100 dark:bg-brand-darkBg dark:text-slate-100 min-h-screen flex">
 
@@ -9509,11 +9509,12 @@
                 if (typeof L !== 'undefined') {
                     mapInstance = L.map('map', {
                         zoomControl: true,
-                        attributionControl: false
+                        attributionControl: true
                     }).setView([10.9639, -74.7964], 11);
 
-                    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                        maxZoom: 20
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        maxZoom: 19,
+                        attribution: '&copy; OpenStreetMap contributors'
                     }).addTo(mapInstance);
 
                     markersGroup = L.layerGroup().addTo(mapInstance);
@@ -9619,108 +9620,6 @@
                     .catch(err => console.warn('[Alarvix] No se pudo registrar el Service Worker (necesita HTTPS):', err));
             });
         }
-    </script>
-        <script>
-        const SUPABASE_URL = window.SUPABASE_URL || localStorage.getItem('SUPABASE_URL') || '';
-        const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || localStorage.getItem('SUPABASE_ANON_KEY') || '';
-        const supabaseClient = SUPABASE_URL && SUPABASE_ANON_KEY ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
-
-        function setStatusMessage(message, isError) {
-            var el = document.getElementById('login-status-message');
-            if (!el) {
-                el = document.createElement('div');
-                el.id = 'login-status-message';
-                el.className = 'text-xs rounded-lg px-3 py-2 border';
-                var form = document.getElementById('form-login');
-                if (form) form.appendChild(el);
-            }
-            el.textContent = message;
-            el.className = 'text-xs rounded-lg px-3 py-2 border ' + (isError ? 'bg-rose-950/60 border-rose-800 text-rose-200' : 'bg-emerald-950/60 border-emerald-800 text-emerald-200');
-        }
-
-        function toggleRecoveryInline(show) {
-            var recoveryInline = document.getElementById('recovery-inline');
-            if (!recoveryInline) return;
-            recoveryInline.style.display = show ? 'block' : 'none';
-        }
-        window.toggleRecoveryInline = toggleRecoveryInline;
-
-        async function handleLogin(event) {
-            if (event) event.preventDefault();
-            var email = document.getElementById('login-username').value.trim();
-            var password = document.getElementById('login-password').value;
-            if (!supabaseClient) return setStatusMessage('Falta configurar SUPABASE_URL y SUPABASE_ANON_KEY.', true);
-            var result = await supabaseClient.auth.signInWithPassword({ email: email, password: password });
-            if (result.error || !result.data || !result.data.user) return setStatusMessage(result.error ? result.error.message : 'No fue posible iniciar sesión.', true);
-            var user = result.data.user;
-            localStorage.setItem('alarvix_session', JSON.stringify({ access_token: result.data.session.access_token, refresh_token: result.data.session.refresh_token, user: user }));
-            localStorage.setItem('alarvix_user_context', JSON.stringify({ userId: user.id, email: user.email, tenantId: (user.user_metadata && user.user_metadata.tenant_id) || '', role: (user.user_metadata && user.user_metadata.role) || 'viewer' }));
-            setStatusMessage('Ingreso correcto. Cargando sistema...', false);
-            document.getElementById('login-screen').classList.add('hidden');
-        }
-        window.handleLogin = handleLogin;
-
-        async function handleRecoveryRequest(event) {
-            event.preventDefault();
-            var email = document.getElementById('recovery-email').value.trim();
-            if (!supabaseClient) return setStatusMessage('Falta configurar Supabase.', true);
-            var result = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname });
-            if (result.error) return setStatusMessage(result.error.message, true);
-            setStatusMessage('Te enviamos un enlace de recuperación al correo.', false);
-            toggleRecoveryInline(false);
-        }
-
-        async function handlePasswordReset(event) {
-            event.preventDefault();
-            var password = document.getElementById('reset-password-new').value;
-            var confirm = document.getElementById('reset-password-confirm').value;
-            if (!supabaseClient) return setStatusMessage('Falta configurar Supabase.', true);
-            if (password.length < 8) return setStatusMessage('La contraseña debe tener al menos 8 caracteres.', true);
-            if (password !== confirm) return setStatusMessage('Las contraseñas no coinciden.', true);
-            var result = await supabaseClient.auth.updateUser({ password: password });
-            if (result.error) return setStatusMessage(result.error.message, true);
-            setStatusMessage('Contraseña actualizada. Ya puedes ingresar.', false);
-            var resetScreen = document.getElementById('reset-screen');
-            if (resetScreen) resetScreen.classList.add('hidden');
-            document.getElementById('login-screen').classList.remove('hidden');
-        }
-
-        function detectRecoveryMode() {
-            var hash = window.location.hash || '';
-            var search = window.location.search || '';
-            return hash.indexOf('type=recovery') !== -1 || hash.indexOf('access_token=') !== -1 || search.indexOf('type=recovery') !== -1;
-        }
-
-        document.addEventListener('DOMContentLoaded', function () {
-            var recoveryForm = document.getElementById('form-recovery-request');
-            if (recoveryForm) recoveryForm.addEventListener('submit', handleRecoveryRequest);
-            var resetForm = document.getElementById('form-reset-password');
-            if (resetForm) resetForm.addEventListener('submit', handlePasswordReset);
-            var openRecoveryBtn = document.getElementById('btn-open-recovery');
-            if (openRecoveryBtn) openRecoveryBtn.addEventListener('click', function () { toggleRecoveryInline(true); });
-            var closeRecoveryBtn = document.getElementById('btn-close-recovery');
-            if (closeRecoveryBtn) closeRecoveryBtn.addEventListener('click', function () { toggleRecoveryInline(false); });
-            var recoveryInline = document.getElementById('recovery-inline');
-            if (recoveryInline) recoveryInline.style.display = 'none';
-            var isResetMode = detectRecoveryMode();
-            if (isResetMode) {
-                var resetScreen = document.getElementById('reset-screen');
-                if (resetScreen) resetScreen.classList.remove('hidden');
-                var loginScreen = document.getElementById('login-screen');
-                if (loginScreen) loginScreen.classList.add('hidden');
-            } else {
-                var loginScreen = document.getElementById('login-screen');
-                if (loginScreen) loginScreen.classList.remove('hidden');
-            }
-            var techContainer = document.getElementById('tech-mobile-container');
-            if (techContainer) techContainer.classList.add('hidden');
-            var clienteContainer = document.getElementById('cliente-portal-container');
-            if (clienteContainer) clienteContainer.classList.add('hidden');
-            var sidebar = document.getElementById('sidebar');
-            if (sidebar) sidebar.classList.add('hidden');
-            var main = document.querySelector('main');
-            if (main) main.classList.add('hidden');
-        });
     </script>
 
 </body>
