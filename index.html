@@ -2036,7 +2036,8 @@
                     <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Código de Abonado (ID)</label>
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"><i class="fa-solid fa-hashtag"></i></span>
-                        <input type="text" id="form-service-abonado" oninput="lookupAbonadoInDB(this.value)" required placeholder="Ej: 1043, 0089, 0587..." class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors font-mono">
+                        <input type="text" id="form-service-abonado" list="lista-abonados-servicio" oninput="lookupAbonadoInDB(this.value)" required placeholder="Ej: 1043, 0089, 0587..." autocomplete="off" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors font-mono">
+                        <datalist id="lista-abonados-servicio"></datalist>
                     </div>
                     
                     <!-- Panel Informativo de Búsqueda de Abonado -->
@@ -2841,6 +2842,24 @@
          * Realiza la búsqueda dinámica de abonados en caliente en base a la DB (crmClientes)
          * @param {string} id - Código del abonado digitado
          */
+        function cargarAbonadosEnFormularioServicio() {
+            const datalist = document.getElementById('lista-abonados-servicio');
+            if (!datalist) return;
+
+            datalist.innerHTML = '';
+
+            const clientesOrdenados = [...crmClientes].sort((a, b) =>
+                String(a.id).localeCompare(String(b.id), 'es', { numeric: true })
+            );
+
+            clientesOrdenados.forEach(client => {
+                const option = document.createElement('option');
+                option.value = String(client.id);
+                option.label = client.nombre || client.puesto || 'Abonado registrado';
+                datalist.appendChild(option);
+            });
+        }
+
         function lookupAbonadoInDB(id) {
             const feedback = document.getElementById('abonado-lookup-feedback');
             if (!feedback) return;
@@ -6386,6 +6405,8 @@
 
             if (srv.status === "fulfilled" && srv.value) incidentesServicios = srv.value;
             if (cli.status === "fulfilled" && cli.value) crmClientes = cli.value;
+            // Mantener actualizado el catálogo de abonados disponible al crear servicios.
+            cargarAbonadosEnFormularioServicio();
             if (cot.status === "fulfilled" && cot.value) cotizacionesEmitidas = cot.value;
             if (inv.status === "fulfilled" && inv.value) catalogoInventario = inv.value;
             if (usr.status === "fulfilled" && usr.value) appUsers = usr.value;
@@ -8932,6 +8953,10 @@
         }
 
         function openCreateServiceModal() {
+            // Primero cargamos los abonados que realmente están registrados en la base local
+            // alimentada desde Supabase, para que el campo permita seleccionarlos directamente.
+            cargarAbonadosEnFormularioServicio();
+
             // Vaciar y pre-enfocar campos de autocompletado
             const abonadoField = document.getElementById('form-service-abonado');
             const descField = document.getElementById('form-service-desc');
