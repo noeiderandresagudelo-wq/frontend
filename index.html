@@ -4867,7 +4867,7 @@
                 showToast("Cambios Guardados", `Se ha actualizado a ${nombre} correctamente.`);
             } else {
                 // Crear miembro nuevo
-                const newUserId = crypto.randomUUID();
+                const newUserId = "";
                 let newTechId = "";
 
                 if (rol === 'TECNICO') {
@@ -5093,7 +5093,7 @@
                     }
 
                     const newUser = {
-                        id: crypto.randomUUID(),
+                        id: "",
                         username,
                         password,
                         nombre,
