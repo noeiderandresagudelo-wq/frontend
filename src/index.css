@@ -682,3 +682,6 @@ code {
     grid-template-columns: 1fr;
   }
 }
+
+.map-panel { overflow: hidden; }
+.map-frame { width: 100%; min-height: 420px; border: 0; border-radius: 12px; background: #0f172a; }
