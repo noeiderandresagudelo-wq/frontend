@@ -3338,7 +3338,7 @@
          * Permite iniciar sesión rápidamente con los perfiles demo de la pantalla de login.
          * @param {string} username - Nombre de usuario de la cuenta demo.
          */
-        function handleLogout() {
+        async function handleLogout() {
             // Detenemos el rastreo GPS en vivo para no dejarlo corriendo de fondo con otro usuario
             if (gpsWatchId !== null && navigator.geolocation) {
                 navigator.geolocation.clearWatch(gpsWatchId);
