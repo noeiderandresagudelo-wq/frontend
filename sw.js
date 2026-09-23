@@ -2,7 +2,7 @@
 // IMPORTANTE: cada vez que subas cambios importantes y el celular no los muestre,
 // sube este número (v2 -> v3 -> v4...). Eso obliga a todos los celulares a bajar
 // la versión nueva en vez de seguir usando la copia guardada.
-const CACHE_NAME = 'alarvix_cache_v7';
+const CACHE_NAME = 'alarvix_cache_v8';
 
 // Archivos propios de Alarvix (mismo origen) + librerías externas (CDN) que usa la app.
 const urlsToCache = [
