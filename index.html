@@ -4814,7 +4814,7 @@
             showToast("Edición en progreso", `Modificando los datos de ${user.nombre}`);
         }
 
-        function savePersonalData(event) {
+        async function savePersonalData(event) {
             event.preventDefault();
 
             const userId = document.getElementById('manage-user-id').value;
@@ -4861,13 +4861,13 @@
                         // Si se le quita el rol de Técnico, desvincular
                         user.tecnicoId = "";
                     }
-                    syncUsuarioActual(userId);
+                    await asegurarUsuarioAuth(user, password);\n                    await syncUsuarioActual(user.id);
                     if (rol === 'TECNICO' && user.tecnicoId) syncTecnicoActual(user.tecnicoId);
                 }
                 showToast("Cambios Guardados", `Se ha actualizado a ${nombre} correctamente.`);
             } else {
                 // Crear miembro nuevo
-                const newUserId = `U-${appUsers.length + 101}`;
+                const newUserId = crypto.randomUUID();
                 let newTechId = "";
 
                 if (rol === 'TECNICO') {
@@ -4892,7 +4892,7 @@
                     activo: true,
                     tecnicoId: newTechId
                 });
-                syncUsuarioActual(newUserId);
+                await asegurarUsuarioAuth(appUsers[appUsers.length - 1], password);\n                await syncUsuarioActual(appUsers[appUsers.length - 1].id);
 
                 showToast("Colaborador Creado", `Se ha dado de alta a ${nombre} en el sistema.`);
             }
@@ -5014,48 +5014,49 @@
             wrap.classList.toggle('hidden', rol !== 'CLIENTE');
         }
 
-        function handleCreateUser(event) {
+        async function handleCreateUser(event) {
             event.preventDefault();
             try {
-                const editId = document.getElementById('form-user-id-editando').value;
-                const nombre = document.getElementById('form-user-nombre').value.trim();
-                const username = document.getElementById('form-user-username').value.trim();
-                const password = document.getElementById('form-user-password').value;
-                const rol = document.getElementById('form-user-rol').value;
+                const editId = document.getElementById("form-user-id-editando").value;
+                const nombre = document.getElementById("form-user-nombre").value.trim();
+                const username = document.getElementById("form-user-username").value.trim().toLowerCase();
+                const password = document.getElementById("form-user-password").value;
+                const rol = document.getElementById("form-user-rol").value;
 
-                // Evitar usuarios duplicados (salvo que sea el mismo que estamos editando)
-                const exists = appUsers.some(u => u.username === username && u.id !== editId);
+                const exists = appUsers.some(u => u.username?.toLowerCase() === username && u.id !== editId);
                 if (exists) {
-                    showToast("Error de Registro", "El nombre de usuario ya está tomado.", true);
+                    showToast("Error de Registro", "El correo electrónico ya está tomado.", true);
+                    return;
+                }
+
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(username)) {
+                    showToast("Correo requerido", "El usuario de acceso debe ser un correo electrónico válido.", true);
                     return;
                 }
 
                 if (editId) {
-                    // --- MODO EDICIÓN: actualiza nombre, usuario, rol y (si se completó) contraseña ---
                     const u = appUsers.find(x => x.id === editId);
                     if (!u) return;
-
                     u.nombre = nombre;
                     u.username = username;
                     u.rol = rol;
-                    if (password) u.password = password; // Vacío = no cambiar la contraseña
+                    if (password) u.password = password;
 
-                    // Si es (o pasa a ser) TÉCNICO, mantenemos su ficha de personal sincronizada con el nombre nuevo
-                    if (rol === 'TECNICO') {
+                    if (rol === "TECNICO") {
                         let tech = u.tecnicoId ? personalTecnicos.find(t => t.id === u.tecnicoId) : null;
                         if (!tech) {
-                            const newTechId = `T-${personalTecnicos.length + 101}`;
+                            const newTechId = "T-" + (personalTecnicos.length + 101);
                             tech = { id: newTechId, nombre: nombre, vehiculo: "Por Asignar", celular: "S/D", ciudad: activeCentral || "BARRANQUILLA", estado: "Disponible" };
                             personalTecnicos.push(tech);
                             u.tecnicoId = newTechId;
                         } else {
                             tech.nombre = nombre;
                         }
-                        syncTecnicoActual(tech.id);
+                        await syncTecnicoActual(tech.id);
                     }
 
-                    if (rol === 'CLIENTE') {
-                        const abonadoId = document.getElementById('form-user-abonado').value.trim();
+                    if (rol === "CLIENTE") {
+                        const abonadoId = document.getElementById("form-user-abonado").value.trim();
                         const abonadoExiste = crmClientes.find(c => c.id === abonadoId);
                         if (!abonadoId || !abonadoExiste) {
                             showToast("Abonado No Encontrado", "Escribe un código de abonado válido (ya registrado en Clientes).", true);
@@ -5064,42 +5065,53 @@
                         u.abonadoId = abonadoId;
                     }
 
-                    syncUsuarioActual(editId);
+                    try {
+                        await asegurarUsuarioAuth(u, password);
+                    } catch (authError) {
+                        console.error("[Alarvix/Auth] No se pudo vincular el usuario:", authError);
+                        showToast("Cuenta de acceso", authError?.message || "No se pudo vincular el usuario con Authentication.", true);
+                        return;
+                    }
 
-                    // Si el usuario editado es la sesión actual, refrescamos su nombre en pantalla al toque
-                    if (currentUser && currentUser.id === editId) {
+                    const guardado = await syncUsuarioActual(u.id);
+                    if (!guardado) return;
+
+                    if (currentUser && currentUser.id === u.id) {
                         currentUser.nombre = nombre;
                         currentUser.username = username;
-                        const badge = document.getElementById('session-user-badge');
-                        if (badge) badge.innerText = `${currentUser.nombre} (${currentUser.rol})`;
-                        const techLabel = document.getElementById('tech-name-label');
+                        const badge = document.getElementById("session-user-badge");
+                        if (badge) badge.innerText = currentUser.nombre + " (" + currentUser.rol + ")";
+                        const techLabel = document.getElementById("tech-name-label");
                         if (techLabel) techLabel.innerText = currentUser.nombre;
                     }
 
-                    showToast("Usuario Actualizado", `Los datos de ${nombre} se guardaron con éxito.`);
+                    showToast("Usuario Actualizado", "Los datos de " + nombre + " se guardaron con éxito.");
                 } else {
-                    // --- MODO CREACIÓN ---
                     if (!password) {
                         showToast("Falta Contraseña", "La contraseña es obligatoria para un usuario nuevo.", true);
                         return;
                     }
 
-                    const nextId = `U-${appUsers.length + 101}`;
-                    const newUser = { id: nextId, username, password, nombre, rol, activo: true };
+                    const newUser = {
+                        id: crypto.randomUUID(),
+                        username,
+                        password,
+                        nombre,
+                        rol,
+                        activo: true
+                    };
 
-                    // Si el usuario es TÉCNICO, lo vinculamos automáticamente a una ficha de personal.
-                    if (rol === 'TECNICO') {
-                        const newTechId = `T-${personalTecnicos.length + 101}`;
+                    if (rol === "TECNICO") {
+                        const newTechId = "T-" + (personalTecnicos.length + 101);
                         personalTecnicos.push({
-                            id: newTechId, nombre, vehiculo: "Por Asignar", celular: "S/D",
+                            id: newTechId, nombre: nombre, vehiculo: "Por Asignar", celular: "S/D",
                             ciudad: activeCentral || "BARRANQUILLA", estado: "Disponible"
                         });
                         newUser.tecnicoId = newTechId;
-                        syncTecnicoActual(newTechId);
                     }
 
-                    if (rol === 'CLIENTE') {
-                        const abonadoId = document.getElementById('form-user-abonado').value.trim();
+                    if (rol === "CLIENTE") {
+                        const abonadoId = document.getElementById("form-user-abonado").value.trim();
                         const abonadoExiste = crmClientes.find(c => c.id === abonadoId);
                         if (!abonadoId || !abonadoExiste) {
                             showToast("Abonado No Encontrado", "Escribe un código de abonado válido (ya registrado en Clientes) para crear este usuario.", true);
@@ -5108,22 +5120,37 @@
                         newUser.abonadoId = abonadoId;
                     }
 
+                    try {
+                        await asegurarUsuarioAuth(newUser, password);
+                    } catch (authError) {
+                        console.error("[Alarvix/Auth] No se pudo crear la cuenta:", authError);
+                        showToast("Cuenta de acceso", authError?.message || "No se pudo crear la cuenta en Authentication.", true);
+                        return;
+                    }
+
                     appUsers.push(newUser);
-                    syncUsuarioActual(nextId);
-                    showToast("Usuario Creado", `El usuario ${nombre} ha sido creado con éxito.${rol === 'TECNICO' ? ' Se generó su ficha de personal automáticamente.' : ''}${rol === 'CLIENTE' ? ' Portal vinculado a su abonado.' : ''}`);
+                    if (newUser.tecnicoId) await syncTecnicoActual(newUser.tecnicoId);
+
+                    const guardado = await syncUsuarioActual(newUser.id);
+                    if (!guardado) {
+                        appUsers = appUsers.filter(u => u !== newUser);
+                        return;
+                    }
+
+                    showToast("Usuario Creado", "El usuario " + nombre + " ha sido creado con éxito." + (rol === "TECNICO" ? " Se generó su ficha de personal automáticamente." : "") + (rol === "CLIENTE" ? " Portal vinculado a su abonado." : ""));
                 }
 
                 closeCreateUserModal();
-                document.getElementById('form-create-user').reset();
-                document.getElementById('wrap-form-user-abonado').classList.add('hidden');
-
-                // Recargar listados
+                document.getElementById("form-create-user").reset();
+                document.getElementById("wrap-form-user-abonado").classList.add("hidden");
                 renderConfigUsuarios();
                 renderPersonalTable();
                 enforcePermissions();
-            } catch(e) { console.error(e); }
+            } catch(e) {
+                console.error("[Alarvix] Error gestionando usuario:", e);
+                showToast("Error de usuario", e?.message || "No se pudo guardar el usuario.", true);
+            }
         }
-
         function toggleUserStatus(userId) {
             const user = appUsers.find(u => u.id === userId);
             if (!user) return;
@@ -5813,9 +5840,78 @@
 
         function usuarioToRow(u) {
             return {
-                id: u.id, username: u.username, password: u.password, nombre: u.nombre,
-                rol: u.rol, activo: u.activo !== false, tecnico_id: u.tecnicoId || null, abonado_id: u.abonadoId || null
+                // usuarios.id es el UUID de auth.users. Nunca enviamos códigos locales como U-102.
+                id: u.id,
+                username: u.username || null,
+                nombre: u.nombre,
+                rol: u.rol,
+                activo: u.activo !== false,
+                tecnico_id: u.tecnicoId || null,
+                abonado_id: u.abonadoId || null
             };
+        }
+
+        function esUuid(valor) {
+            return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(valor || ""));
+        }
+
+        async function asegurarUsuarioAuth(u, password) {
+            if (!supabaseClient || !currentUser?.tenant_id) {
+                throw new Error("Supabase no está disponible o falta el tenant del administrador.");
+            }
+            if (esUuid(u.id)) return u.id;
+
+            const email = String(u.username || "").trim().toLowerCase();
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                throw new Error("El usuario debe usar un correo electrónico válido porque el acceso se gestiona con Supabase Authentication.");
+            }
+            if (!password) {
+                throw new Error("Para vincular este usuario antiguo (" + u.id + ") con Authentication debes escribir una contraseña.");
+            }
+
+            const { data: sesionActual, error: sesionError } = await supabaseClient.auth.getSession();
+            if (sesionError) throw sesionError;
+            const sesionAdmin = sesionActual?.session || null;
+
+            const { data, error } = await supabaseClient.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        nombre: u.nombre,
+                        role: u.rol,
+                        rol: u.rol,
+                        tenant_id: currentUser.tenant_id,
+                        tecnico_id: u.tecnicoId || null,
+                        abonado_id: u.abonadoId || null,
+                        activo: u.activo !== false
+                    },
+                    emailRedirectTo: window.location.origin
+                }
+            });
+
+            let authUser = data?.user || null;
+
+            if (!authUser || (Array.isArray(authUser.identities) && authUser.identities.length === 0)) {
+                const loginResult = await supabaseClient.auth.signInWithPassword({ email, password });
+                if (!loginResult.error && loginResult.data?.user) authUser = loginResult.data.user;
+            }
+
+            if (sesionAdmin) {
+                const restore = await supabaseClient.auth.setSession({
+                    access_token: sesionAdmin.access_token,
+                    refresh_token: sesionAdmin.refresh_token
+                });
+                if (restore.error) throw restore.error;
+                await aplicarUsuarioSesion(sesionAdmin.user);
+            }
+
+            if (!authUser?.id || !esUuid(authUser.id)) {
+                throw new Error("No se pudo obtener el UUID de Authentication para este usuario. Revisa el correo, la contraseña y la configuración de confirmación de correo.");
+            }
+
+            u.id = authUser.id;
+            return authUser.id;
         }
         function rowToUsuario(row) {
             const u = { id: row.id, username: row.username, password: row.password, nombre: row.nombre, rol: row.rol, activo: row.activo !== false };
