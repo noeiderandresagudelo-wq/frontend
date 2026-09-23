@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ApiError, createApiClient, type Customer, type Service, type UserRole } from './api';
 import { supabase } from './lib/supabase';
@@ -8,6 +8,14 @@ type Auth = { role: UserRole; tenantId: string; branchId?: string };
 
 const TOKEN_KEY = 'alarvix.dev-access-token';
 const api = createApiClient();
+
+function getTokenSubject(token: string) {
+  const part = token.split('.')[1];
+  if (!part) throw new Error('Access token inválido.');
+  const payload = JSON.parse(atob(part.replace(/-/g, '+').replace(/_/g, '/'))) as { sub?: string };
+  if (!payload.sub) throw new Error('El access token no contiene sub.');
+  return payload.sub;
+}
 
 function decodeToken(token: string): Auth {
   const part = token.split('.')[1];
@@ -28,6 +36,15 @@ function message(error: unknown) {
   return error instanceof ApiError ? error.message : error instanceof Error ? error.message : 'Error inesperado.';
 }
 
+type TechnicianLocation = {
+  tenant_id: string;
+  tecnico_id: string;
+  latitude: number;
+  longitude: number;
+  accuracy_m?: number | null;
+  last_seen: string;
+};
+
 export default function App() {
   const [page, setPage] = useState<Page>('dashboard');
   const [token, setToken] = useState(() => sessionStorage.getItem(TOKEN_KEY) || '');
@@ -41,6 +58,9 @@ export default function App() {
   const [tokenOpen, setTokenOpen] = useState(!token);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [editingService, setEditingService] = useState<Service | null>(null);
+  const [technicianLocations, setTechnicianLocations] = useState<TechnicianLocation[]>([]);
+  const [locationSharing, setLocationSharing] = useState(false);
+  const [locationError, setLocationError] = useState('');
 
   useEffect(() => {
     if (!token) return;
@@ -51,8 +71,12 @@ export default function App() {
     if (!token) return;
     setLoading(true); setError('');
     try {
-      const [c, s] = await Promise.all([api.listCustomers(token), api.listServices(token)]);
-      setCustomers(c); setServices(s);
+      const [c, s, locations] = await Promise.all([
+        api.listCustomers(token),
+        api.listServices(token),
+        api.listTechnicianLocations(token),
+      ]);
+      setCustomers(c); setServices(s); setTechnicianLocations(locations);
     } catch (e) { setError(message(e)); }
     finally { setLoading(false); }
   }, [token]);
@@ -66,12 +90,56 @@ export default function App() {
       .channel('alarvix-live-data')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes', filter: `tenant_id=eq.${auth.tenantId}` }, () => { void refresh(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'servicios', filter: `tenant_id=eq.${auth.tenantId}` }, () => { void refresh(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tecnicos_ubicaciones', filter: `tenant_id=eq.${auth.tenantId}` }, () => { void api.listTechnicianLocations(token).then(setTechnicianLocations).catch(() => undefined); })
       .subscribe();
     const timer = window.setInterval(() => { void refresh(); }, 15000);
     return () => { window.clearInterval(timer); void supabase.removeChannel(channel); };
   }, [token, auth, refresh]);
 
   const activeServices = useMemo(() => services.filter(s => ['activo','active','en_proceso','pendiente'].includes(s.estado)).length, [services]);
+
+  useEffect(() => {
+    if (!token || !auth || auth.role !== 'technician') return;
+    if (!navigator.geolocation) {
+      setLocationError('Este navegador no soporta geolocalización.');
+      return;
+    }
+
+    setLocationError('');
+    setLocationSharing(true);
+
+    const watchId = navigator.geolocation.watchPosition(
+      async position => {
+        try {
+          await api.upsertTechnicianLocation(token, {
+            tenant_id: auth.tenantId,
+            tecnico_id: getTokenSubject(token),
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy_m: position.coords.accuracy,
+          });
+          setLocationError('');
+        } catch (e) {
+          setLocationError(message(e));
+        }
+      },
+      error => {
+        setLocationSharing(false);
+        setLocationError(
+          error.code === error.PERMISSION_DENIED
+            ? 'Permiso de ubicación denegado. Actívalo en el navegador para aparecer en el mapa.'
+            : 'No fue posible obtener tu ubicación.'
+        );
+      },
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 }
+    );
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+      setLocationSharing(false);
+    };
+  }, [token, auth]);
+
 
   function connect(e: FormEvent) {
     e.preventDefault();
@@ -171,12 +239,19 @@ export default function App() {
       {tokenOpen && <section className="panel token-panel"><div className="panel-header"><div><p className="eyebrow">Supabase</p><h3>Conexión directa</h3></div></div><p className="helper-text">El frontend consulta PostgreSQL directamente con RLS. Usa un access token válido de Supabase. La service_role nunca se expone aquí.</p><form className="token-form" onSubmit={connect}><label>Access token<textarea required value={tokenDraft} onChange={e => setTokenDraft(e.target.value)} /></label><div className="topbar-actions"><button className="primary-button">Conectar</button>{token && <button type="button" className="ghost-button" onClick={disconnect}>Desconectar</button>}</div></form></section>}
       {error && <div className="feedback error-feedback">{error}</div>}
       {notice && <div className="feedback success-feedback">{notice}</div>}
-      {!token ? <section className="panel disconnected-state"><h3>Conecta tu sesión</h3><p>Configura un access token de Supabase para consultar el tenant autorizado.</p></section> : loading ? <section className="panel loading-state">Cargando datos…</section> : page === 'dashboard' ? <Dashboard customers={customers} services={services} activeServices={activeServices} /> : page === 'clientes' ? <Customers customers={customers} canWrite={canWrite(auth?.role)} editing={editingCustomer} setEditing={setEditingCustomer} onSave={saveCustomer} onDelete={removeCustomer} /> : <Services services={services} canWrite={canWrite(auth?.role)} editing={editingService} setEditing={setEditingService} onSave={saveService} onDelete={removeService} />}
+      {!token ? <section className="panel disconnected-state"><h3>Conecta tu sesión</h3><p>Configura un access token de Supabase para consultar el tenant autorizado.</p></section> : loading ? <section className="panel loading-state">Cargando datos…</section> : page === 'dashboard' ? <Dashboard customers={customers} services={services} activeServices={activeServices} technicianLocations={technicianLocations} locationSharing={locationSharing} locationError={locationError} /> : page === 'clientes' ? <Customers customers={customers} canWrite={canWrite(auth?.role)} editing={editingCustomer} setEditing={setEditingCustomer} onSave={saveCustomer} onDelete={removeCustomer} /> : <Services services={services} canWrite={canWrite(auth?.role)} editing={editingService} setEditing={setEditingService} onSave={saveService} onDelete={removeService} />}
     </main>
   </div>;
 }
 
-function Dashboard({ customers, services, activeServices }: { customers: Customer[]; services: Service[]; activeServices: number }) {
+function Dashboard({ customers, services, activeServices, technicianLocations, locationSharing, locationError }: {
+  customers: Customer[];
+  services: Service[];
+  activeServices: number;
+  technicianLocations: TechnicianLocation[];
+  locationSharing: boolean;
+  locationError: string;
+}) {
   return <>
     <section className="stats-grid"><article className="stat-card"><span>Clientes</span><strong>{customers.length}</strong><em>tenant actual</em></article><article className="stat-card"><span>Servicios</span><strong>{services.length}</strong><em>registros</em></article><article className="stat-card"><span>Servicios activos</span><strong>{activeServices}</strong><em>según estado</em></article><article className="stat-card"><span>Incomunicados</span><strong>{customers.filter(c => c.incomunicada).length}</strong><em>clientes</em></article></section>
     <section className="content-grid">
@@ -184,10 +259,152 @@ function Dashboard({ customers, services, activeServices }: { customers: Custome
       <div className="panel company-panel"><div className="panel-header"><div><p className="eyebrow">Operación</p><h3>Servicios recientes</h3></div></div>{services.slice(0,6).map(s => <article className="data-item" key={s.consecutivo}><div><span className="code">{s.consecutivo}</span><h3>{s.tipo}</h3><p>{s.estado} · prioridad {s.prioridad}</p></div></article>)}</div>
     </section>
     <section className="panel map-panel">
-      <div className="panel-header"><div><p className="eyebrow">Geolocalización</p><h3>Mapa operativo</h3></div><span>OpenStreetMap · sin API key</span></div>
-      <iframe className="map-frame" title="Mapa operativo de Alarvix" src="https://www.openstreetmap.org/export/embed.html?bbox=-74.86%2C10.88%2C-74.70%2C11.04&layer=mapnik&marker=10.9639%2C-74.7964" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+      <div className="panel-header">
+        <div><p className="eyebrow">Geolocalización</p><h3>Técnicos en tiempo real</h3></div>
+        <span>{technicianLocations.length} técnico(s) · actualización automática</span>
+      </div>
+      {locationError && <div className="location-feedback">{locationError}</div>}
+      {locationSharing && <div className="location-sharing"><span className="dot green" /> Tu ubicación se está compartiendo para la operación.</div>}
+      <TechnicianMap locations={technicianLocations} />
     </section>
   </>;
+}
+
+
+function TechnicianMap({ locations }: { locations: TechnicianLocation[] }) {
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const leafletRef = useRef<any>(null);
+  const markersRef = useRef<Record<string, any>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadLeaflet() {
+      if (!document.querySelector('link[data-alarvix-leaflet]')) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        link.dataset.alarvixLeaflet = 'true';
+        document.head.appendChild(link);
+      }
+
+      if (!window.L) {
+        await new Promise<void>((resolve, reject) => {
+          const existing = document.querySelector('script[data-alarvix-leaflet]') as HTMLScriptElement | null;
+          if (existing) {
+            existing.addEventListener('load', () => resolve(), { once: true });
+            existing.addEventListener('error', () => reject(new Error('No se pudo cargar el mapa.')), { once: true });
+            return;
+          }
+          const script = document.createElement('script');
+          script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+          script.async = true;
+          script.dataset.alarvixLeaflet = 'true';
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error('No se pudo cargar el mapa.'));
+          document.body.appendChild(script);
+        });
+      }
+
+      if (cancelled || !mapRef.current || !window.L) return;
+      const L = window.L;
+      if (!leafletRef.current) {
+        leafletRef.current = L.map(mapRef.current).setView([10.9639, -74.7964], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors',
+          maxZoom: 19,
+        }).addTo(leafletRef.current);
+      }
+      renderMarkers();
+    }
+
+    function renderMarkers() {
+      const map = leafletRef.current;
+      const L = window.L;
+      if (!map || !L) return;
+
+      const nextKeys = new Set(locations.map(location => location.tecnico_id));
+      Object.keys(markersRef.current).forEach(key => {
+        if (!nextKeys.has(key)) {
+          map.removeLayer(markersRef.current[key]);
+          delete markersRef.current[key];
+        }
+      });
+
+      locations.forEach(location => {
+        const key = location.tecnico_id;
+        const position: [number, number] = [location.latitude, location.longitude];
+        const lastSeen = new Date(location.last_seen).toLocaleString('es-CO');
+        const popup = '<strong>Técnico</strong><br>ID: ' + escapeHtml(location.tecnico_id) +
+          '<br>Última actualización: ' + escapeHtml(lastSeen) +
+          (location.accuracy_m ? '<br>Precisión: ' + Math.round(location.accuracy_m) + ' m' : '');
+
+        if (markersRef.current[key]) {
+          markersRef.current[key].setLatLng(position).setPopupContent(popup);
+        } else {
+          markersRef.current[key] = L.marker(position).addTo(map).bindPopup(popup);
+        }
+      });
+
+      if (locations.length > 0) {
+        const bounds = L.latLngBounds(locations.map(location => [location.latitude, location.longitude]));
+        map.fitBounds(bounds.pad(0.2), { maxZoom: 14 });
+      }
+    }
+
+    void loadLeaflet().catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+      if (leafletRef.current) {
+        leafletRef.current.remove();
+        leafletRef.current = null;
+        markersRef.current = {};
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!leafletRef.current || !window.L) return;
+    const map = leafletRef.current;
+    const L = window.L;
+    const nextKeys = new Set(locations.map(location => location.tecnico_id));
+
+    Object.keys(markersRef.current).forEach(key => {
+      if (!nextKeys.has(key)) {
+        map.removeLayer(markersRef.current[key]);
+        delete markersRef.current[key];
+      }
+    });
+
+    locations.forEach(location => {
+      const position: [number, number] = [location.latitude, location.longitude];
+      const lastSeen = new Date(location.last_seen).toLocaleString('es-CO');
+      const popup = '<strong>Técnico</strong><br>ID: ' + escapeHtml(location.tecnico_id) +
+        '<br>Última actualización: ' + escapeHtml(lastSeen) +
+        (location.accuracy_m ? '<br>Precisión: ' + Math.round(location.accuracy_m) + ' m' : '');
+
+      if (markersRef.current[location.tecnico_id]) {
+        markersRef.current[location.tecnico_id].setLatLng(position).setPopupContent(popup);
+      } else {
+        markersRef.current[location.tecnico_id] = L.marker(position).addTo(map).bindPopup(popup);
+      }
+    });
+  }, [locations]);
+
+  return <div ref={mapRef} className="map-frame live-map" aria-label="Mapa de técnicos en tiempo real" />;
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, character => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;',
+  }[character] || character));
+}
+
+declare global {
+  interface Window {
+    L?: any;
+  }
 }
 
 function Customers({ customers, canWrite, editing, setEditing, onSave, onDelete }: {
