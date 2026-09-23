@@ -2504,6 +2504,9 @@
                 <button onclick="enviarOPRPorCorreo(document.getElementById('opr-consecutivo').innerText)" class="bg-blue-600/10 hover:bg-blue-600 hover:text-white border border-blue-500/30 text-blue-400 px-4 py-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 uppercase">
                     <i class="fa-solid fa-envelope"></i> Enviar por correo
                 </button>
+                <button onclick="enviarOPRPorWhatsApp(document.getElementById('opr-consecutivo').innerText)" class="bg-emerald-600/10 hover:bg-emerald-600 hover:text-white border border-emerald-500/30 text-emerald-400 px-4 py-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 uppercase">
+                    <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                </button>
                 <button onclick="simulateReportDownload('PDF')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 uppercase">
                     <i class="fa-solid fa-file-pdf text-rose-500"></i> Descargar PDF
                 </button>
@@ -7768,6 +7771,69 @@
             }
         }
 
+        function enviarOPRPorWhatsApp(consecutivo) {
+            try {
+                const s = incidentesServicios.find(i => i.consecutivo === consecutivo);
+                if (!s) {
+                    showToast("OPR no encontrado", "No se encontró el OPR solicitado.", true);
+                    return;
+                }
+
+                const cl = crmClientes.find(c => String(c.id) === String(s.abonadoId)) || {};
+                const tech = personalTecnicos.find(t => String(t.id) === String(s.tecnicoId)) || {};
+
+                const telefonoGuardado =
+                    s.informeTecnico?.telefonoCliente ||
+                    cl.telefono ||
+                    cl.celular ||
+                    "";
+
+                const telefono = window.prompt(
+                    "Número de WhatsApp del cliente (incluye código de país):",
+                    telefonoGuardado
+                );
+
+                if (telefono === null) return;
+
+                const numero = String(telefono)
+                    .replace(/\\D/g, "")
+                    .trim();
+
+                if (numero.length < 10) {
+                    showToast("Número inválido", "Escribe un número de WhatsApp válido con código de país.", true);
+                    return;
+                }
+
+                const mensaje = [
+                    "ALarvix Enterprise",
+                    "",
+                    "Orden de Prestación de Servicio (OPR)",
+                    `OPR: ${s.consecutivo}`,
+                    `Cliente: ${cl.nombre || "Cliente"}`,
+                    `Servicio: ${s.tipo || "Servicio técnico"}`,
+                    `Técnico: ${tech.nombre || s.informeTecnico?.tecnico || "Técnico de campo"}`,
+                    `Trabajo realizado: ${s.informeTecnico?.descripcion || s.evidenciaDano || "Servicio técnico realizado."}`,
+                    "",
+                    "Este mensaje corresponde al reporte de servicio registrado en Alarvix Enterprise."
+                ].join("\\n");
+
+                const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`;
+                window.open(url, "_blank", "noopener,noreferrer");
+
+                s.informeTecnico = {
+                    ...(s.informeTecnico || {}),
+                    whatsappCliente: numero,
+                    whatsappCompartidoFecha: new Date().toISOString()
+                };
+                syncServicioActual(consecutivo);
+
+                showToast("WhatsApp preparado", "Se abrió WhatsApp con el mensaje del OPR listo para enviar.");
+            } catch (error) {
+                console.error("[Alarvix OPR] Error preparando WhatsApp:", error);
+                showToast("WhatsApp no disponible", "No fue posible preparar el mensaje.", true);
+            }
+        }
+
         async function enviarOPRPorCorreo(consecutivo) {
             try {
                 if (!supabaseClient || !currentUser) {
@@ -7792,10 +7858,17 @@
                 );
 
                 if (correo === null) return;
-                const destino = correo.trim();
+                const destino = String(correo || "")
+                    .replace(/[\\u200B-\\u200D\\uFEFF]/g, "")
+                    .replace(/\\s+/g, "")
+                    .trim()
+                    .toLowerCase();
 
-                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destino)) {
-                    showToast("Correo inválido", "Escribe un correo electrónico válido.", true);
+                // Validación robusta para Android y navegadores móviles.
+                const emailValido = /^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(destino);
+
+                if (!emailValido) {
+                    showToast("Correo inválido", "Escribe un correo como cliente@empresa.com.", true);
                     return;
                 }
 
