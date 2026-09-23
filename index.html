@@ -2692,7 +2692,7 @@
         let currentActiveTab = 'dashboard';
         let supabaseCommunicationStarted = false;
 
-        function aplicarUsuarioSesion(sessionUser) {
+        async function aplicarUsuarioSesion(sessionUser) {
             if (!sessionUser) {
                 currentUser = null;
                 return;
@@ -2708,22 +2708,34 @@
                 tecnicoId: metadata.tecnico_id || metadata.tecnicoId || null,
                 abonadoId: metadata.abonado_id || metadata.abonadoId || null
             };
-        }
 
-        async function restaurarSesionSupabase() {
-            if (!supabaseClient) return false;
-            try {
-                const { data, error } = await supabaseClient.auth.getSession();
-                if (error) throw error;
-                if (!data.session || !data.session.user) return false;
-                aplicarUsuarioSesion(data.session.user);
-                completarLogin(currentUser);
-                await inicializarComunicacionSupabase();
-                return true;
-            } catch (e) {
-                console.error("[Alarvix/Supabase] No se pudo restaurar la sesión:", e);
-                currentUser = null;
-                return false;
+            // Los usuarios creados directamente en Supabase Auth pueden no tener
+            // role/tenant_id en user_metadata. Completamos el perfil desde Alarvix.
+            if (supabaseClient && (!currentUser.rol || !currentUser.tenant_id)) {
+                try {
+                    const { data: perfil, error } = await supabaseClient
+                        .from("usuarios")
+                        .select("*")
+                        .eq("id", sessionUser.id)
+                        .maybeSingle();
+
+                    if (!error && perfil) {
+                        currentUser = {
+                            ...currentUser,
+                            nombre: perfil.nombre || currentUser.nombre,
+                            username: perfil.username || currentUser.username,
+                            rol: String(perfil.rol || currentUser.rol || "").toUpperCase(),
+                            activo: perfil.activo !== false,
+                            tenant_id: perfil.tenant_id || currentUser.tenant_id || null,
+                            tecnicoId: perfil.tecnico_id || currentUser.tecnicoId || null,
+                            abonadoId: perfil.abonado_id || currentUser.abonadoId || null
+                        };
+                    } else if (error) {
+                        console.warn("[Alarvix/Supabase] No se pudo cargar el perfil de usuarios:", error.message);
+                    }
+                } catch (e) {
+                    console.warn("[Alarvix/Supabase] Excepción cargando perfil de usuarios:", e);
+                }
             }
         }
 
@@ -3202,9 +3214,17 @@
                 return;
             }
             var sessionUser = result.data.user;
-            aplicarUsuarioSesion(sessionUser);
-            await inicializarComunicacionSupabase();
+            await aplicarUsuarioSesion(sessionUser);
+            if (!currentUser.rol) {
+                showToast("Perfil incompleto", "El usuario autenticó correctamente, pero no tiene un rol configurado en Alarvix.", true);
+                return;
+            }
+            if (!currentUser.tenant_id) {
+                showToast("Perfil incompleto", "El usuario autenticó correctamente, pero no tiene tenant asignado en Alarvix.", true);
+                return;
+            }
             completarLogin(currentUser);
+            await inicializarComunicacionSupabase();
         }
 
         async function handleRecoveryRequest(event) {
