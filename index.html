@@ -3246,26 +3246,57 @@
 
         async function handlePasswordReset(event) {
             event.preventDefault();
-            var newPassword = document.getElementById('reset-password-new').value;
-            var confirmPassword = document.getElementById('reset-password-confirm').value;
+
+            var newPassword = document.getElementById('reset-password-new').value.trim();
+            var confirmPassword = document.getElementById('reset-password-confirm').value.trim();
+
             if (!supabaseClient) {
                 showToast("Recuperación", "Falta configurar Supabase.", true);
                 return;
             }
+
             if (newPassword.length < 8) {
                 showToast("Recuperación", "La contraseña debe tener al menos 8 caracteres.", true);
                 return;
             }
+
             if (newPassword !== confirmPassword) {
                 showToast("Recuperación", "Las contraseñas no coinciden.", true);
                 return;
             }
+
+            // El enlace de recuperación debe haber creado una sesión temporal.
+            // La recuperamos explícitamente antes de intentar cambiar la contraseña.
+            var sessionResult = await supabaseClient.auth.getSession();
+            if (sessionResult.error) {
+                console.error("[Alarvix] Error obteniendo sesión de recuperación:", sessionResult.error);
+                showToast("Recuperación", sessionResult.error.message, true);
+                return;
+            }
+
+            if (!sessionResult.data || !sessionResult.data.session) {
+                showToast("Recuperación", "El enlace de recuperación no tiene una sesión válida. Solicita un nuevo enlace.", true);
+                return;
+            }
+
             var result = await supabaseClient.auth.updateUser({ password: newPassword });
+
             if (result.error) {
+                console.error("[Alarvix] Error actualizando contraseña:", result.error);
                 showToast("Recuperación", result.error.message, true);
                 return;
             }
-            showToast("Recuperación", "Contraseña actualizada.");
+
+            document.getElementById('reset-password-new').value = "";
+            document.getElementById('reset-password-confirm').value = "";
+
+            showToast("Recuperación", "Contraseña actualizada correctamente.");
+
+            // Cerramos la sesión temporal de recuperación para obligar a iniciar
+            // sesión nuevamente con la nueva contraseña.
+            await supabaseClient.auth.signOut();
+            document.getElementById('reset-screen')?.classList.add('hidden');
+            document.getElementById('login-screen')?.classList.remove('hidden');
         }
 
         document.addEventListener('DOMContentLoaded', function () {
@@ -9717,6 +9748,7 @@
                     } else if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") && session?.user) {
                         aplicarUsuarioSesion(session.user);
                     } else if (event === "PASSWORD_RECOVERY") {
+                        console.log("[Alarvix/Supabase] Sesión de recuperación detectada.");
                         document.getElementById('reset-screen')?.classList.remove('hidden');
                         document.getElementById('login-screen')?.classList.add('hidden');
                     }
