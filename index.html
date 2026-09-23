@@ -2746,6 +2746,7 @@
             try {
                 await cargarDatosNubeAlarvix();
                 initSupabaseRealtimeTecnicos();
+                initSupabaseRealtimeUbicacionesTecnicos();
                 initSupabaseRealtimeTodo();
             } catch (e) {
                 console.error("[Alarvix/Supabase] Error inicializando sincronización:", e);
@@ -6721,17 +6722,79 @@
          * la vea en vivo desde CUALQUIER otro dispositivo — no solo dentro de esta misma sesión.
          */
         async function subirUbicacionTecnicoASupabase(tecnicoId, nombre, lat, lng, estado) {
+            if (!supabaseClient || !currentUser || !currentUser.tenant_id) return false;
+
+            const payload = {
+                tenant_id: String(currentUser.tenant_id),
+                tecnico_id: String(tecnicoId),
+                latitude: Number(lat),
+                longitude: Number(lng),
+                accuracy_m: null,
+                last_seen: new Date().toISOString()
+            };
+
+            const { error } = await supabaseClient
+                .from("tecnicos_ubicaciones")
+                .upsert(payload, { onConflict: "tenant_id,tecnico_id" });
+
+            if (error) {
+                console.error("[Alarvix GPS] Error al guardar ubicación:", error);
+                return false;
+            }
+
+            const t = personalTecnicos.find(x => String(x.id) === String(tecnicoId));
+            if (t) {
+                t.gpsLat = Number(lat);
+                t.gpsLng = Number(lng);
+                t.gpsUpdated = new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+            }
+
+            renderMapPins();
+            return true;
+        }
+
+        async function cargarUbicacionesTecnicosDesdeSupabase() {
             if (!supabaseClient || !currentUser || !currentUser.tenant_id) return;
-            // La tabla 'tecnicos' actual no contiene latitud/longitud.
-            // No enviamos columnas inexistentes a PostgREST; el GPS sigue disponible
-            // localmente hasta que el esquema de Supabase incorpore esos campos.
-            const { error } = await supabaseClient.from("tecnicos").upsert({
-                id: tecnicoId,
-                nombre: nombre,
-                estado: estado || "Disponible",
-                tenant_id: currentUser?.tenant_id || null
+
+            const { data, error } = await supabaseClient
+                .from("tecnicos_ubicaciones")
+                .select("tenant_id,tecnico_id,latitude,longitude,accuracy_m,last_seen")
+                .eq("tenant_id", String(currentUser.tenant_id));
+
+            if (error) {
+                console.warn("[Alarvix GPS] Error leyendo ubicaciones:", error.message);
+                return;
+            }
+
+            (data || []).forEach(row => {
+                const t = personalTecnicos.find(x => String(x.id) === String(row.tecnico_id));
+                if (!t) return;
+                t.gpsLat = Number(row.latitude);
+                t.gpsLng = Number(row.longitude);
+                t.gpsUpdated = row.last_seen ? new Date(row.last_seen).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "S/D";
             });
-            if (error) console.warn("[Alarvix/Supabase] Error al subir ubicación del técnico:", error.message);
+
+            renderMapPins();
+        }
+
+        function initSupabaseRealtimeUbicacionesTecnicos() {
+            if (!supabaseClient || !currentUser || !currentUser.tenant_id) return;
+            cargarUbicacionesTecnicosDesdeSupabase();
+
+            supabaseClient
+                .channel("alarvix-tecnicos-ubicaciones-realtime")
+                .on("postgres_changes", { event: "*", schema: "public", table: "tecnicos_ubicaciones", filter: `tenant_id=eq.${String(currentUser.tenant_id)}` }, (payload) => {
+                    const row = payload.new || {};
+                    const t = personalTecnicos.find(x => String(x.id) === String(row.tecnico_id));
+                    if (!t || typeof row.latitude !== "number" || typeof row.longitude !== "number") return;
+                    t.gpsLat = Number(row.latitude);
+                    t.gpsLng = Number(row.longitude);
+                    t.gpsUpdated = row.last_seen ? new Date(row.last_seen).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "en vivo (nube)";
+                    renderMapPins();
+                })
+                .subscribe(status => {
+                    if (status === "SUBSCRIBED") console.log("[Alarvix GPS] Realtime de ubicaciones activo ✔");
+                });
         }
 
         function renderMapPins() {
