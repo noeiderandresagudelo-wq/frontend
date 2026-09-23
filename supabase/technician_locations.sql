@@ -76,3 +76,20 @@ drop trigger if exists trg_tecnicos_ubicaciones_updated_at on public.tecnicos_ub
 create trigger trg_tecnicos_ubicaciones_updated_at
 before update on public.tecnicos_ubicaciones
 for each row execute function public.set_tecnicos_ubicaciones_updated_at();
+
+-- El simulador de terminal se ejecuta desde perfiles administrativos y necesita
+-- poder publicar una ubicación para el técnico seleccionado. En producción,
+-- el técnico real seguirá usando las políticas anteriores con su propio UUID.
+drop policy if exists "admin publica ubicaciones simuladas" on public.tecnicos_ubicaciones;
+create policy "admin publica ubicaciones simuladas"
+on public.tecnicos_ubicaciones
+for all
+to authenticated
+using (
+  tenant_id = (auth.jwt() -> 'app_metadata' ->> 'tenant_id')
+  and lower(coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '')) in ('admin', 'manager', 'supervisor')
+)
+with check (
+  tenant_id = (auth.jwt() -> 'app_metadata' ->> 'tenant_id')
+  and lower(coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '')) in ('admin', 'manager', 'supervisor')
+);
