@@ -4861,7 +4861,8 @@
                         // Si se le quita el rol de Técnico, desvincular
                         user.tecnicoId = "";
                     }
-                    await asegurarUsuarioAuth(user, password);\n                    await syncUsuarioActual(user.id);
+                    await asegurarUsuarioAuth(user, password);
+                    await syncUsuarioActual(user.id);
                     if (rol === 'TECNICO' && user.tecnicoId) syncTecnicoActual(user.tecnicoId);
                 }
                 showToast("Cambios Guardados", `Se ha actualizado a ${nombre} correctamente.`);
@@ -4892,7 +4893,8 @@
                     activo: true,
                     tecnicoId: newTechId
                 });
-                await asegurarUsuarioAuth(appUsers[appUsers.length - 1], password);\n                await syncUsuarioActual(appUsers[appUsers.length - 1].id);
+                await asegurarUsuarioAuth(appUsers[appUsers.length - 1], password);
+                await syncUsuarioActual(appUsers[appUsers.length - 1].id);
 
                 showToast("Colaborador Creado", `Se ha dado de alta a ${nombre} en el sistema.`);
             }
