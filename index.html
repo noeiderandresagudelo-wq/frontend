@@ -7794,7 +7794,7 @@
                 if (correo === null) return;
                 const destino = correo.trim();
 
-                if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(destino)) {
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destino)) {
                     showToast("Correo inválido", "Escribe un correo electrónico válido.", true);
                     return;
                 }
