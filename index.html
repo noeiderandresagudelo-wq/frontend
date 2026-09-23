@@ -763,7 +763,7 @@
                                 <div class="grid grid-cols-2 gap-2">
                                     <div>
                                         <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Usuario Acceso</label>
-                                        <input type="text" id="manage-username" required placeholder="mario.v" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-blue-500">
+                                        <input type="email" id="manage-username" required placeholder="correo@empresa.com" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-blue-500">
                                     </div>
                                     <div>
                                         <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Contraseña</label>
@@ -4817,6 +4817,7 @@
         async function savePersonalData(event) {
             event.preventDefault();
 
+            try {
             const userId = document.getElementById('manage-user-id').value;
             const techId = document.getElementById('manage-personal-id').value;
             const nombre = document.getElementById('manage-nombre').value.trim();
@@ -4930,6 +4931,10 @@
 
             resetPersonalForm();
             renderPersonalTable();
+            } catch (error) {
+                console.error("[Alarvix] Error guardando colaborador:", error);
+                showToast("No se pudo guardar", error?.message || "Ocurrió un error al crear o actualizar el colaborador.", true);
+            }
         }
 
         function deletePersonalMember(userId) {
@@ -5997,12 +6002,18 @@
         }
 
         async function syncPush(tabla, row) {
-            if (!supabaseClient || !currentUser || !currentUser.tenant_id) {
-                console.error("[Alarvix/Supabase] No se guardó", tabla, "porque falta sesión autenticada o tenant_id.");
+            if (!supabaseClient || !currentUser) {
+                console.error("[Alarvix/Supabase] No se guardó", tabla, "porque falta sesión autenticada.");
                 return false;
             }
             try {
-                const payload = { ...row, tenant_id: row.tenant_id || currentUser.tenant_id };
+                const tenantId = row.tenant_id || currentUser.tenant_id || currentUser.tenantId || null;
+                if (!tenantId) {
+                    console.error("[Alarvix/Supabase] No se guardó", tabla, "porque falta tenant_id.", currentUser);
+                    showToast("Tenant no configurado", "La sesión administrativa no tiene tenant_id. Cierra sesión y vuelve a entrar.", true);
+                    return false;
+                }
+                const payload = { ...row, tenant_id: tenantId };
                 const conflictKey = supabaseConflictKey(tabla);
                 const { error } = await supabaseClient
                     .from(tabla)
