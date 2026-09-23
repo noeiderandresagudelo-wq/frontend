@@ -4842,7 +4842,6 @@
                 if (user) {
                     user.nombre = nombre;
                     user.username = username;
-                    user.password = password;
                     user.rol = rol;
 
                     if (rol === 'TECNICO') {
@@ -4862,8 +4861,18 @@
                         user.tecnicoId = "";
                     }
                     await asegurarUsuarioAuth(user, password);
-                    await syncUsuarioActual(user.id);
-                    if (rol === 'TECNICO' && user.tecnicoId) syncTecnicoActual(user.tecnicoId);
+                    const usuarioGuardado = await syncUsuarioActual(user.id);
+                    if (!usuarioGuardado) {
+                        showToast("No se guardó", "No se pudo guardar el perfil del colaborador en Supabase.", true);
+                        return;
+                    }
+                    if (rol === 'TECNICO' && user.tecnicoId) {
+                        const tecnicoGuardado = await syncTecnicoActual(user.tecnicoId);
+                        if (!tecnicoGuardado) {
+                            showToast("Ficha técnica no guardada", "El usuario quedó guardado, pero no se pudo actualizar su ficha técnica en Supabase.", true);
+                            return;
+                        }
+                    }
                 }
                 showToast("Cambios Guardados", `Se ha actualizado a ${nombre} correctamente.`);
             } else {
@@ -4881,20 +4890,40 @@
                         celular: celular || "S/D",
                         ciudad: ciudad
                     });
-                    syncTecnicoActual(newTechId);
                 }
 
-                appUsers.push({
+                const nuevoColaborador = {
                     id: newUserId,
                     username: username,
-                    password: password,
                     nombre: nombre,
                     rol: rol,
                     activo: true,
                     tecnicoId: newTechId
-                });
-                await asegurarUsuarioAuth(appUsers[appUsers.length - 1], password);
-                await syncUsuarioActual(appUsers[appUsers.length - 1].id);
+                };
+                appUsers.push(nuevoColaborador);
+
+                try {
+                    await asegurarUsuarioAuth(nuevoColaborador, password);
+                } catch (authError) {
+                    appUsers = appUsers.filter(u => u !== nuevoColaborador);
+                    if (newTechId) personalTecnicos = personalTecnicos.filter(t => t.id !== newTechId);
+                    throw authError;
+                }
+
+                const usuarioGuardado = await syncUsuarioActual(nuevoColaborador.id);
+                if (!usuarioGuardado) {
+                    appUsers = appUsers.filter(u => u !== nuevoColaborador);
+                    if (newTechId) personalTecnicos = personalTecnicos.filter(t => t.id !== newTechId);
+                    return;
+                }
+
+                if (newTechId) {
+                    const tecnicoGuardado = await syncTecnicoActual(newTechId);
+                    if (!tecnicoGuardado) {
+                        showToast("Ficha técnica no guardada", "El usuario se creó, pero no se pudo guardar la ficha del técnico en Supabase.", true);
+                        return;
+                    }
+                }
 
                 showToast("Colaborador Creado", `Se ha dado de alta a ${nombre} en el sistema.`);
             }
@@ -5916,7 +5945,14 @@
             return authUser.id;
         }
         function rowToUsuario(row) {
-            const u = { id: row.id, username: row.username, password: row.password, nombre: row.nombre, rol: row.rol, activo: row.activo !== false };
+            const u = {
+                id: row.id,
+                username: row.username,
+                nombre: row.nombre,
+                rol: row.rol,
+                activo: row.activo !== false,
+                tenant_id: row.tenant_id || null
+            };
             if (row.tecnico_id) u.tecnicoId = row.tecnico_id;
             if (row.abonado_id) u.abonadoId = row.abonado_id;
             return u;
@@ -6152,13 +6188,15 @@
             const m = catalogoInventario.find(x => x.codigo === codigo);
             if (m) syncPush("inventario", inventarioToRow(m));
         }
-        function syncUsuarioActual(id) {
+        async function syncUsuarioActual(id) {
             const u = appUsers.find(x => x.id === id);
-            if (u) syncPush("usuarios", usuarioToRow(u));
+            if (!u) return false;
+            return await syncPush("usuarios", usuarioToRow(u));
         }
-        function syncTecnicoActual(id) {
+        async function syncTecnicoActual(id) {
             const t = personalTecnicos.find(x => x.id === id);
-            if (t) syncPush("tecnicos", tecnicoFullToRow(t));
+            if (!t) return false;
+            return await syncPush("tecnicos", tecnicoFullToRow(t));
         }
         function syncZonaActual(id) {
             const z = activeZones.find(x => x.id === id);
