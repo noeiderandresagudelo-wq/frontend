@@ -3199,7 +3199,7 @@
         }
         window.toggleRecoveryInline = toggleRecoveryInline;
 
-        async function handleLogin(event) {
+        async async function handleLogin(event) {
             if (event) event.preventDefault();
             var uInput = document.getElementById('login-username').value.trim();
             var pInput = document.getElementById('login-password').value;
@@ -9625,6 +9625,43 @@
             } catch (e) {
                 console.error("Error consolidado PDF: ", e);
                 showToast("Error", "No se pudo generar el consolidado de incidentes.", true);
+            }
+        }
+
+        async function restaurarSesionSupabase() {
+            if (!supabaseClient) return;
+
+            try {
+                const { data, error } = await supabaseClient.auth.getSession();
+
+                if (error) {
+                    console.error("[Alarvix/Supabase] Error restaurando sesión:", error);
+                    return;
+                }
+
+                if (!data?.session?.user) {
+                    currentUser = null;
+                    document.getElementById('login-screen')?.classList.remove('hidden');
+                    return;
+                }
+
+                await aplicarUsuarioSesion(data.session.user);
+
+                if (!currentUser?.rol || !currentUser?.tenant_id) {
+                    console.warn("[Alarvix/Supabase] Sesión válida, pero perfil Alarvix incompleto.", currentUser);
+                    currentUser = null;
+                    await supabaseClient.auth.signOut();
+                    document.getElementById('login-screen')?.classList.remove('hidden');
+                    showToast("Perfil incompleto", "El usuario autenticó correctamente, pero falta rol o tenant en su perfil de Alarvix.", true);
+                    return;
+                }
+
+                completarLogin(currentUser);
+                await inicializarComunicacionSupabase();
+            } catch (e) {
+                console.error("[Alarvix/Supabase] Error restaurando la sesión:", e);
+                currentUser = null;
+                document.getElementById('login-screen')?.classList.remove('hidden');
             }
         }
 
