@@ -186,7 +186,7 @@
     window.SUPABASE_URL = window.SUPABASE_URL || localStorage.getItem('SUPABASE_URL') || '%VITE_SUPABASE_URL%';
     window.SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || localStorage.getItem('SUPABASE_ANON_KEY') || '%VITE_SUPABASE_ANON_KEY%';
 </script>
-<body class="bg-slate-950 text-slate-100 dark:bg-brand-darkBg dark:text-slate-100 min-h-screen flex">
+<body class="bg-slate-950 text-slate-100 dark:bg-brand-darkBg dark:text-slate-100 h-screen overflow-hidden flex">
 
     <!-- PANTALLA COMPLETA DE LOGIN (BLOQUEO INICIAL) -->
     <div id="login-screen" class="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-4">
@@ -516,7 +516,7 @@
     <div id="sidebar-overlay" onclick="toggleMobileSidebar(false)" class="hidden fixed inset-0 bg-black/60 z-40 md:hidden"></div>
 
     <!-- MENÚ LATERAL DE NAVEGACIÓN COMPACTO/DESPLEGABLE (Monday.com Style) -->
-    <aside id="sidebar" class="w-64 bg-slate-900 dark:bg-slate-900 border-r border-slate-800 flex flex-col justify-between transition-transform duration-300 z-50 shrink-0 fixed md:static inset-y-0 left-0 -translate-x-full md:translate-x-0">
+    <aside id="sidebar" class="w-64 h-screen bg-slate-900 dark:bg-slate-900 border-r border-slate-800 flex flex-col justify-between transition-transform duration-300 z-50 shrink-0 fixed md:static inset-y-0 left-0 -translate-x-full md:translate-x-0">
         <div class="flex flex-col h-full">
             <!-- Header de la Aplicación -->
             <div class="p-4 border-b border-slate-800 flex items-center justify-between">
@@ -664,7 +664,7 @@
     </div>
 
     <!-- CONTENEDOR PRINCIPAL DE LA APLICACIÓN -->
-    <main class="flex-grow flex flex-col min-w-0 bg-slate-950 text-slate-100">
+    <main class="flex-grow flex flex-col min-w-0 min-h-0 h-screen overflow-hidden bg-slate-950 text-slate-100">
         <!-- HEADER OPERATIVO GLOBAL -->
         <header class="h-14 border-b border-slate-900 bg-slate-900/40 backdrop-blur-md px-3 sm:px-6 flex items-center justify-between sticky top-0 z-30">
             <div class="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -705,7 +705,7 @@
         </header>
 
         <!-- CONTENEDOR DE MODULOS / PANELES -->
-    <main class="flex-grow flex flex-col min-w-0 bg-slate-950 text-slate-100 p-3 sm:p-6 overflow-y-auto">
+    <main class="flex-grow flex flex-col min-w-0 min-h-0 overflow-y-auto bg-slate-950 text-slate-100 p-3 sm:p-6">
             
             <section id="view-personal" class="space-y-6 hidden">
                 <div class="flex items-center justify-between flex-wrap gap-4 bg-slate-900 border border-slate-800 p-4 rounded-xl">
