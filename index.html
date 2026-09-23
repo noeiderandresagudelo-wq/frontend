@@ -3954,12 +3954,13 @@
         async function subirUbicacionTecnicoPorHTTPNativo(tecnicoId, lat, lng, accuracy) {
             const capacitor = window.Capacitor;
             const http = capacitor?.Plugins?.CapacitorHttp;
-            if (!http || !supabaseClient || !currentUser?.tenant_id || !SUPABASE_URL || !SUPABASE_ANON_KEY_LOCAL) return false;
+            if (!http) return subirUbicacionTecnicoASupabase(tecnicoId, "", lat, lng, currentUser?.estado);
+            if (!supabaseClient || !currentUser?.tenant_id || !SUPABASE_URL || !SUPABASE_ANON_KEY_LOCAL) return false;
 
             try {
                 const { data: sessionData } = await supabaseClient.auth.getSession();
                 const accessToken = sessionData?.session?.access_token;
-                if (!accessToken) return false;
+                if (!accessToken) return subirUbicacionTecnicoASupabase(tecnicoId, "", lat, lng, currentUser?.estado);
 
                 const payload = {
                     tenant_id: String(currentUser.tenant_id),
