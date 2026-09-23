@@ -4861,7 +4861,13 @@
                         // Si se le quita el rol de Técnico, desvincular
                         user.tecnicoId = "";
                     }
-                    await asegurarUsuarioAuth(user, password);
+                    try {
+                        await asegurarUsuarioAuth(user, password);
+                    } catch (authError) {
+                        console.error("[Alarvix] Error de Authentication al editar colaborador:", authError);
+                        showToast("No se pudo guardar", authError.message || "Error al vincular el usuario con Authentication.", true);
+                        return;
+                    }
                     const usuarioGuardado = await syncUsuarioActual(user.id);
                     if (!usuarioGuardado) {
                         showToast("No se guardó", "No se pudo guardar el perfil del colaborador en Supabase.", true);
@@ -4908,7 +4914,9 @@
                 } catch (authError) {
                     appUsers = appUsers.filter(u => u !== nuevoColaborador);
                     if (newTechId) personalTecnicos = personalTecnicos.filter(t => t.id !== newTechId);
-                    throw authError;
+                    console.error("[Alarvix] Error de Authentication al crear colaborador:", authError);
+                    showToast("No se pudo crear", authError.message || "No se pudo crear la cuenta de acceso.", true);
+                    return;
                 }
 
                 const usuarioGuardado = await syncUsuarioActual(nuevoColaborador.id);
@@ -5892,9 +5900,18 @@
         }
 
         async function asegurarUsuarioAuth(u, password) {
-            if (!supabaseClient || !currentUser?.tenant_id) {
-                throw new Error("Supabase no está disponible o falta el tenant del administrador.");
+            if (!supabaseClient || !currentUser) {
+                throw new Error("Supabase no está disponible o no hay una sesión administrativa activa.");
             }
+
+            // La sesión puede traer el tenant con cualquiera de las dos convenciones usadas
+            // por el frontend. Normalizamos ambas para evitar el falso estado "SIN TENANT".
+            const tenantId = currentUser.tenant_id || currentUser.tenantId || null;
+            if (!tenantId) {
+                throw new Error("La sesión administrativa no tiene tenant_id. Cierra sesión y vuelve a entrar para cargar el tenant de Alarvix.");
+            }
+            currentUser.tenant_id = tenantId;
+
             if (esUuid(u.id)) return u.id;
 
             const email = String(u.username || "").trim().toLowerCase();
