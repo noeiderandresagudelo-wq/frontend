@@ -3424,6 +3424,18 @@
                 document.getElementById('session-user-badge').innerText = `${currentUser.nombre} (${currentUser.rol})`;
                 enforcePermissions();
                 aplicarVisibilidadModulosPorRol();
+
+                // Al entrar al panel, sincronizamos el estado inicial exactamente igual
+                // que al seleccionar Dashboard desde el menú. Esto evita que el primer
+                // render conserve una altura/scroll incorrectos hasta cambiar de módulo.
+                requestAnimationFrame(() => {
+                    switchModule('dashboard');
+                    const dashboardScroll = document.querySelector('#view-dashboard')?.closest('main');
+                    if (dashboardScroll) dashboardScroll.scrollTop = 0;
+                    window.scrollTo(0, 0);
+                    document.documentElement.scrollTop = 0;
+                    document.body.scrollTop = 0;
+                });
             }
             
             showToast("Acceso Autorizado", `Sesión activa como: ${currentUser.nombre}`);
