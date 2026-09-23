@@ -1,32 +1,41 @@
 {
-  "short_name": "Alarvix",
+  "id": "./",
   "name": "Alarvix Enterprise - Central de Monitoreo",
-  "scope": "/",
+  "short_name": "Alarvix",
+  "description": "Alarvix Enterprise - Central de Monitoreo",
+  "lang": "es-CO",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone"
+  ],
+  "orientation": "portrait-primary",
+  "background_color": "#0B0F1A",
+  "theme_color": "#4C1D95",
+  "categories": [
+    "business",
+    "productivity"
+  ],
+  "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "./icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "./icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "/icons/icon-512-maskable.png",
+      "src": "./icons/icon-512-maskable.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     }
-  ],
-  "id": "/",
-  "start_url": "/",
-  "background_color": "#0B0F1A",
-  "display": "standalone",
-  "orientation": "portrait",
-  "theme_color": "#4C1D95",
-  "description": "Alarvix Enterprise - Central de Monitoreo",
-  "lang": "es-CO",
-  "dir": "ltr"
+  ]
 }
