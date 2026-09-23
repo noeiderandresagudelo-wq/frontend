@@ -1,5 +1,9 @@
 import { createAuthedSupabaseClient } from './lib/supabase';
 
+type TechnicianLocation = {
+  tenant_id: string; tecnico_id: string; latitude: number; longitude: number; accuracy_m?: number | null; last_seen: string;
+};
+
 export type UserRole = 'admin' | 'manager' | 'supervisor' | 'technician' | 'client' | 'viewer';
 
 export interface Customer {
@@ -55,6 +59,19 @@ export function createApiClient() {
     deleteCustomer: (token: string, id: string) => {
       const client = createAuthedSupabaseClient(token);
       return run<Customer>(client.from('clientes').delete().eq('id', id).select().single());
+    },
+      listTechnicianLocations: (token: string) => {
+      const client = createAuthedSupabaseClient(token);
+      return run<TechnicianLocation[]>(client.from('tecnicos_ubicaciones').select('*').order('last_seen', { ascending: false }));
+    },
+    upsertTechnicianLocation: (token: string, input: {
+      tenant_id: string; tecnico_id: string; latitude: number; longitude: number; accuracy_m?: number | null;
+    }) => {
+      const client = createAuthedSupabaseClient(token);
+      return run<TechnicianLocation>(client.from('tecnicos_ubicaciones').upsert({
+        ...input,
+        last_seen: new Date().toISOString(),
+      }, { onConflict: 'tenant_id,tecnico_id' }).select().single());
     },
     listServices: (token: string) => {
       const client = createAuthedSupabaseClient(token);
