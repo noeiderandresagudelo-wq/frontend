@@ -7,6 +7,7 @@ type Page = 'dashboard' | 'clientes' | 'servicios';
 type Auth = { role: UserRole; tenantId: string; branchId?: string };
 
 const TOKEN_KEY = 'alarvix.dev-access-token';
+const TOKEN_STORAGE = 'localStorage';
 const api = createApiClient();
 
 function getTokenSubject(token: string) {
@@ -47,7 +48,7 @@ type TechnicianLocation = {
 
 export default function App() {
   const [page, setPage] = useState<Page>('dashboard');
-  const [token, setToken] = useState(() => sessionStorage.getItem(TOKEN_KEY) || '');
+  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY) || '');
   const [auth, setAuth] = useState<Auth | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -64,7 +65,7 @@ export default function App() {
 
   useEffect(() => {
     if (!token) return;
-    try { setAuth(decodeToken(token)); } catch { sessionStorage.removeItem(TOKEN_KEY); setToken(''); }
+    try { setAuth(decodeToken(token)); } catch { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(TOKEN_KEY); setToken(''); }
   }, [token]);
 
   const refresh = useCallback(async () => {
@@ -105,12 +106,13 @@ export default function App() {
       return;
     }
 
-    setLocationError('');
-    setLocationSharing(true);
+    setLocationError('Esperando la primera posición del GPS…');
+    setLocationSharing(false);
 
     const watchId = navigator.geolocation.watchPosition(
       async position => {
         try {
+          console.info('[ALARVIX GPS] posición recibida', position.coords.latitude, position.coords.longitude, position.coords.accuracy);
           await api.upsertTechnicianLocation(token, {
             tenant_id: auth.tenantId,
             tecnico_id: getTokenSubject(token),
@@ -118,12 +120,17 @@ export default function App() {
             longitude: position.coords.longitude,
             accuracy_m: position.coords.accuracy,
           });
+          setLocationSharing(true);
           setLocationError('');
+          console.info('[ALARVIX GPS] ubicación guardada en Supabase');
         } catch (e) {
-          setLocationError(message(e));
+          setLocationSharing(false);
+          console.error('[ALARVIX GPS] error al guardar en Supabase', e);
+          setLocationError(`GPS recibido, pero Supabase rechazó la ubicación: ${message(e)}`);
         }
       },
       error => {
+        console.error('[ALARVIX GPS] error de geolocalización', error);
         setLocationSharing(false);
         setLocationError(
           error.code === error.PERMISSION_DENIED
@@ -146,7 +153,7 @@ export default function App() {
     try {
       const next = tokenDraft.trim();
       const nextAuth = decodeToken(next);
-      setToken(next); setAuth(nextAuth); sessionStorage.setItem(TOKEN_KEY, next); setTokenOpen(false); setError(''); setNotice('Conectado directamente a Supabase.');
+      setToken(next); setAuth(nextAuth); localStorage.setItem(TOKEN_KEY, next); sessionStorage.setItem(TOKEN_KEY, next); setTokenOpen(false); setError(''); setNotice('Conectado directamente a Supabase.');
     } catch (e) { setError(message(e)); }
   }
 
