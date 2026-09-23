@@ -6,16 +6,16 @@
     <title>Alarvix Enterprise - ERP Multitenant</title>
 
     <!-- Configuración PWA (Progressive Web App) -->
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#4C1D95">
-    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
 
     <!-- Soporte específico para iPhone/iPad (iOS no lee bien el manifest.json) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">\n    <meta name="application-name" content="Alarvix">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Alarvix">
-    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="./icons/icon-192.png">
 
     <!-- Tailwind CSS para UI de vanguardia -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -10185,7 +10185,7 @@
             window.addEventListener('load', () => {
                 const registrar = () => {
                     if (!('serviceWorker' in navigator)) {
-                        bannerTimer = setTimeout(mostrarAvisoInstalacion, 1500);
+                        if (esIOS) bannerTimer = setTimeout(mostrarAvisoInstalacion, 1500);
                         return;
                     }
 
@@ -10194,7 +10194,7 @@
                             console.log('[Alarvix] Service Worker registrado:', reg.scope);
                             if (!esAppInstalada()) {
                                 // Damos tiempo a Chrome para emitir beforeinstallprompt.
-                                bannerTimer = setTimeout(mostrarAvisoInstalacion, esIOS ? 1800 : 35000);
+                                if (esIOS) if (esIOS) bannerTimer = setTimeout(mostrarAvisoInstalacion, 1800);
                             }
                         })
                         .catch(err => {
