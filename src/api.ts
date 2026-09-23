@@ -20,7 +20,6 @@ export class ApiError extends Error {
 }
 function applyToken(token: string) {
   supabase.realtime.setAuth(token);
-  return token;
 }
 async function run<T>(query: PromiseLike<{ data: T | null; error: { message: string; code?: string } | null }>): Promise<T> {
   const { data, error } = await query;
@@ -29,7 +28,7 @@ async function run<T>(query: PromiseLike<{ data: T | null; error: { message: str
 }
 export function createApiClient() {
   return {
-    listCustomers: (token: string) => run<Customer[]>(supabase.from('clientes').select('*').order('created_at', { ascending: false }).then(applyToken)),
+    listCustomers: (token: string) => { applyToken(token); return run<Customer[]>(supabase.from('clientes').select('*').order('created_at', { ascending: false })); },
     createCustomer: (token: string, input: Partial<Customer> & { tenant_id: string }) => { applyToken(token); return run<Customer>(supabase.from('clientes').insert(input).select().single()); },
     updateCustomer: (token: string, id: string, input: Partial<Customer>) => { applyToken(token); return run<Customer>(supabase.from('clientes').update(input).eq('id', id).select().single()); },
     deleteCustomer: (token: string, id: string) => { applyToken(token); return run<Customer>(supabase.from('clientes').delete().eq('id', id).select().single()); },
