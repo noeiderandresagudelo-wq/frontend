@@ -196,10 +196,10 @@
             <!-- Formulario de Entrada -->
             <form id="form-login" onsubmit="return handleLogin(event)" class="space-y-4" style="display:block;">
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Usuario del Sistema</label>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Correo electrónico</label>
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"><i class="fa-solid fa-user"></i></span>
-                        <input type="text" id="login-username" placeholder="usuario del sistema" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors">
+                        <input type="text" id="login-username" placeholder="correo@empresa.com" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors">
                     </div>
                 </div>
 
@@ -3201,30 +3201,62 @@
 
         async function handleLogin(event) {
             if (event) event.preventDefault();
-            var uInput = document.getElementById('login-username').value.trim();
-            var pInput = document.getElementById('login-password').value;
+
+            var usernameInput = document.getElementById('login-username');
+            var passwordInput = document.getElementById('login-password');
+            var uInput = usernameInput ? usernameInput.value.trim() : '';
+            var pInput = passwordInput ? passwordInput.value : '';
 
             if (!supabaseClient) {
-                showToast("Acceso Denegado", "Falta configurar Supabase.", true);
-                return;
+                showToast("Acceso Denegado", "Supabase no está inicializado. Revisa las variables VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY del despliegue.", true);
+                return false;
             }
-            var result = await supabaseClient.auth.signInWithPassword({ email: uInput, password: pInput });
-            if (result.error || !result.data || !result.data.user) {
-                showToast("Acceso Denegado", result.error ? result.error.message : "Usuario o contraseña inválidos.", true);
-                return;
+
+            if (!uInput || !pInput) {
+                showToast("Acceso Denegado", "Escribe el correo electrónico y la contraseña.", true);
+                return false;
             }
-            var sessionUser = result.data.user;
-            await aplicarUsuarioSesion(sessionUser);
-            if (!currentUser.rol) {
-                showToast("Perfil incompleto", "El usuario autenticó correctamente, pero no tiene un rol configurado en Alarvix.", true);
-                return;
+
+            try {
+                // Supabase Auth inicia sesión con el correo, no con el username
+                // interno de la tabla usuarios.
+                var result = await supabaseClient.auth.signInWithPassword({
+                    email: uInput,
+                    password: pInput
+                });
+
+                if (result.error || !result.data || !result.data.user) {
+                    console.error("[Alarvix/Supabase] Error de login:", result.error);
+                    showToast("Acceso Denegado", result.error?.message || "Correo o contraseña inválidos.", true);
+                    return false;
+                }
+
+                var sessionUser = result.data.user;
+                await aplicarUsuarioSesion(sessionUser);
+
+                if (!currentUser?.rol) {
+                    showToast("Perfil incompleto", "El correo autenticó correctamente, pero el usuario no tiene rol en Alarvix. Debe existir un registro en usuarios con el mismo UUID del usuario de Authentication.", true);
+                    return false;
+                }
+
+                if (!currentUser?.tenant_id) {
+                    showToast("Perfil incompleto", "El correo autenticó correctamente, pero el usuario no tiene tenant_id en Alarvix.", true);
+                    return false;
+                }
+
+                if (currentUser.activo === false) {
+                    showToast("Cuenta Suspendida", "Este usuario está marcado como inactivo.", true);
+                    return false;
+                }
+
+                completarLogin(currentUser);
+                await inicializarComunicacionSupabase();
+                return false;
+            } catch (error) {
+                console.error("[Alarvix/Supabase] Excepción durante login:", error);
+                showToast("Error de acceso", error?.message || "Ocurrió un error inesperado al iniciar sesión.", true);
+                return false;
             }
-            if (!currentUser.tenant_id) {
-                showToast("Perfil incompleto", "El usuario autenticó correctamente, pero no tiene tenant asignado en Alarvix.", true);
-                return;
-            }
-            completarLogin(currentUser);
-            await inicializarComunicacionSupabase();
         }
 
         async function handleRecoveryRequest(event) {
