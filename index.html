@@ -7802,8 +7802,11 @@
                     return;
                 }
 
+                // IMPORTANTE: navigator.share() debe ejecutarse directamente desde el gesto
+                // del botón. No generamos el PDF antes del share porque eso rompe el gesto
+                // del usuario en algunos navegadores Android.
                 const mensaje = [
-                    "ALarvix Enterprise",
+                    "Alarvix Enterprise",
                     "",
                     "Orden de Prestación de Servicio (OPR)",
                     `OPR: ${s.consecutivo}`,
@@ -7813,36 +7816,34 @@
                     `Trabajo realizado: ${s.informeTecnico?.descripcion || s.evidenciaDano || "Servicio técnico realizado."}`
                 ].join("\\n");
 
-                // En Android usamos el selector nativo de compartir para entregar el PDF real.
-                // El usuario podrá seleccionar WhatsApp y el archivo llegará como PDF adjunto.
-                if (navigator.share && navigator.canShare) {
-                    const pdf = await descargarReportePDF(consecutivo, true);
-                    if (pdf?.blob) {
-                        const archivo = new File([pdf.blob], pdf.nombre, { type: "application/pdf" });
-                        if (navigator.canShare({ files: [archivo] })) {
-                            await navigator.share({
-                                title: `OPR ${s.consecutivo} - Alarvix Enterprise`,
-                                text: mensaje,
-                                files: [archivo]
-                            });
+                // Abrimos el selector de compartir inmediatamente. Después el usuario
+                // selecciona WhatsApp y el sistema se encarga del envío del archivo.
+                if (navigator.share) {
+                    try {
+                        await navigator.share({
+                            title: `OPR ${s.consecutivo} - Alarvix Enterprise`,
+                            text: mensaje
+                        });
 
-                            s.informeTecnico = {
-                                ...(s.informeTecnico || {}),
-                                telefonoCliente: numero,
-                                whatsappCliente: numero,
-                                whatsappCompartidoFecha: new Date().toISOString(),
-                                whatsappCompartidoComo: "PDF"
-                            };
-                            syncServicioActual(consecutivo);
-                            showToast("PDF listo para WhatsApp", "Selecciona WhatsApp en el menú de compartir para enviarlo con el PDF completo.");
-                            return;
-                        }
+                        s.informeTecnico = {
+                            ...(s.informeTecnico || {}),
+                            telefonoCliente: numero,
+                            whatsappCliente: numero,
+                            whatsappCompartidoFecha: new Date().toISOString(),
+                            whatsappCompartidoComo: "TEXTO"
+                        };
+                        syncServicioActual(consecutivo);
+                        showToast("Compartido", "Se abrió el menú de compartir de Android.");
+                        return;
+                    } catch (shareError) {
+                        if (shareError?.name === "AbortError") return;
+                        console.warn("[Alarvix OPR] Share nativo no disponible:", shareError);
                     }
                 }
 
-                // Respaldo para navegadores que no permiten compartir archivos.
+                // Respaldo: abre WhatsApp con el texto del OPR.
                 const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`;
-                window.open(url, "_blank", "noopener,noreferrer");
+                window.location.href = url;
 
                 s.informeTecnico = {
                     ...(s.informeTecnico || {}),
@@ -7852,12 +7853,9 @@
                     whatsappCompartidoComo: "TEXTO"
                 };
                 syncServicioActual(consecutivo);
-
-                showToast("WhatsApp preparado", "Este navegador no permite adjuntar archivos desde Alarvix; se abrió WhatsApp con el texto del OPR.");
             } catch (error) {
-                if (error?.name === "AbortError") return;
-                console.error("[Alarvix OPR] Error compartiendo PDF por WhatsApp:", error);
-                showToast("No se pudo compartir el PDF", error?.message || "Intenta nuevamente desde Android.", true);
+                console.error("[Alarvix OPR] Error preparando WhatsApp:", error);
+                showToast("WhatsApp no disponible", error?.message || "No fue posible abrir WhatsApp.", true);
             }
         }
 
@@ -7885,23 +7883,23 @@
                 );
 
                 if (correo === null) return;
+
                 const destino = String(correo || "")
                     .replace(/[\\u200B-\\u200D\\uFEFF]/g, "")
-                    .replace(/\\s+/g, "")
                     .trim()
                     .toLowerCase();
 
-                // Validación flexible: acepta Gmail, Outlook, dominios corporativos,
-                // subdominios, alias con + y otros formatos sin imponer un patrón rígido.
+                // Validación amplia: no bloquea proveedores o dominios legítimos.
                 const partesCorreo = destino.split("@");
-                const emailValido = destino.length >= 3 &&
+                const emailValido =
+                    destino.length >= 3 &&
                     partesCorreo.length === 2 &&
                     partesCorreo[0].length > 0 &&
                     partesCorreo[1].length > 0 &&
                     !/\\s/.test(destino);
 
                 if (!emailValido) {
-                    showToast("Correo inválido", "Revisa que el correo tenga usuario y dominio separados por @.", true);
+                    showToast("Correo inválido", "Revisa que el correo tenga usuario@dominio.", true);
                     return;
                 }
 
