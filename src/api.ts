@@ -148,21 +148,21 @@ export function createApiClient(baseUrl: string) {
     createCustomer: (token: string, input: CustomerInput) =>
       request<Customer>('/api/v1/clients', token, { method: 'POST', body: JSON.stringify(input) }),
     updateCustomer: (token: string, id: string, input: Partial<CustomerInput>) =>
-      request<Customer>(`/api/v1/clients/${id}`, token, { method: 'PUT', body: JSON.stringify(input) }),
+      request<Customer>(`/api/v1/clients/${id}`, token, { method: 'PATCH', body: JSON.stringify(input) }),
     deleteCustomer: (token: string, id: string) =>
       request<void>(`/api/v1/clients/${id}`, token, { method: 'DELETE' }),
     listServices: (token: string) => request<Service[]>('/api/v1/services', token),
     createService: (token: string, input: ServiceInput) =>
       request<Service>('/api/v1/services', token, { method: 'POST', body: JSON.stringify(input) }),
     updateService: (token: string, id: string, input: Partial<ServiceInput>) =>
-      request<Service>(`/api/v1/services/${id}`, token, { method: 'PUT', body: JSON.stringify(input) }),
+      request<Service>(`/api/v1/services/${id}`, token, { method: 'PATCH', body: JSON.stringify(input) }),
     deleteService: (token: string, id: string) =>
       request<void>(`/api/v1/services/${id}`, token, { method: 'DELETE' }),
     listWorkOrders: (token: string) => request<WorkOrder[]>('/api/v1/work-orders', token),
     createWorkOrder: (token: string, input: WorkOrderInput) =>
       request<WorkOrder>('/api/v1/work-orders', token, { method: 'POST', body: JSON.stringify(input) }),
     updateWorkOrder: (token: string, id: string, input: Partial<WorkOrderInput>) =>
-      request<WorkOrder>(`/api/v1/work-orders/${id}`, token, { method: 'PUT', body: JSON.stringify(input) }),
+      request<WorkOrder>(`/api/v1/work-orders/${id}`, token, { method: 'PATCH', body: JSON.stringify(input) }),
     deleteWorkOrder: (token: string, id: string) =>
       request<void>(`/api/v1/work-orders/${id}`, token, { method: 'DELETE' }),
   };
