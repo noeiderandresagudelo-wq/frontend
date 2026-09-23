@@ -16,13 +16,19 @@ export interface Service {
   origen_solicitud?: string | null; created_at?: string; updated_at?: string;
 }
 export class ApiError extends Error {
-  constructor(
-    message: string,
-    public readonly status = 0,
-    public readonly code?: string,
-    public readonly details?: string,
-    public readonly hint?: string,
-  ) { super(message); this.name = 'ApiError'; }
+  readonly status: number;
+  readonly code?: string;
+  readonly details?: string;
+  readonly hint?: string;
+
+  constructor(message: string, status = 0, code?: string, details?: string, hint?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+    this.details = details;
+    this.hint = hint;
+  }
 }
 async function run<T>(query: PromiseLike<{ data: T | null; error: { message: string; code?: string; details?: string; hint?: string } | null }>): Promise<T> {
   const { data, error } = await query;
