@@ -15,6 +15,7 @@ export const supabase = createClient(url, anonKey, {
 });
 
 export function createAuthedSupabaseClient(accessToken: string) {
+  if (!url || !anonKey) throw new Error('Supabase no está configurado.');
   return createClient(url, anonKey, {
     auth: {
       persistSession: false,
