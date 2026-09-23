@@ -2657,23 +2657,30 @@
         let telefonoDespachoCentral = "+573103091369";
 
         // ============================================================
-        // ⚠️ CONFIGURACIÓN DE SUPABASE (Backend en la nube)
+        // CONFIGURACIÓN DE SUPABASE
+        // La URL y la publishable/anon key llegan desde la configuración pública
+        // de Vercel/Vite. Nunca se usa una instancia Supabase de respaldo.
         // ============================================================
-        // Pegá tu API Key pública (anon/publishable) de Supabase acá abajo.
-        // La encontrás en: tu proyecto de Supabase → Settings → API → "Project API keys" → anon/public.
-        // Mientras diga "PEGA_AQUI_TU_PUBLISHABLE_KEY", la app sigue funcionando 100% local (sin nube),
-        // igual que hasta ahora — no se rompe nada por dejarlo sin configurar todavía.
-        const SUPABASE_URL = window.SUPABASE_URL || "https://bzgptrwcozltuldmnfco.supabase.co";
-        const SUPABASE_ANON_KEY_LOCAL = window.SUPABASE_ANON_KEY || "sb_publishable_rKnbqkfULk64qvTsqxHMCA_OlYzy5Sx";
+        const SUPABASE_URL = window.SUPABASE_URL || "";
+        const SUPABASE_ANON_KEY_LOCAL = window.SUPABASE_ANON_KEY || "";
 
         let supabaseClient = null;
-        if (window.supabase && SUPABASE_ANON_KEY_LOCAL && SUPABASE_ANON_KEY_LOCAL !== "PEGA_AQUI_TU_PUBLISHABLE_KEY") {
+        if (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY_LOCAL &&
+            !SUPABASE_URL.includes("%VITE_") && !SUPABASE_ANON_KEY_LOCAL.includes("%VITE_")) {
             try {
-                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY_LOCAL);
-                console.log("[Alarvix] Conectado a Supabase ✔");
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY_LOCAL, {
+                    auth: {
+                        persistSession: true,
+                        autoRefreshToken: true,
+                        detectSessionInUrl: true
+                    }
+                });
+                console.log("[Alarvix] Supabase inicializado ✔", SUPABASE_URL);
             } catch (e) {
-                console.error("[Alarvix] Error al conectar con Supabase:", e);
+                console.error("[Alarvix] Error al inicializar Supabase:", e);
             }
+        } else {
+            console.error("[Alarvix] Supabase no está configurado. Verifica VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY en Vercel.");
         }
         let mapInstance = null;
         let markersGroup = null;
@@ -2683,6 +2690,55 @@
 
         let currentUser = null;
         let currentActiveTab = 'dashboard';
+        let supabaseCommunicationStarted = false;
+
+        function aplicarUsuarioSesion(sessionUser) {
+            if (!sessionUser) {
+                currentUser = null;
+                return;
+            }
+            const metadata = sessionUser.user_metadata || {};
+            currentUser = {
+                id: sessionUser.id,
+                nombre: metadata.nombre || sessionUser.email || "Usuario",
+                username: sessionUser.email || "",
+                rol: metadata.role || metadata.rol || "",
+                activo: metadata.activo !== false,
+                tenant_id: metadata.tenant_id || metadata.tenantId || null,
+                tecnicoId: metadata.tecnico_id || metadata.tecnicoId || null,
+                abonadoId: metadata.abonado_id || metadata.abonadoId || null
+            };
+        }
+
+        async function restaurarSesionSupabase() {
+            if (!supabaseClient) return false;
+            try {
+                const { data, error } = await supabaseClient.auth.getSession();
+                if (error) throw error;
+                if (!data.session || !data.session.user) return false;
+                aplicarUsuarioSesion(data.session.user);
+                completarLogin(currentUser);
+                await inicializarComunicacionSupabase();
+                return true;
+            } catch (e) {
+                console.error("[Alarvix/Supabase] No se pudo restaurar la sesión:", e);
+                currentUser = null;
+                return false;
+            }
+        }
+
+        async function inicializarComunicacionSupabase() {
+            if (!supabaseClient || !currentUser || supabaseCommunicationStarted) return;
+            supabaseCommunicationStarted = true;
+            try {
+                await cargarDatosNubeAlarvix();
+                initSupabaseRealtimeTecnicos();
+                initSupabaseRealtimeTodo();
+            } catch (e) {
+                console.error("[Alarvix/Supabase] Error inicializando sincronización:", e);
+                supabaseCommunicationStarted = false;
+            }
+        }
 
         // Matriz de Configuración de Accesos y Permisos por Rol
         const rolePermissions = {
@@ -3136,28 +3192,6 @@
             var uInput = document.getElementById('login-username').value.trim();
             var pInput = document.getElementById('login-password').value;
 
-            var demoUsers = {
-                admin: { nombre: 'Admin', rol: 'ADMIN' },
-                despacho: { nombre: 'Despacho', rol: 'DESPACHADOR' },
-                tecnico: { nombre: 'Técnico', rol: 'TECNICO' },
-                cliente: { nombre: 'Cliente', rol: 'CLIENTE' },
-                cotizador: { nombre: 'Cotizador', rol: 'COTIZADOR' }
-            };
-
-            var demoUser = demoUsers[uInput];
-            if (demoUser && pInput === '123') {
-                currentUser = {
-                    id: 'demo-' + uInput,
-                    nombre: demoUser.nombre,
-                    username: uInput,
-                    rol: demoUser.rol,
-                    activo: true,
-                    tenant_id: null
-                };
-                completarLogin(currentUser);
-                return;
-            }
-
             if (!supabaseClient) {
                 showToast("Acceso Denegado", "Falta configurar Supabase.", true);
                 return;
@@ -3168,14 +3202,8 @@
                 return;
             }
             var sessionUser = result.data.user;
-            currentUser = {
-                id: sessionUser.id,
-                nombre: (sessionUser.user_metadata && sessionUser.user_metadata.nombre) ? sessionUser.user_metadata.nombre : sessionUser.email,
-                username: sessionUser.email,
-                rol: (sessionUser.user_metadata && sessionUser.user_metadata.role) ? sessionUser.user_metadata.role : "ADMIN",
-                activo: true,
-                tenant_id: (sessionUser.user_metadata && sessionUser.user_metadata.tenant_id) ? sessionUser.user_metadata.tenant_id : null
-            };
+            aplicarUsuarioSesion(sessionUser);
+            await inicializarComunicacionSupabase();
             completarLogin(currentUser);
         }
 
@@ -3198,8 +3226,8 @@
 
         async function handlePasswordReset(event) {
             event.preventDefault();
-            var newPassword = document.getElementById('reset-new-password').value;
-            var confirmPassword = document.getElementById('reset-confirm-password').value;
+            var newPassword = document.getElementById('reset-password-new').value;
+            var confirmPassword = document.getElementById('reset-password-confirm').value;
             if (!supabaseClient) {
                 showToast("Recuperación", "Falta configurar Supabase.", true);
                 return;
@@ -3331,6 +3359,15 @@
             actualizarBadgeMensajesSinLeer();
             cerrarCanalChat();
 
+            try {
+                if (supabaseClient) {
+                    supabaseClient.removeAllChannels();
+                    await supabaseClient.auth.signOut();
+                }
+            } catch (e) {
+                console.warn("[Alarvix/Supabase] Error cerrando sesión:", e);
+            }
+            supabaseCommunicationStarted = false;
             currentUser = null;
             document.getElementById('login-username').value = '';
             document.getElementById('login-password').value = '';
@@ -5727,11 +5764,19 @@
 
         /** Sube (crea o actualiza) una fila a Supabase. No bloquea la UI ni rompe nada si falla. */
         async function syncPush(tabla, row) {
-            if (!supabaseClient) return;
+            if (!supabaseClient || !currentUser || !currentUser.tenant_id) return false;
             try {
-                const { error } = await supabaseClient.from(tabla).upsert(row);
-                if (error) console.warn(`[Alarvix/Supabase] Error al sincronizar '${tabla}':`, error.message);
-            } catch (e) { console.warn(`[Alarvix/Supabase] Excepción al sincronizar '${tabla}':`, e); }
+                const payload = { ...row, tenant_id: row.tenant_id || currentUser.tenant_id };
+                const { error } = await supabaseClient.from(tabla).upsert(payload);
+                if (error) {
+                    console.warn(`[Alarvix/Supabase] Error al sincronizar '${tabla}':`, error.message, error.code || "");
+                    return false;
+                }
+                return true;
+            } catch (e) {
+                console.warn(`[Alarvix/Supabase] Excepción al sincronizar '${tabla}':`, e);
+                return false;
+            }
         }
 
         /**
@@ -5741,12 +5786,13 @@
          * un solo upsert en lote es atómico y mucho más confiable. Devuelve true/false según el resultado.
          */
         async function syncPushBatch(tabla, filas) {
-            if (!supabaseClient) return false;
+            if (!supabaseClient || !currentUser || !currentUser.tenant_id) return false;
             if (!filas || filas.length === 0) return true;
             try {
-                const { error } = await supabaseClient.from(tabla).upsert(filas);
+                const payload = filas.map(row => ({ ...row, tenant_id: row.tenant_id || currentUser.tenant_id }));
+                const { error } = await supabaseClient.from(tabla).upsert(payload);
                 if (error) {
-                    console.error(`[Alarvix/Supabase] Error al subir lote a '${tabla}':`, error.message);
+                    console.error(`[Alarvix/Supabase] Error al subir lote a '${tabla}':`, error.message, error.code || "");
                     return false;
                 }
                 return true;
@@ -5758,11 +5804,18 @@
 
         /** Elimina una fila en Supabase por su columna llave (ej: syncDelete('inventario','codigo','INV-01')). */
         async function syncDelete(tabla, columna, valor) {
-            if (!supabaseClient) return;
+            if (!supabaseClient || !currentUser || !currentUser.tenant_id) return false;
             try {
                 const { error } = await supabaseClient.from(tabla).delete().eq(columna, valor);
-                if (error) console.warn(`[Alarvix/Supabase] Error al eliminar en '${tabla}':`, error.message);
-            } catch (e) { console.warn(`[Alarvix/Supabase] Excepción al eliminar en '${tabla}':`, e); }
+                if (error) {
+                    console.warn(`[Alarvix/Supabase] Error al eliminar en '${tabla}':`, error.message, error.code || "");
+                    return false;
+                }
+                return true;
+            } catch (e) {
+                console.warn(`[Alarvix/Supabase] Excepción al eliminar en '${tabla}':`, e);
+                return false;
+            }
         }
 
         /** Empuja el estado ACTUAL y completo de un servicio a Supabase, buscándolo por consecutivo. */
@@ -9604,10 +9657,24 @@
                 }
             } catch(err) { console.error("Error Chart Init:", err); }
 
+            if (supabaseClient) {
+                supabaseClient.auth.onAuthStateChange((event, session) => {
+                    console.log("[Alarvix/Supabase] Auth event:", event);
+                    if (event === "SIGNED_OUT") {
+                        supabaseCommunicationStarted = false;
+                        currentUser = null;
+                    } else if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") && session?.user) {
+                        aplicarUsuarioSesion(session.user);
+                    } else if (event === "PASSWORD_RECOVERY") {
+                        document.getElementById('reset-screen')?.classList.remove('hidden');
+                        document.getElementById('login-screen')?.classList.add('hidden');
+                    }
+                });
+            }
+
             refreshAllKPIs();
             renderMapPins();
-            initSupabaseRealtimeTecnicos(); // No hace nada si SUPABASE_ANON_KEY no está configurada todavía
-            cargarDatosNubeAlarvix().then(() => initSupabaseRealtimeTodo());
+            restaurarSesionSupabase();
         };
     </script>
 
