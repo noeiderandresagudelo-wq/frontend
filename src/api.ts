@@ -16,11 +16,20 @@ export interface Service {
   origen_solicitud?: string | null; created_at?: string; updated_at?: string;
 }
 export class ApiError extends Error {
-  constructor(message: string, public readonly status = 0) { super(message); this.name = 'ApiError'; }
+  constructor(
+    message: string,
+    public readonly status = 0,
+    public readonly code?: string,
+    public readonly details?: string,
+    public readonly hint?: string,
+  ) { super(message); this.name = 'ApiError'; }
 }
-async function run<T>(query: PromiseLike<{ data: T | null; error: { message: string; code?: string } | null }>): Promise<T> {
+async function run<T>(query: PromiseLike<{ data: T | null; error: { message: string; code?: string; details?: string; hint?: string } | null }>): Promise<T> {
   const { data, error } = await query;
-  if (error) throw new ApiError(error.message, 400);
+  if (error) {
+    const extra = [error.code && `código ${error.code}`, error.details, error.hint].filter(Boolean).join(' · ');
+    throw new ApiError(extra ? `${error.message} (${extra})` : error.message, 400, error.code, error.details, error.hint);
+  }
   return (data ?? []) as T;
 }
 export function createApiClient() {
