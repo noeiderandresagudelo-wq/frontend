@@ -3463,6 +3463,7 @@
                 navigator.geolocation.clearWatch(gpsWatchId);
                 gpsWatchId = null;
             }
+            stopAndroidBackgroundGPSTracking();
             if (gpsLiveLabelInterval) {
                 clearInterval(gpsLiveLabelInterval);
                 gpsLiveLabelInterval = null;
@@ -3933,6 +3934,150 @@
         let gpsWatchId = null;
         let gpsLastFixTime = null;
         let gpsLiveLabelInterval = null;
+        let gpsNativeWatcherId = null;
+
+        // En la app Android de Alarvix usamos el plugin nativo de geolocalización
+        // para mantener el GPS activo con la pantalla bloqueada o la app minimizada.
+        // En navegador/PWA se conserva watchPosition como respaldo.
+        function obtenerPluginAndroidGPS() {
+            try {
+                const capacitor = window.Capacitor;
+                if (!capacitor || typeof capacitor.isNativePlatform !== "function" || !capacitor.isNativePlatform()) return null;
+                if (typeof capacitor.getPlatform === "function" && capacitor.getPlatform() !== "android") return null;
+                return capacitor.Plugins?.BackgroundGeolocation || null;
+            } catch (e) {
+                console.warn("[Alarvix GPS] Plugin Android no disponible:", e);
+                return null;
+            }
+        }
+
+        async function subirUbicacionTecnicoPorHTTPNativo(tecnicoId, lat, lng, accuracy) {
+            const capacitor = window.Capacitor;
+            const http = capacitor?.Plugins?.CapacitorHttp;
+            if (!http || !supabaseClient || !currentUser?.tenant_id || !SUPABASE_URL || !SUPABASE_ANON_KEY_LOCAL) return false;
+
+            try {
+                const { data: sessionData } = await supabaseClient.auth.getSession();
+                const accessToken = sessionData?.session?.access_token;
+                if (!accessToken) return false;
+
+                const payload = {
+                    tenant_id: String(currentUser.tenant_id),
+                    tecnico_id: String(tecnicoId),
+                    latitude: Number(lat),
+                    longitude: Number(lng),
+                    accuracy_m: Number.isFinite(Number(accuracy)) ? Number(accuracy) : null,
+                    last_seen: new Date().toISOString()
+                };
+
+                const response = await http.request({
+                    url: `${SUPABASE_URL}/rest/v1/tecnicos_ubicaciones?on_conflict=tenant_id%2Ctecnico_id`,
+                    method: "POST",
+                    headers: {
+                        apikey: SUPABASE_ANON_KEY_LOCAL,
+                        Authorization: `Bearer ${accessToken}`,
+                        "Content-Type": "application/json",
+                        Prefer: "resolution=merge-duplicates,return=minimal"
+                    },
+                    data: payload
+                });
+
+                if (Number(response?.status) < 200 || Number(response?.status) >= 300) {
+                    console.warn("[Alarvix GPS] HTTP nativo rechazado:", response?.status, response?.data);
+                    return false;
+                }
+
+                const t = personalTecnicos.find(x => String(x.id) === String(tecnicoId));
+                if (t) {
+                    t.gpsLat = Number(lat);
+                    t.gpsLng = Number(lng);
+                    t.gpsUpdated = new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+                }
+                if (typeof renderMapPins === "function") renderMapPins();
+                return true;
+            } catch (e) {
+                console.warn("[Alarvix GPS] Error HTTP nativo:", e);
+                return false;
+            }
+        }
+
+        async function startAndroidBackgroundGPSTracking() {
+            const gpsPlugin = obtenerPluginAndroidGPS();
+            if (!gpsPlugin || !currentUser || currentUser.rol !== "TECNICO") return false;
+
+            const label = document.getElementById('gps-status-label');
+            const btn = document.getElementById('btn-share-gps');
+
+            try {
+                const notifications = window.Capacitor?.Plugins?.LocalNotifications;
+                if (notifications?.checkPermissions && notifications?.requestPermissions) {
+                    const permission = await notifications.checkPermissions();
+                    if (permission?.display !== "granted") {
+                        await notifications.requestPermissions();
+                    }
+                }
+
+                if (gpsNativeWatcherId) {
+                    try { await gpsPlugin.removeWatcher({ id: gpsNativeWatcherId }); } catch (e) {}
+                    gpsNativeWatcherId = null;
+                }
+
+                gpsNativeWatcherId = await gpsPlugin.addWatcher(
+                    {
+                        backgroundTitle: "Alarvix · GPS activo",
+                        backgroundMessage: "Compartiendo tu ubicación con la Central de Monitoreo.",
+                        requestPermissions: true,
+                        stale: false,
+                        distanceFilter: 10
+                    },
+                    async (location, error) => {
+                        if (error) {
+                            console.error("[Alarvix GPS Android]", error);
+                            if (label) label.innerHTML = '<span class="text-rose-400 font-bold">⚠ Permiso de ubicación requerido.</span>';
+                            if (btn) btn.classList.remove('hidden');
+                            return;
+                        }
+
+                        const lat = Number(location?.latitude);
+                        const lng = Number(location?.longitude);
+                        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+                        const t = personalTecnicos.find(x => String(x.id) === String(currentUser?.tecnicoId));
+                        if (!t) return;
+
+                        t.gpsLat = lat;
+                        t.gpsLng = lng;
+                        t.gpsUpdated = new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+                        gpsLastFixTime = Date.now();
+
+                        await subirUbicacionTecnicoPorHTTPNativo(t.id, lat, lng, location?.accuracy);
+                        if (typeof renderMapPins === "function") renderMapPins();
+                        actualizarEtiquetaGPSEnVivo();
+                        if (btn) btn.classList.add('hidden');
+                    }
+                );
+
+                if (label) label.innerHTML = '<span class="text-emerald-400 font-bold">🟢 GPS EN VIVO · SEGUNDO PLANO</span>';
+                if (btn) btn.classList.add('hidden');
+                console.log("[Alarvix GPS Android] Rastreo nativo iniciado ✔");
+                return true;
+            } catch (e) {
+                console.error("[Alarvix GPS Android] No se pudo iniciar:", e);
+                gpsNativeWatcherId = null;
+                return false;
+            }
+        }
+
+        async function stopAndroidBackgroundGPSTracking() {
+            const gpsPlugin = obtenerPluginAndroidGPS();
+            if (!gpsPlugin || !gpsNativeWatcherId) return;
+            try {
+                await gpsPlugin.removeWatcher({ id: gpsNativeWatcherId });
+            } catch (e) {
+                console.warn("[Alarvix GPS Android] Error deteniendo rastreo:", e);
+            }
+            gpsNativeWatcherId = null;
+        }
 
         /**
          * Inicia el rastreo GPS EN VIVO del técnico usando watchPosition (no una sola foto de
@@ -3940,6 +4085,20 @@
          * que realmente alimenta el pin del mapa de la Central en tiempo real, dentro de esta sesión.
          */
         function startLiveGPSTracking() {
+            // En la APK Android, el rastreo nativo toma el control y mantiene el servicio
+            // activo aunque se apague la pantalla. Si no estamos dentro de la APK, seguimos
+            // usando el GPS web actual.
+            if (obtenerPluginAndroidGPS()) {
+                startAndroidBackgroundGPSTracking().then((started) => {
+                    if (started) return;
+                    startLiveGPSTrackingWeb();
+                });
+                return;
+            }
+            startLiveGPSTrackingWeb();
+        }
+
+        function startLiveGPSTrackingWeb() {
             const label = document.getElementById('gps-status-label');
             const btn = document.getElementById('btn-share-gps');
 
