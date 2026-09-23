@@ -10194,7 +10194,7 @@
                             console.log('[Alarvix] Service Worker registrado:', reg.scope);
                             if (!esAppInstalada()) {
                                 // Damos tiempo a Chrome para emitir beforeinstallprompt.
-                                bannerTimer = setTimeout(mostrarAvisoInstalacion, 1800);
+                                bannerTimer = setTimeout(mostrarAvisoInstalacion, esIOS ? 1800 : 35000);
                             }
                         })
                         .catch(err => {
