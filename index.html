@@ -2476,6 +2476,7 @@
 
                 <!-- Sección 5.5: Evidencia Fotográfica -->
                 <div id="opr-foto-evidencia-section" class="hidden">
+                    <span id="opr-email-status" class="text-[9px] text-slate-500 italic"></span>
                     <span class="text-[8px] font-black text-slate-500 uppercase tracking-wider block mb-1.5">Evidencia Fotográfica del Técnico</span>
                     <img id="opr-foto-evidencia-img" class="w-full max-h-64 object-cover rounded-lg border border-slate-800" />
                 </div>
@@ -2500,6 +2501,9 @@
             <!-- Botones de Acción de OPR -->
             <div class="flex gap-2 justify-end pt-4 border-t border-slate-800">
                 
+                <button onclick="enviarOPRPorCorreo(document.getElementById('opr-consecutivo').innerText)" class="bg-blue-600/10 hover:bg-blue-600 hover:text-white border border-blue-500/30 text-blue-400 px-4 py-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 uppercase">
+                    <i class="fa-solid fa-envelope"></i> Enviar por correo
+                </button>
                 <button onclick="simulateReportDownload('PDF')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 uppercase">
                     <i class="fa-solid fa-file-pdf text-rose-500"></i> Descargar PDF
                 </button>
@@ -7644,6 +7648,17 @@
                 document.getElementById('opr-tecnico-nombre').innerText = tech.nombre;
                 document.getElementById('opr-tecnico-vehiculo').innerText = tech.vehiculo;
 
+                const oprEmailStatus = document.getElementById('opr-email-status');
+                if (oprEmailStatus) {
+                    const emailEnviado = s.informeTecnico?.emailEnviadoA || "";
+                    const fechaEnvio = s.informeTecnico?.emailEnviadoFecha
+                        ? new Date(s.informeTecnico.emailEnviadoFecha).toLocaleString()
+                        : "";
+                    oprEmailStatus.innerHTML = emailEnviado
+                        ? `<span class="text-emerald-400"><i class="fa-solid fa-circle-check mr-1"></i>Enviado a ${emailEnviado}${fechaEnvio ? ` · ${fechaEnvio}` : ""}</span>`
+                        : '<span class="text-slate-500 italic">Envío por correo opcional</span>';
+                }
+
                 // Diagnóstico y Evidencia Técnica del Daño reportado (simulada/dinámica según el caso)
                 const mapaEvidenciasTecnicas = {
                     "ST-2026-000001": "Fallo físico en módulo transceptor GPRS ocasionado por pico de energía eléctrica en el sector industrial de Juan Mina. Se evidencia circuito integrado quemado. REQUIERE COTIZACIÓN DE CAMBIO DE TRANSCEPTOR GPRS.",
@@ -7753,7 +7768,95 @@
             }
         }
 
-        function closeOPRReport() {
+        async function enviarOPRPorCorreo(consecutivo) {
+            try {
+                if (!supabaseClient || !currentUser) {
+                    showToast("Sin sesión", "Debes tener una sesión activa para enviar el OPR.", true);
+                    return;
+                }
+
+                const s = incidentesServicios.find(i => i.consecutivo === consecutivo);
+                if (!s) {
+                    showToast("OPR no encontrado", "No se encontró el OPR solicitado.", true);
+                    return;
+                }
+
+                const cl = crmClientes.find(c => String(c.id) === String(s.abonadoId)) || {};
+                const tech = personalTecnicos.find(t => String(t.id) === String(s.tecnicoId)) || {};
+                const usuarioCliente = appUsers.find(u => String(u.abonadoId) === String(s.abonadoId));
+                const correoGuardado = s.informeTecnico?.emailCliente || cl.email || usuarioCliente?.username || "";
+
+                const correo = window.prompt(
+                    "Correo electrónico del cliente para recibir el OPR:",
+                    correoGuardado
+                );
+
+                if (correo === null) return;
+                const destino = correo.trim();
+
+                if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(destino)) {
+                    showToast("Correo inválido", "Escribe un correo electrónico válido.", true);
+                    return;
+                }
+
+                const sessionResult = await supabaseClient.auth.getSession();
+                const accessToken = sessionResult?.data?.session?.access_token;
+                if (!accessToken) {
+                    showToast("Sesión expirada", "Vuelve a iniciar sesión para enviar el OPR.", true);
+                    return;
+                }
+
+                const opr = {
+                    consecutivo: s.consecutivo,
+                    cliente: cl.nombre || "Cliente",
+                    direccion: cl.direccion || "S/D",
+                    ciudad: cl.ciudad || activeCentral || "S/D",
+                    tipo: s.tipo || "Servicio técnico",
+                    tipoAtencion: s.informeTecnico?.tipoAtencion || "No especificada",
+                    tecnico: tech.nombre || s.informeTecnico?.tecnico || "Técnico de campo",
+                    trabajoRealizado: s.informeTecnico?.descripcion || s.evidenciaDano || "Servicio técnico realizado.",
+                };
+
+                const status = document.getElementById('opr-email-status');
+                if (status) status.innerHTML = '<span class="text-blue-400">Enviando OPR...</span>';
+
+                const response = await fetch(`${window.SUPABASE_URL}/functions/v1/send-opr-email`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${accessToken}`,
+                        "apikey": window.SUPABASE_ANON_KEY
+                    },
+                    body: JSON.stringify({ to: destino, opr })
+                });
+
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || !result.ok) {
+                    throw new Error(result.error || `No se pudo enviar el correo (HTTP ${response.status}).`);
+                }
+
+                s.informeTecnico = {
+                    ...(s.informeTecnico || {}),
+                    emailCliente: destino,
+                    emailEnviadoA: destino,
+                    emailEnviadoFecha: new Date().toISOString(),
+                    emailEnvioId: result.emailId || null
+                };
+                syncServicioActual(consecutivo);
+
+                if (status) {
+                    status.innerHTML = `<span class="text-emerald-400"><i class="fa-solid fa-circle-check mr-1"></i>Enviado a ${destino}</span>`;
+                }
+                showToast("OPR enviado", `El OPR ${consecutivo} fue enviado a ${destino}.`);
+            } catch (error) {
+                console.error("[Alarvix OPR] Error enviando correo:", error);
+                const status = document.getElementById('opr-email-status');
+                if (status) status.innerHTML = '<span class="text-rose-400">No enviado</span>';
+                showToast("Correo no enviado", error?.message || "No fue posible enviar el OPR.", true);
+            }
+        }
+
+                function closeOPRReport() {
             document.getElementById('modal-opr-report').classList.add('hidden');
             showToast("OPR de Servicio", "Orden procesada y reportada exitosamente al Kardex de la Central.");
         }
