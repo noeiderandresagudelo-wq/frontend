@@ -3234,8 +3234,8 @@
                 showToast("Recuperación", "Falta configurar Supabase.", true);
                 return;
             }
-            var origin = window.location.origin;
-            var result = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: origin });
+            var recoveryRedirectUrl = "https://frontend-sigma-sand-67.vercel.app/";
+            var result = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: recoveryRedirectUrl });
             if (result.error) {
                 showToast("Recuperación", result.error.message, true);
                 return;
