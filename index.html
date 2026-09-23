@@ -543,12 +543,6 @@
                     <span class="sidebar-text">Dashboard General</span>
                 </button>
 
-                <button onclick="switchModule('supervision')" id="btn-mod-supervision" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-bold transition text-left text-slate-400 hover:text-white hover:bg-slate-800/60">
-                    <i class="fa-solid fa-shield-halved text-sm w-4 text-center text-teal-400"></i>
-                    <span class="sidebar-text">Supervisión Física</span>
-                    <span id="badge-active-intrusion" class="ml-auto hidden bg-rose-500/20 text-rose-400 text-[10px] px-1.5 py-0.5 rounded font-bold live-pulse-red">0</span>
-                </button>
-
                 <button onclick="switchModule('central')" id="btn-mod-central" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-bold transition text-left text-slate-400 hover:text-white hover:bg-slate-800/60">
                     <i class="fa-solid fa-tower-broadcast text-sm w-4 text-center text-rose-400"></i>
                     <span class="sidebar-text">Central de Monitoreo</span>
@@ -568,11 +562,6 @@
                 <button onclick="switchModule('personal')" id="btn-mod-personal" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-bold transition text-left text-slate-400 hover:text-white hover:bg-slate-800/60">
                     <i class="fa-solid fa-users-gear text-sm w-4 text-center text-indigo-400"></i>
                     <span class="sidebar-text">Gestión de Personal</span>
-                </button>
-
-                <button onclick="switchModule('rrhh')" id="btn-mod-rrhh" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-bold transition text-left text-slate-400 hover:text-white hover:bg-slate-800/60">
-                    <i class="fa-solid fa-people-group text-sm w-4 text-center text-pink-400"></i>
-                    <span class="sidebar-text">RRHH / Turnos</span>
                 </button>
 
                 <button onclick="switchModule('compras')" id="btn-mod-compras" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-bold transition text-left text-slate-400 hover:text-white hover:bg-slate-800/60">
@@ -2972,7 +2961,7 @@
 
         function aplicarVisibilidadModulosPorRol() {
             const perms = currentUser && rolePermissions[currentUser.rol] ? rolePermissions[currentUser.rol] : null;
-            const modules = ['dashboard', 'supervision', 'central', 'servicios', 'tecnicos', 'personal', 'rrhh', 'compras', 'inventario', 'cotizaciones', 'mensajes', 'clientes', 'finanzas', 'compliance', 'reportes', 'config'];
+            const modules = ['dashboard', 'central', 'servicios', 'tecnicos', 'personal', 'compras', 'inventario', 'cotizaciones', 'mensajes', 'clientes', 'finanzas', 'compliance', 'reportes', 'config'];
 
             modules.forEach(mod => {
                 const btn = document.getElementById(`btn-mod-${mod}`);
@@ -4615,6 +4604,12 @@
 
         function switchModule(modId) {
             try {
+            const modulosRetirados = ['supervision', 'rrhh'];
+            if (modulosRetirados.includes(modId)) {
+                showToast("Módulo no disponible", "Este módulo fue retirado temporalmente del menú.", true);
+                return;
+            }
+
                 // Verificar permisos antes de cambiar de sección
                 if (currentUser) {
                     const perms = rolePermissions[currentUser.rol];
