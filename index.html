@@ -63,6 +63,9 @@
     </script>
 
     <style>
+        /* ALARVIX_RELOAD_TOP_FIX */
+        html { scroll-behavior: auto; }
+
         body {
             font-family: 'Inter', sans-serif;
             transition: background-color 0.3s, color 0.3s;
@@ -9958,6 +9961,10 @@
         }
 
         window.onload = function() {
+            window.scrollTo(0, 0);
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+
             updateLiveClock();
             setInterval(updateLiveClock, 1000);
 
