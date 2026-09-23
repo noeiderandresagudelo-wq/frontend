@@ -7771,7 +7771,7 @@
             }
         }
 
-        function enviarOPRPorWhatsApp(consecutivo) {
+        async function enviarOPRPorWhatsApp(consecutivo) {
             try {
                 const s = incidentesServicios.find(i => i.consecutivo === consecutivo);
                 if (!s) {
@@ -7795,9 +7795,7 @@
 
                 if (telefono === null) return;
 
-                const numero = String(telefono)
-                    .replace(/\\D/g, "")
-                    .trim();
+                const numero = String(telefono).replace(/\\D/g, "").trim();
 
                 if (numero.length < 10) {
                     showToast("Número inválido", "Escribe un número de WhatsApp válido con código de país.", true);
@@ -7812,25 +7810,54 @@
                     `Cliente: ${cl.nombre || "Cliente"}`,
                     `Servicio: ${s.tipo || "Servicio técnico"}`,
                     `Técnico: ${tech.nombre || s.informeTecnico?.tecnico || "Técnico de campo"}`,
-                    `Trabajo realizado: ${s.informeTecnico?.descripcion || s.evidenciaDano || "Servicio técnico realizado."}`,
-                    "",
-                    "Este mensaje corresponde al reporte de servicio registrado en Alarvix Enterprise."
+                    `Trabajo realizado: ${s.informeTecnico?.descripcion || s.evidenciaDano || "Servicio técnico realizado."}`
                 ].join("\\n");
 
+                // En Android usamos el selector nativo de compartir para entregar el PDF real.
+                // El usuario podrá seleccionar WhatsApp y el archivo llegará como PDF adjunto.
+                if (navigator.share && navigator.canShare) {
+                    const pdf = await descargarReportePDF(consecutivo, true);
+                    if (pdf?.blob) {
+                        const archivo = new File([pdf.blob], pdf.nombre, { type: "application/pdf" });
+                        if (navigator.canShare({ files: [archivo] })) {
+                            await navigator.share({
+                                title: `OPR ${s.consecutivo} - Alarvix Enterprise`,
+                                text: mensaje,
+                                files: [archivo]
+                            });
+
+                            s.informeTecnico = {
+                                ...(s.informeTecnico || {}),
+                                telefonoCliente: numero,
+                                whatsappCliente: numero,
+                                whatsappCompartidoFecha: new Date().toISOString(),
+                                whatsappCompartidoComo: "PDF"
+                            };
+                            syncServicioActual(consecutivo);
+                            showToast("PDF listo para WhatsApp", "Selecciona WhatsApp en el menú de compartir para enviarlo con el PDF completo.");
+                            return;
+                        }
+                    }
+                }
+
+                // Respaldo para navegadores que no permiten compartir archivos.
                 const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`;
                 window.open(url, "_blank", "noopener,noreferrer");
 
                 s.informeTecnico = {
                     ...(s.informeTecnico || {}),
+                    telefonoCliente: numero,
                     whatsappCliente: numero,
-                    whatsappCompartidoFecha: new Date().toISOString()
+                    whatsappCompartidoFecha: new Date().toISOString(),
+                    whatsappCompartidoComo: "TEXTO"
                 };
                 syncServicioActual(consecutivo);
 
-                showToast("WhatsApp preparado", "Se abrió WhatsApp con el mensaje del OPR listo para enviar.");
+                showToast("WhatsApp preparado", "Este navegador no permite adjuntar archivos desde Alarvix; se abrió WhatsApp con el texto del OPR.");
             } catch (error) {
-                console.error("[Alarvix OPR] Error preparando WhatsApp:", error);
-                showToast("WhatsApp no disponible", "No fue posible preparar el mensaje.", true);
+                if (error?.name === "AbortError") return;
+                console.error("[Alarvix OPR] Error compartiendo PDF por WhatsApp:", error);
+                showToast("No se pudo compartir el PDF", error?.message || "Intenta nuevamente desde Android.", true);
             }
         }
 
@@ -9992,7 +10019,7 @@
         /**
          * Construye de manera dinámica el documento de Auditoría Física u OPR en formato PDF interactivo.
          */
-        async function descargarReportePDF(serviceId = null) {
+        async function descargarReportePDF(serviceId = null, compartir = false) {
             const { jsPDF } = window.jspdf;
             
             // Si no hay un ID de servicio contextualizado, generar un reporte general consolidado
@@ -10197,9 +10224,19 @@
             doc.text(cl.nombre.substring(0, 32), 120, yOffset + 8);
             doc.text(s.firmaCliente ? "Firma capturada en sitio" : "Sin firma registrada", 120, yOffset + 11);
 
+            // Para compartir por Android/WhatsApp devolvemos el PDF real con todo su contenido.
+            if (compartir) {
+                return {
+                    blob: doc.output("blob"),
+                    nombre: `OPR_Alarvix_${s.consecutivo}.pdf`,
+                    consecutivo: s.consecutivo
+                };
+            }
+
             // Guardar archivo PDF directamente en el navegador del usuario
             doc.save(`OPR_Alarvix_${s.consecutivo}.pdf`);
             showToast("Reporte Descargado", `Se descargó el archivo OPR_${s.consecutivo}.pdf con éxito.`);
+            return null;
         }
 
         /**
