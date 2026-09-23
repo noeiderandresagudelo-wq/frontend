@@ -1,4 +1,4 @@
-import { supabase } from './lib/supabase';
+import { createAuthedSupabaseClient } from './lib/supabase';
 
 export type UserRole = 'admin' | 'manager' | 'supervisor' | 'technician' | 'client' | 'viewer';
 
@@ -18,9 +18,6 @@ export interface Service {
 export class ApiError extends Error {
   constructor(message: string, public readonly status = 0) { super(message); this.name = 'ApiError'; }
 }
-function applyToken(token: string) {
-  supabase.realtime.setAuth(token);
-}
 async function run<T>(query: PromiseLike<{ data: T | null; error: { message: string; code?: string } | null }>): Promise<T> {
   const { data, error } = await query;
   if (error) throw new ApiError(error.message, 400);
@@ -28,13 +25,37 @@ async function run<T>(query: PromiseLike<{ data: T | null; error: { message: str
 }
 export function createApiClient() {
   return {
-    listCustomers: (token: string) => { applyToken(token); return run<Customer[]>(supabase.from('clientes').select('*').order('created_at', { ascending: false })); },
-    createCustomer: (token: string, input: Partial<Customer> & { tenant_id: string }) => { applyToken(token); return run<Customer>(supabase.from('clientes').insert(input).select().single()); },
-    updateCustomer: (token: string, id: string, input: Partial<Customer>) => { applyToken(token); return run<Customer>(supabase.from('clientes').update(input).eq('id', id).select().single()); },
-    deleteCustomer: (token: string, id: string) => { applyToken(token); return run<Customer>(supabase.from('clientes').delete().eq('id', id).select().single()); },
-    listServices: (token: string) => { applyToken(token); return run<Service[]>(supabase.from('servicios').select('*').order('created_at', { ascending: false })); },
-    createService: (token: string, input: Partial<Service> & { tenant_id: string }) => { applyToken(token); return run<Service>(supabase.from('servicios').insert(input).select().single()); },
-    updateService: (token: string, consecutivo: string, input: Partial<Service>) => { applyToken(token); return run<Service>(supabase.from('servicios').update(input).eq('consecutivo', consecutivo).select().single()); },
-    deleteService: (token: string, consecutivo: string) => { applyToken(token); return run<Service>(supabase.from('servicios').delete().eq('consecutivo', consecutivo).select().single()); },
+    listCustomers: (token: string) => {
+      const client = createAuthedSupabaseClient(token);
+      return run<Customer[]>(client.from('clientes').select('*').order('created_at', { ascending: false }));
+    },
+    createCustomer: (token: string, input: Partial<Customer> & { tenant_id: string }) => {
+      const client = createAuthedSupabaseClient(token);
+      return run<Customer>(client.from('clientes').insert(input).select().single());
+    },
+    updateCustomer: (token: string, id: string, input: Partial<Customer>) => {
+      const client = createAuthedSupabaseClient(token);
+      return run<Customer>(client.from('clientes').update(input).eq('id', id).select().single());
+    },
+    deleteCustomer: (token: string, id: string) => {
+      const client = createAuthedSupabaseClient(token);
+      return run<Customer>(client.from('clientes').delete().eq('id', id).select().single());
+    },
+    listServices: (token: string) => {
+      const client = createAuthedSupabaseClient(token);
+      return run<Service[]>(client.from('servicios').select('*').order('created_at', { ascending: false }));
+    },
+    createService: (token: string, input: Partial<Service> & { tenant_id: string }) => {
+      const client = createAuthedSupabaseClient(token);
+      return run<Service>(client.from('servicios').insert(input).select().single());
+    },
+    updateService: (token: string, consecutivo: string, input: Partial<Service>) => {
+      const client = createAuthedSupabaseClient(token);
+      return run<Service>(client.from('servicios').update(input).eq('consecutivo', consecutivo).select().single());
+    },
+    deleteService: (token: string, consecutivo: string) => {
+      const client = createAuthedSupabaseClient(token);
+      return run<Service>(client.from('servicios').delete().eq('consecutivo', consecutivo).select().single());
+    },
   };
 }
