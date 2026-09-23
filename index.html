@@ -3954,7 +3954,7 @@
 
             gpsWatchId = navigator.geolocation.watchPosition(
                 (pos) => {
-                    const t = personalTecnicos.find(x => x.id === (currentUser ? currentUser.tecnicoId : null));
+                    const t = personalTecnicos.find(x => String(x.id) === String(currentUser ? currentUser.tecnicoId : ''));
                     if (t) {
                         t.gpsLat = pos.coords.latitude;
                         t.gpsLng = pos.coords.longitude;
@@ -3985,7 +3985,7 @@
         function actualizarEtiquetaGPSEnVivo() {
             const label = document.getElementById('gps-status-label');
             if (!label || !gpsLastFixTime) return;
-            const t = personalTecnicos.find(x => x.id === (currentUser ? currentUser.tecnicoId : null));
+            const t = personalTecnicos.find(x => String(x.id) === String(currentUser ? currentUser.tecnicoId : ''));
             const segundos = Math.round((Date.now() - gpsLastFixTime) / 1000);
 
             // Si pasaron más de 60s sin una nueva lectura, avisamos claramente en vez de mostrar
@@ -4037,7 +4037,7 @@
          * acción y se reintenta pedir permiso.
          */
         function verificarGPSObligatorio() {
-            const t = personalTecnicos.find(x => x.id === (currentUser ? currentUser.tecnicoId : null));
+            const t = personalTecnicos.find(x => String(x.id) === String(currentUser ? currentUser.tecnicoId : ''));
             const activo = t && typeof t.gpsLat === "number" && gpsLastFixTime && (Date.now() - gpsLastFixTime) < 5 * 60 * 1000;
 
             if (!activo) {
@@ -6790,11 +6790,20 @@
             }
 
             (data || []).forEach(row => {
+                const lat = Number(row.latitude);
+                const lng = Number(row.longitude);
+                if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+                // Los IDs pueden llegar como texto o número según el origen.
+                // Compararlos como texto evita perder el vínculo entre técnico y GPS.
                 const t = personalTecnicos.find(x => String(x.id) === String(row.tecnico_id));
                 if (!t) return;
-                t.gpsLat = Number(row.latitude);
-                t.gpsLng = Number(row.longitude);
-                t.gpsUpdated = row.last_seen ? new Date(row.last_seen).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "S/D";
+
+                t.gpsLat = lat;
+                t.gpsLng = lng;
+                t.gpsUpdated = row.last_seen
+                    ? new Date(row.last_seen).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+                    : "en vivo (nube)";
             });
 
             renderMapPins();
@@ -6893,7 +6902,7 @@
 
             // Marcadores de técnicos: solo si hay GPS activo y reciente
             personalTecnicos.forEach(t => {
-                const gpsActivo = typeof t.gpsLat === "number" && typeof t.gpsLng === "number" && t.gpsUpdated && t.gpsUpdated !== "S/D" && t.gpsUpdated !== "en vivo (nube)";
+                const gpsActivo = Number.isFinite(Number(t.gpsLat)) && Number.isFinite(Number(t.gpsLng));
                 if (!gpsActivo) return;
 
                 const techIconHtml = `
@@ -6928,7 +6937,7 @@
 
             const gpsStatus = document.getElementById('sim-gps-status');
             if (gpsStatus) {
-                const activos = personalTecnicos.filter(t => typeof t.gpsLat === "number" && typeof t.gpsLng === "number" && t.gpsUpdated && t.gpsUpdated !== "S/D" && t.gpsUpdated !== "en vivo (nube)");
+                const activos = personalTecnicos.filter(t => Number.isFinite(Number(t.gpsLat)) && Number.isFinite(Number(t.gpsLng)));
                 if (activos.length === 0) {
                     gpsStatus.textContent = 'Sin ubicación activa';
                     gpsStatus.className = 'text-[10px] text-slate-500 bg-slate-950/70 border border-slate-800 rounded-lg px-3 py-2';
