@@ -6083,10 +6083,10 @@
                 }
                 if (data && data.length > 0) {
                     return data.map(mapFn);
-                } else if (seedIfEmpty) {
-                    arrayLocalRef.forEach(item => syncPush(nombreTabla, toRowFn(item)));
                 }
-                return null; // Sin datos en la nube todavía: se conserva lo local (ya sembrado)
+                // Producción: una tabla vacía en Supabase significa que está vacía.
+                // No sembramos datos demo/locales automáticamente en el tenant real.
+                return [];
             } catch (e) {
                 console.warn(`[Alarvix/Supabase] Excepción al leer '${nombreTabla}':`, e);
                 return null;
@@ -6115,10 +6115,7 @@
             // Los técnicos también se siembran acá con su ficha completa (nombre, vehículo, etc.),
             // aunque su GPS ya se maneja por separado en cargarTecnicosDesdeSupabase().
             try {
-                const rt = await supabaseClient.from("tecnicos").select("*");
-                if (!rt.error && (!rt.data || rt.data.length === 0)) {
-                    personalTecnicos.forEach(t => syncPush("tecnicos", tecnicoFullToRow(t)));
-                }
+                await cargarTecnicosDesdeSupabase();
             } catch (e) { console.warn("[Alarvix/Supabase] Excepción al sembrar 'tecnicos':", e); }
 
             refrescarVistasServicios();
@@ -6425,12 +6422,14 @@
          */
         async function subirUbicacionTecnicoASupabase(tecnicoId, nombre, lat, lng, estado) {
             if (!supabaseClient) return;
+            // La tabla 'tecnicos' actual no contiene latitud/longitud.
+            // No enviamos columnas inexistentes a PostgREST; el GPS sigue disponible
+            // localmente hasta que el esquema de Supabase incorpore esos campos.
             const { error } = await supabaseClient.from("tecnicos").upsert({
                 id: tecnicoId,
                 nombre: nombre,
-                latitud: lat,
-                longitud: lng,
-                estado: estado || "Disponible"
+                estado: estado || "Disponible",
+                tenant_id: currentUser?.tenant_id || null
             });
             if (error) console.warn("[Alarvix/Supabase] Error al subir ubicación del técnico:", error.message);
         }
