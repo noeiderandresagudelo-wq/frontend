@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ApiError, createApiClient, type Customer, type Service, type UserRole } from './api';
+import { supabase } from './lib/supabase';
 
 type Page = 'dashboard' | 'clientes' | 'servicios';
 type Auth = { role: UserRole; tenantId: string; branchId?: string };
@@ -57,6 +58,18 @@ export default function App() {
   }, [token]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  useEffect(() => {
+    if (!token || !auth) return;
+    supabase.realtime.setAuth(token);
+    const channel = supabase
+      .channel('alarvix-live-data')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes', filter: `tenant_id=eq.${auth.tenantId}` }, () => { void refresh(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'servicios', filter: `tenant_id=eq.${auth.tenantId}` }, () => { void refresh(); })
+      .subscribe();
+    const timer = window.setInterval(() => { void refresh(); }, 15000);
+    return () => { window.clearInterval(timer); void supabase.removeChannel(channel); };
+  }, [token, auth, refresh]);
 
   const activeServices = useMemo(() => services.filter(s => ['activo','active','en_proceso','pendiente'].includes(s.estado)).length, [services]);
 
