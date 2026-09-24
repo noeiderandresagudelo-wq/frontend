@@ -2801,17 +2801,48 @@
             // role/tenant_id en user_metadata. Completamos el perfil desde Alarvix.
             if (supabaseClient && (!currentUser.rol || !currentUser.tenant_id)) {
                 try {
-                    const { data: perfil, error } = await supabaseClient
+                    let perfil = null;
+                    let error = null;
+
+                    const porId = await supabaseClient
                         .from("usuarios")
                         .select("*")
                         .eq("id", sessionUser.id)
                         .maybeSingle();
 
-                    if (!error && perfil) {
+                    perfil = porId.data || null;
+                    error = porId.error || null;
+
+                    // Compatibilidad con instalaciones antiguas: algunas filas de
+                    // usuarios conservan un id interno distinto al UUID de Auth.
+                    // En ese caso recuperamos el perfil por el correo de acceso.
+                    if (!perfil && sessionUser.email) {
+                        const porUsername = await supabaseClient
+                            .from("usuarios")
+                            .select("*")
+                            .eq("username", sessionUser.email)
+                            .maybeSingle();
+                        if (!porUsername.error && porUsername.data) {
+                            perfil = porUsername.data;
+                            error = null;
+                        } else if (!perfil) {
+                            const porCorreo = await supabaseClient
+                                .from("usuarios")
+                                .select("*")
+                                .eq("correo", sessionUser.email)
+                                .maybeSingle();
+                            if (!porCorreo.error && porCorreo.data) {
+                                perfil = porCorreo.data;
+                                error = null;
+                            }
+                        }
+                    }
+
+                    if (perfil) {
                         currentUser = {
                             ...currentUser,
                             nombre: perfil.nombre || currentUser.nombre,
-                            username: perfil.username || currentUser.username,
+                            username: perfil.username || perfil.correo || currentUser.username,
                             rol: String(perfil.rol || currentUser.rol || "").toUpperCase(),
                             activo: perfil.activo !== false,
                             tenant_id: perfil.tenant_id || currentUser.tenant_id || null,
@@ -3320,16 +3351,21 @@
         }
         window.toggleRecoveryInline = toggleRecoveryInline;
 
+        let loginEnProgreso = false;
+
         async function handleLogin(event) {
             if (event) {
                 event.preventDefault();
                 event.stopPropagation();
             }
 
+            if (loginEnProgreso) return false;
+
             var usernameInput = document.getElementById('login-username');
             var passwordInput = document.getElementById('login-password');
-            var uInput = usernameInput ? usernameInput.value.trim() : '';
-            var pInput = passwordInput ? passwordInput.value : '';
+            var uInput = usernameInput ? String(usernameInput.value || '').trim() : '';
+            var pInput = passwordInput ? String(passwordInput.value || '') : '';
+            var loginButton = document.querySelector('#form-login button[type="submit"]');
 
             if (!supabaseClient) {
                 showToast("Acceso Denegado", "Supabase no está inicializado. Revisa las variables VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY del despliegue.", true);
@@ -3339,6 +3375,13 @@
             if (!uInput || !pInput) {
                 showToast("Acceso Denegado", "Escribe el correo electrónico y la contraseña.", true);
                 return false;
+            }
+
+            loginEnProgreso = true;
+            if (loginButton) {
+                loginButton.disabled = true;
+                loginButton.dataset.loginOriginal = loginButton.innerHTML;
+                loginButton.innerHTML = 'Verificando acceso... <i class="fa-solid fa-spinner fa-spin ml-1.5"></i>';
             }
 
             try {
@@ -3404,6 +3447,14 @@
                 console.error("[Alarvix/Supabase] Excepción durante login:", error);
                 showToast("Error de acceso", error?.message || "Ocurrió un error inesperado al iniciar sesión.", true);
                 return false;
+            } finally {
+                loginEnProgreso = false;
+                if (loginButton) {
+                    loginButton.disabled = false;
+                    loginButton.innerHTML = loginButton.dataset.loginOriginal || 'Ingresar al Sistema Táctico <i class="fa-solid fa-arrow-right-to-bracket ml-1.5"></i>';
+                }
+                // No limpiamos correo ni contraseña: si falla el acceso el usuario
+                // puede corregir el dato sin tener que escribir todo de nuevo.
             }
         }
 
