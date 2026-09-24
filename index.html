@@ -1391,34 +1391,60 @@
                     </div>
                 </div>
 
-                <!-- Bloque Central: Mapa y Gráficos -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <!-- Mapa en Tiempo Real -->
-                    <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+                <!-- Bloque Central: Mapa + Panel Ejecutivo -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                    <!-- Mapa en Tiempo Real: 8/12 del ancho -->
+                    <div class="lg:col-span-8 bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
                         <div class="flex items-center justify-between">
                             <h3 class="text-xs font-extrabold text-white uppercase tracking-wider">Despliegue de Unidades en Tiempo Real</h3>
                             <span id="map-visible-pins" class="text-[9px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded hidden">0 visibles</span>
                         </div>
                         <input type="text" id="search-mapa-puesto" oninput="renderMapPins()" placeholder="Buscar puesto, cliente o abonado en el mapa..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
                         <p class="text-[9px] text-slate-500 -mt-1.5">Por defecto solo se muestran los puestos con servicio activo o instalación agendada. Buscá para ver cualquier otro.</p>
-                        <div id="map" class="border border-slate-800 shadow-inner"></div>
+                        <div id="map" class="border border-slate-800 shadow-inner min-h-[400px]"></div>
                     </div>
 
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                    <!-- Panel Derecho: SLA + KPIs rápidos 4/12 -->
+                    <div class="lg:col-span-4 bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-4">
                         <div>
-                            <div class="relative w-full h-32">
-                                <canvas id="chart-efectividad-servicios"></canvas>
+                            <div class="flex items-center justify-between mb-2">
+                                <div>
+                                    <h3 class="text-xs font-extrabold text-white uppercase tracking-wider">SLA de Atención</h3>
+                                    <p class="text-[9px] text-slate-500 mt-0.5">Distribución de servicios por nivel de cumplimiento</p>
+                                </div>
+                                <span class="text-[9px] text-emerald-400 font-bold">Tiempo real</span>
+                            </div>
+                            <div class="relative w-full h-36 flex items-center justify-center">
+                                <div class="w-full max-w-[260px] h-36">
+                                    <canvas id="chart-efectividad-servicios"></canvas>
+                                </div>
                             </div>
                         </div>
-                        <div class="mt-4 pt-4 border-t border-slate-800/60 grid grid-cols-2 gap-2 text-center">
-                            <div class="bg-slate-950 p-2 rounded-lg border border-slate-800">
-                                <span class="text-[8px] text-slate-500 uppercase block font-bold">Meta Diaria</span>
-                                <span class="text-sm font-extrabold text-white" id="stat-meta-diaria">95% ANS</span>
+
+                        <!-- KPIs rápidos -->
+                        <div class="border-t border-slate-800/60 pt-3">
+                            <div class="grid grid-cols-3 gap-2">
+                                <div class="bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-center">
+                                    <i class="fa-solid fa-tower-broadcast text-blue-400 text-sm"></i>
+                                    <span class="block text-[8px] text-slate-500 uppercase font-bold mt-1">Unidades Activas</span>
+                                    <span id="stat-unidades-activas" class="block text-lg font-extrabold text-white mt-0.5">--</span>
+                                </div>
+                                <div class="bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-center">
+                                    <i class="fa-solid fa-triangle-exclamation text-rose-400 text-sm"></i>
+                                    <span class="block text-[8px] text-slate-500 uppercase font-bold mt-1">Alertas Críticas</span>
+                                    <span id="stat-alertas-criticas" class="block text-lg font-extrabold text-rose-400 mt-0.5">--</span>
+                                </div>
+                                <div class="bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-center">
+                                    <i class="fa-solid fa-circle-check text-emerald-400 text-sm"></i>
+                                    <span class="block text-[8px] text-slate-500 uppercase font-bold mt-1">Cerrados Hoy</span>
+                                    <span id="stat-cerrados-hoy" class="block text-lg font-extrabold text-emerald-400 mt-0.5">--</span>
+                                </div>
                             </div>
-                            <div class="bg-slate-950 p-2 rounded-lg border border-slate-800">
-                                <span class="text-[8px] text-slate-500 uppercase block font-bold">Cerrados Hoy</span>
-                                <span class="text-sm font-extrabold text-emerald-400" id="stat-cerrados-hoy">12</span>
-                            </div>
+                        </div>
+
+                        <div class="bg-slate-950/70 border border-slate-800/70 rounded-lg px-3 py-2 flex items-center justify-between">
+                            <span class="text-[9px] text-slate-500 uppercase font-bold">Meta SLA diaria</span>
+                            <span class="text-xs font-extrabold text-white" id="stat-meta-diaria">95% ANS</span>
                         </div>
                     </div>
                 </div>
@@ -5895,6 +5921,21 @@
                 document.getElementById('kpi-tecnicos').innerText = t;
                 document.getElementById('kpi-criticos').innerText = criticos;
                 document.getElementById('kpi-tiempo-respuesta').innerText = "28m";
+                document.getElementById('stat-unidades-activas').innerText = unidadesActivas;
+                document.getElementById('stat-alertas-criticas').innerText = criticos;
+                document.getElementById('stat-cerrados-hoy').innerText = cerradosHoy;
+
+                const cerradosHoy = list.filter(i => {
+                    if (!["Cerrado", "Finalizado"].includes(i.estado)) return false;
+                    const raw = i.fechaCierre || i.fecha_cierre || i.fechaFinalizacion || i.updatedAt || i.fechaCreacion || "";
+                    const d = new Date(raw);
+                    const hoy = new Date();
+                    return !Number.isNaN(d.getTime()) &&
+                        d.getFullYear() === hoy.getFullYear() &&
+                        d.getMonth() === hoy.getMonth() &&
+                        d.getDate() === hoy.getDate();
+                }).length;
+                const unidadesActivas = list.filter(i => !["Cerrado", "Finalizado"].includes(i.estado)).length;
 
                 renderDashboardAlerts(list);
                 renderDashboardRecent(list);
