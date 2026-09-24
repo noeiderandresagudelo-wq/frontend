@@ -4585,6 +4585,82 @@
             }
         }
 
+        // --- SISTEMA DE SONIDOS DE ALARVIX ---
+        let alarvixAudioContext = null;
+        let alarvixSoundEnabled = localStorage.getItem("alarvix_sound_enabled") !== "false";
+
+        function inicializarAudioAlarvix() {
+            try {
+                const AC = window.AudioContext || window.webkitAudioContext;
+                if (!AC) return false;
+                if (!alarvixAudioContext) alarvixAudioContext = new AC();
+                if (alarvixAudioContext.state === "suspended") alarvixAudioContext.resume();
+                return true;
+            } catch (e) {
+                console.warn("[Alarvix Audio] No disponible:", e);
+                return false;
+            }
+        }
+
+        function alternarSonidosAlarvix() {
+            alarvixSoundEnabled = !alarvixSoundEnabled;
+            localStorage.setItem("alarvix_sound_enabled", String(alarvixSoundEnabled));
+            actualizarBotonSonidoAlarvix();
+            if (alarvixSoundEnabled) {
+                inicializarAudioAlarvix();
+                reproducirSonidoAlarvix("info");
+                showToast("Sonidos activados", "Las nuevas alarmas y eventos podrán emitir sonido.");
+            } else {
+                showToast("Sonidos desactivados", "Las alertas visuales continuarán funcionando.");
+            }
+        }
+
+        function actualizarBotonSonidoAlarvix() {
+            const btn = document.getElementById("btn-sound-alarvix");
+            if (!btn) return;
+            btn.innerHTML = alarvixSoundEnabled
+                ? '<i class="fa-solid fa-volume-high"></i>'
+                : '<i class="fa-solid fa-volume-xmark"></i>';
+            btn.title = alarvixSoundEnabled ? "Desactivar sonidos" : "Activar sonidos";
+            btn.classList.toggle("text-emerald-400", alarvixSoundEnabled);
+            btn.classList.toggle("text-slate-400", !alarvixSoundEnabled);
+        }
+
+        function reproducirSonidoAlarvix(tipo = "info") {
+            if (!alarvixSoundEnabled) return;
+            try {
+                if (!inicializarAudioAlarvix()) return;
+                const ctx = alarvixAudioContext;
+                const ahora = ctx.currentTime;
+                const patrones = {
+                    info: [{f:660,d:.10,g:.045}],
+                    success: [{f:660,d:.10,g:.045},{f:880,d:.13,g:.05}],
+                    warning: [{f:740,d:.12,g:.06},{f:520,d:.18,g:.06}],
+                    critical: [{f:880,d:.13,g:.09},{f:660,d:.13,g:.09},{f:880,d:.13,g:.09},{f:660,d:.18,g:.09}]
+                };
+                let offset=0;
+                for (const p of (patrones[tipo] || patrones.info)) {
+                    const osc=ctx.createOscillator();
+                    const gain=ctx.createGain();
+                    osc.type="sine";
+                    osc.frequency.setValueAtTime(p.f, ahora+offset);
+                    gain.gain.setValueAtTime(0.0001, ahora+offset);
+                    gain.gain.exponentialRampToValueAtTime(p.g, ahora+offset+0.015);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, ahora+offset+p.d);
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.start(ahora+offset); osc.stop(ahora+offset+p.d+0.02);
+                    offset += p.d + 0.035;
+                }
+            } catch (e) {
+                console.warn("[Alarvix Audio] Error reproduciendo sonido:", e);
+            }
+        }
+
+        // Cualquier interacción del operador desbloquea el AudioContext en Android.
+        document.addEventListener("pointerdown", () => {
+            if (alarvixSoundEnabled) inicializarAudioAlarvix();
+        }, { passive: true });
+
         function showToast(title, message, isError = false) {
             try {
                 const toast = document.getElementById('toast-notif');
@@ -4595,6 +4671,11 @@
                 tTitle.innerText = title;
                 tMsg.innerText = message;
                 tIcon.className = isError ? "fa-solid fa-triangle-exclamation text-rose-400" : "fa-solid fa-bell text-emerald-400";
+                const tipoSonido = isError ? "critical" : (
+                    /alarma|crític|urgente/i.test(title + " " + message) ? "critical" :
+                    /error|rechaz|fall|bloquead/i.test(title + " " + message) ? "warning" : "info"
+                );
+                reproducirSonidoAlarvix(tipoSonido);
                 
                 toast.classList.remove('hidden');
                 setTimeout(() => {
@@ -7032,13 +7113,24 @@
                 const t = personalTecnicos.find(x => String(x.id) === String(row.tecnico_id));
                 if (!t) return;
 
-                t.gpsLat = lat;
-                t.gpsLng = lng;
                 const lastSeenMs = row.last_seen ? new Date(row.last_seen).getTime() : NaN;
+                const horaUltima = Number.isFinite(lastSeenMs)
+                    ? new Date(lastSeenMs).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+                    : "S/D";
+
+                // La coordenada persistida puede ser antigua: se conserva como "última ubicación"
+                // pero jamás se usa para marcar al técnico como conectado.
+                t.gpsLastKnownLat = lat;
+                t.gpsLastKnownLng = lng;
+                t.gpsLastKnownAt = lastSeenMs;
+                t.gpsLastKnownUpdated = horaUltima;
+
                 if (!Number.isFinite(lastSeenMs) || (Date.now() - lastSeenMs) > GPS_ONLINE_WINDOW_MS) return;
 
+                t.gpsLat = lat;
+                t.gpsLng = lng;
                 t.gpsLastSeenMs = lastSeenMs;
-                t.gpsUpdated = new Date(lastSeenMs).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+                t.gpsUpdated = horaUltima;
             });
 
             renderMapPins();
@@ -7055,6 +7147,15 @@
                     const t = personalTecnicos.find(x => String(x.id) === String(row.tecnico_id));
                     if (!t || typeof row.latitude !== "number" || typeof row.longitude !== "number") return;
                     const lastSeenMs = row.last_seen ? new Date(row.last_seen).getTime() : NaN;
+                    const horaUltima = Number.isFinite(lastSeenMs)
+                        ? new Date(lastSeenMs).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+                        : "S/D";
+
+                    t.gpsLastKnownLat = Number(row.latitude);
+                    t.gpsLastKnownLng = Number(row.longitude);
+                    t.gpsLastKnownAt = lastSeenMs;
+                    t.gpsLastKnownUpdated = horaUltima;
+
                     if (!Number.isFinite(lastSeenMs) || (Date.now() - lastSeenMs) > GPS_ONLINE_WINDOW_MS) {
                         delete t.gpsLat;
                         delete t.gpsLng;
@@ -7064,7 +7165,7 @@
                         t.gpsLat = Number(row.latitude);
                         t.gpsLng = Number(row.longitude);
                         t.gpsLastSeenMs = lastSeenMs;
-                        t.gpsUpdated = new Date(lastSeenMs).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+                        t.gpsUpdated = horaUltima;
                     }
                     renderMapPins();
                 })
@@ -7144,15 +7245,25 @@
                 visiblePins++;
             });
 
-            // Marcadores de técnicos: solo si hay GPS activo y reciente
+            // Técnicos: GPS EN VIVO y última ubicación conocida son estados distintos.
             personalTecnicos.forEach(t => {
-                const gpsActivo = Number.isFinite(Number(t.gpsLat)) && Number.isFinite(Number(t.gpsLng));
-                if (!gpsActivo) return;
+                const gpsEnVivo = tecnicoGPSActivo(t) &&
+                    Number.isFinite(Number(t.gpsLat)) &&
+                    Number.isFinite(Number(t.gpsLng));
+
+                const tieneUltima = Number.isFinite(Number(t.gpsLastKnownLat)) &&
+                    Number.isFinite(Number(t.gpsLastKnownLng));
+
+                if (!gpsEnVivo && !tieneUltima) return;
+
+                const lat = gpsEnVivo ? Number(t.gpsLat) : Number(t.gpsLastKnownLat);
+                const lng = gpsEnVivo ? Number(t.gpsLng) : Number(t.gpsLastKnownLng);
+                const color = gpsEnVivo ? "#8B5CF6" : "#64748B";
 
                 const techIconHtml = `
                     <div class="relative flex items-center justify-center">
-                        <div class="absolute w-6 h-6 rounded-full opacity-25 animate-ping" style="background-color: #8B5CF6"></div>
-                        <div class="w-5 h-5 rounded-full border-2 border-white flex items-center justify-center shadow-lg" style="background-color: #8B5CF6">
+                        ${gpsEnVivo ? '<div class="absolute w-6 h-6 rounded-full opacity-25 animate-ping" style="background-color:#8B5CF6"></div>' : ''}
+                        <div class="w-5 h-5 rounded-full border-2 border-white flex items-center justify-center shadow-lg" style="background-color:${color}">
                             <i class="fa-solid fa-motorcycle text-white text-[9px]"></i>
                         </div>
                     </div>
@@ -7165,14 +7276,18 @@
                 });
 
                 const techPopupHtml = `
-                    <div class="p-2.5 bg-slate-950 text-white rounded-lg text-xs space-y-1" style="min-width: 160px;">
-                        <h4 class="font-extrabold text-purple-400 uppercase tracking-tight text-xs font-heading">${t.nombre}</h4>
-                        <p class="text-slate-400 font-medium"><strong class="text-slate-300">Vehículo:</strong> ${t.vehiculo}</p>
-                        <p class="text-slate-400 font-medium"><strong class="text-slate-300">GPS actualizado:</strong> ${t.gpsUpdated || 'S/D'}</p>
+                    <div class="p-2.5 bg-slate-950 text-white rounded-lg text-xs space-y-1" style="min-width:180px;">
+                        <h4 class="font-extrabold text-${gpsEnVivo ? 'purple' : 'slate'}-400 uppercase tracking-tight text-xs font-heading">${t.nombre}</h4>
+                        <p class="font-bold ${gpsEnVivo ? 'text-emerald-400' : 'text-amber-400'}">
+                            ${gpsEnVivo ? '● GPS EN VIVO' : '● ÚLTIMA UBICACIÓN CONOCIDA'}
+                        </p>
+                        <p class="text-slate-400 font-medium"><strong class="text-slate-300">Vehículo:</strong> ${t.vehiculo || 'S/D'}</p>
+                        <p class="text-slate-400 font-medium"><strong class="text-slate-300">Última actualización:</strong> ${t.gpsLastKnownUpdated || t.gpsUpdated || 'S/D'}</p>
+                        <p class="text-[10px] text-slate-500">${gpsEnVivo ? 'Técnico conectado al GPS.' : 'El técnico no está conectado actualmente.'}</p>
                     </div>
                 `;
 
-                const techMarker = L.marker([t.gpsLat, t.gpsLng], { icon: techIcon }).bindPopup(techPopupHtml);
+                const techMarker = L.marker([lat, lng], { icon: techIcon }).bindPopup(techPopupHtml);
                 markersGroup.addLayer(techMarker);
             });
 
