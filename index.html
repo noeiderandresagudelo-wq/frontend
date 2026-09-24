@@ -453,7 +453,7 @@
 
     <!-- MODAL DE STOCK DISPONIBLE (Vista de Técnico, solo lectura) -->
     <div id="modal-inventario-tecnico" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-[8700] hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-sm h-[80vh] flex flex-col shadow-2xl">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-sm h-[min(720px,calc(100dvh-2rem))] min-h-0 flex flex-col shadow-2xl">
             <div class="flex justify-between items-center border-b border-slate-800 p-4 shrink-0">
                 <div>
                     <h3 class="text-xs font-extrabold text-white uppercase tracking-wider">Stock Disponible</h3>
@@ -479,7 +479,7 @@
                 <button onclick="closeChatTecnicoModal()" class="text-slate-400 hover:text-white">✕</button>
             </div>
 
-            <div id="chat-tecnico-mensajes" class="flex-grow overflow-y-auto custom-scrollbar p-4 space-y-2.5">
+            <div id="chat-tecnico-mensajes" class="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 space-y-2.5">
                 <!-- Inyectado dinámicamente -->
             </div>
 
@@ -501,7 +501,7 @@
                 <button onclick="closeChatClienteModal()" class="text-slate-400 hover:text-white">✕</button>
             </div>
 
-            <div id="chat-cliente-mensajes" class="flex-grow overflow-y-auto custom-scrollbar p-4 space-y-2.5">
+            <div id="chat-cliente-mensajes" class="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 space-y-2.5">
                 <!-- Inyectado dinámicamente -->
             </div>
 
@@ -1858,10 +1858,10 @@
 
             <!-- VISTA: MENSAJES (Chat con Clientes y Técnicos) -->
             <section id="view-mensajes" class="space-y-6 hidden">
-                <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden" style="height: 70vh;">
-                    <div class="grid grid-cols-3 h-full">
+                <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden h-[calc(100dvh-10rem)] min-h-[420px] max-h-[760px]">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 h-full min-h-0">
                         <!-- Lista de conversaciones -->
-                        <div class="col-span-1 border-r border-slate-800 flex flex-col">
+                        <div class="col-span-1 border-r border-slate-800 flex flex-col min-h-0 max-h-[190px] lg:max-h-none">
                             <div class="p-3 border-b border-slate-800 flex items-center justify-between shrink-0">
                                 <h3 class="text-xs font-extrabold text-white uppercase tracking-wider">Conversaciones</h3>
                                 <button onclick="cargarConversacionesAdmin()" class="text-slate-400 hover:text-white text-xs"><i class="fa-solid fa-arrows-rotate"></i></button>
@@ -1872,13 +1872,14 @@
                         </div>
 
                         <!-- Ventana de chat -->
-                        <div class="col-span-2 flex flex-col">
+                        <div class="col-span-1 lg:col-span-2 flex flex-col min-h-0">
                             <div id="chat-admin-header" class="p-3 border-b border-slate-800 shrink-0">
                                 <p class="text-[11px] text-slate-500 italic">Elegí una conversación de la izquierda para responder.</p>
                             </div>
-                            <div id="chat-admin-mensajes" class="flex-grow overflow-y-auto custom-scrollbar p-4 space-y-2.5"></div>
-                            <form id="form-chat-admin" onsubmit="event.preventDefault(); enviarMensajeDesdeAdmin();" class="p-3 border-t border-slate-800 flex gap-2 shrink-0 hidden">
-                                <input type="text" id="input-chat-admin" placeholder="Escribí tu respuesta..." class="flex-grow bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                            <div id="chat-admin-mensajes" class="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 space-y-2.5"></div>
+                            <form id="form-chat-admin" onsubmit="event.preventDefault(); enviarMensajeDesdeAdmin();" class="p-3 border-t border-slate-800 flex gap-2 shrink-0 hidden bg-slate-900">
+                                <button type="button" onclick="grabarAudioChatDesdeAdmin()" id="btn-audio-admin" title="Grabar audio" class="bg-slate-800 hover:bg-slate-700 text-slate-200 w-9 h-9 rounded-lg flex items-center justify-center shrink-0"><i class="fa-solid fa-microphone text-xs"></i></button>
+                                <input type="text" id="input-chat-admin" placeholder="Escribí tu respuesta..." class="min-w-0 flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
                                 <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white w-9 h-9 rounded-lg flex items-center justify-center shrink-0"><i class="fa-solid fa-paper-plane text-xs"></i></button>
                             </form>
                         </div>
@@ -6870,7 +6871,39 @@
         }
 
         /** Dibuja las burbujas de un canal dentro de un contenedor, distinguiendo mensajes propios. */
-        function renderBurbujasChat(containerId, mensajes) {
+        let grabacionAudioChat = null;
+let grabacionAudioChunks = [];
+
+async function grabarAudioChat(canal, tipo, botonId) {
+    if (!canal || !currentUser) return;
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") { showToast("Audio no disponible", "Este navegador no permite grabar audio desde Alarvix.", true); return; }
+    const boton = document.getElementById(botonId);
+    if (grabacionAudioChat) { grabacionAudioChat.stop(); return; }
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
+        grabacionAudioChunks = []; grabacionAudioChat = new MediaRecorder(stream, { mimeType: mime });
+        if (boton) { boton.classList.remove("bg-slate-800"); boton.classList.add("bg-rose-600"); boton.innerHTML = '<i class="fa-solid fa-stop text-xs"></i>'; boton.title = "Detener grabación"; }
+        grabacionAudioChat.ondataavailable = e => { if (e.data?.size) grabacionAudioChunks.push(e.data); };
+        grabacionAudioChat.onstop = async () => {
+            stream.getTracks().forEach(t => t.stop());
+            const blob = new Blob(grabacionAudioChunks, { type: mime }); grabacionAudioChat = null; grabacionAudioChunks = [];
+            if (boton) { boton.classList.remove("bg-rose-600"); boton.classList.add("bg-slate-800"); boton.innerHTML = '<i class="fa-solid fa-microphone text-xs"></i>'; boton.title = "Grabar audio"; }
+            if (!blob.size) return;
+            if (!supabaseClient) { showToast("Sin conexión", "El audio necesita Supabase para guardarse.", true); return; }
+            const nombre = "chat/" + String(canal).replace(/[^a-zA-Z0-9_-]/g, "_") + "/" + Date.now() + "-" + Math.random().toString(36).slice(2) + ".webm";
+            const subida = await supabaseClient.storage.from("mensajes-audio").upload(nombre, blob, { contentType: mime, upsert: false });
+            if (subida.error) { console.error("[Alarvix/Chat] Error subiendo audio:", subida.error); showToast("Audio no enviado", "Configura el bucket mensajes-audio en Supabase.", true); return; }
+            const url = supabaseClient.storage.from("mensajes-audio").getPublicUrl(nombre).data.publicUrl;
+            enviarMensajeChat(canal, tipo, "[AUDIO]" + url);
+        };
+        grabacionAudioChat.start(); showToast("Grabando audio", "Pulsa nuevamente el micrófono para detener y enviar.");
+    } catch (error) { grabacionAudioChat = null; console.error("[Alarvix/Chat] Micrófono:", error); showToast("Micrófono no disponible", "Permite el acceso al micrófono en el navegador o Android.", true); }
+}
+function grabarAudioChatDesdeAdmin() { if (!canalAdminAbierto) return; grabarAudioChat(canalAdminAbierto, canalAdminAbierto.startsWith("cliente-") ? "cliente_despacho" : "tecnico_despacho", "btn-audio-admin"); }
+function grabarAudioChatDesdeTecnico() { if (currentUser?.tecnicoId) grabarAudioChat("tecnico-" + currentUser.tecnicoId, "tecnico_despacho", "btn-audio-tecnico"); }
+function grabarAudioChatDesdeCliente() { if (currentUser?.abonadoId) grabarAudioChat("cliente-" + currentUser.abonadoId, "cliente_despacho", "btn-audio-cliente"); }
+function renderBurbujasChat(containerId, mensajes) {
             const container = document.getElementById(containerId);
             if (!container) return;
 
@@ -6886,7 +6919,7 @@
                     <div class="flex ${esPropio ? 'justify-end' : 'justify-start'}">
                         <div class="max-w-[78%] ${esPropio ? 'bg-blue-600/25 border-blue-500/30' : 'bg-slate-800 border-slate-700'} border rounded-lg px-3 py-2">
                             ${!esPropio ? `<p class="text-[9px] font-bold text-slate-400 mb-0.5">${m.remitente_nombre} <span class="text-slate-600">· ${m.remitente_rol}</span></p>` : ''}
-                            <p class="text-xs text-white whitespace-pre-wrap break-words">${m.mensaje}</p>
+                            ${String(m.mensaje || "").startsWith("[AUDIO]") ? `<audio controls preload="metadata" class="w-full max-w-[230px] h-9 mt-1"><source src="${String(m.mensaje).slice(7)}" type="audio/webm"></audio>` : `<p class="text-xs text-white whitespace-pre-wrap break-words">${m.mensaje || ""}</p>`}
                             <p class="text-[8px] text-slate-500 mt-0.5 text-right">${hora}</p>
                         </div>
                     </div>
