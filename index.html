@@ -177,7 +177,18 @@
             background-color: currentColor;
             opacity: 0.2;
         }
-    </style>
+    
+<style>
+/* Chat responsive: mantiene siempre visible el campo de escritura al abrir teclado móvil. */
+#modal-chat-tecnico > div, #modal-chat-cliente > div { min-height: 0; }
+#chat-tecnico-mensajes, #chat-cliente-mensajes, #chat-admin-mensajes { overscroll-behavior: contain; }
+@media (max-width: 640px) {
+  #modal-chat-tecnico, #modal-chat-cliente { padding: .5rem; align-items: flex-end; }
+  #modal-chat-tecnico > div, #modal-chat-cliente > div { height: min(760px, calc(100dvh - 1rem)); max-height: calc(100dvh - 1rem); border-radius: 1rem 1rem .75rem .75rem; }
+  #view-mensajes > div { height: calc(100dvh - 7rem); max-height: none; }
+}
+</style>
+</style>
 </head>
 <!-- Librería requerida para generar PDFs de forma nativa en el navegador -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -470,7 +481,7 @@
 
     <!-- MODAL DE CHAT: TÉCNICO <-> DESPACHO -->
     <div id="modal-chat-tecnico" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-[8700] hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-sm h-[80vh] flex flex-col shadow-2xl">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-sm h-[min(760px,calc(100dvh-2rem))] max-h-[calc(100dvh-2rem)] flex flex-col shadow-2xl">
             <div class="flex justify-between items-center border-b border-slate-800 p-4 shrink-0">
                 <div>
                     <h3 class="text-xs font-extrabold text-white uppercase tracking-wider">Chat con Despacho</h3>
@@ -483,7 +494,8 @@
                 <!-- Inyectado dinámicamente -->
             </div>
 
-            <form onsubmit="event.preventDefault(); enviarMensajeDesdeTecnico();" class="p-3 border-t border-slate-800 flex gap-2 shrink-0">
+            <form onsubmit="event.preventDefault(); enviarMensajeDesdeTecnico();" class="p-3 border-t border-slate-800 flex gap-2 shrink-0 bg-slate-900">
+                <button type="button" onclick="grabarAudioChatDesdeTecnico()" id="btn-audio-tecnico" title="Grabar audio" class="bg-slate-800 hover:bg-slate-700 text-slate-200 w-9 h-9 rounded-lg flex items-center justify-center shrink-0"><i class="fa-solid fa-microphone text-xs"></i></button>
                 <input type="text" id="input-chat-tecnico" placeholder="Escribí tu mensaje..." class="flex-grow bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
                 <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white w-9 h-9 rounded-lg flex items-center justify-center shrink-0"><i class="fa-solid fa-paper-plane text-xs"></i></button>
             </form>
@@ -505,7 +517,8 @@
                 <!-- Inyectado dinámicamente -->
             </div>
 
-            <form onsubmit="event.preventDefault(); enviarMensajeDesdeCliente();" class="p-3 border-t border-slate-800 flex gap-2 shrink-0">
+            <form onsubmit="event.preventDefault(); enviarMensajeDesdeCliente();" class="p-3 border-t border-slate-800 flex gap-2 shrink-0 bg-slate-900">
+                <button type="button" onclick="grabarAudioChatDesdeCliente()" id="btn-audio-cliente" title="Grabar audio" class="bg-slate-800 hover:bg-slate-700 text-slate-200 w-9 h-9 rounded-lg flex items-center justify-center shrink-0"><i class="fa-solid fa-microphone text-xs"></i></button>
                 <input type="text" id="input-chat-cliente" placeholder="Escribí tu mensaje..." class="flex-grow bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
                 <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white w-9 h-9 rounded-lg flex items-center justify-center shrink-0"><i class="fa-solid fa-paper-plane text-xs"></i></button>
             </form>
@@ -1858,7 +1871,7 @@
 
             <!-- VISTA: MENSAJES (Chat con Clientes y Técnicos) -->
             <section id="view-mensajes" class="space-y-6 hidden">
-                <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden h-[calc(100dvh-10rem)] min-h-[420px] max-h-[760px]">
+                <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden h-[min(760px,calc(100dvh-8rem))] min-h-0 max-h-[calc(100dvh-8rem)]">
                     <div class="grid grid-cols-1 lg:grid-cols-3 h-full min-h-0">
                         <!-- Lista de conversaciones -->
                         <div class="col-span-1 border-r border-slate-800 flex flex-col min-h-0 max-h-[190px] lg:max-h-none">
@@ -3633,6 +3646,7 @@
         function openChatTecnicoModal() {
             if (!currentUser || !currentUser.tecnicoId) return;
             document.getElementById('modal-chat-tecnico').classList.remove('hidden');
+            requestAnimationFrame(() => { const el=document.getElementById("input-chat-tecnico"); if(el) el.focus({preventScroll:true}); });
             const canal = `tecnico-${currentUser.tecnicoId}`;
             abrirCanalChat(canal, 'tecnico_despacho', () => renderBurbujasChat('chat-tecnico-mensajes', mensajesChatActual));
         }
@@ -3782,6 +3796,7 @@
         function openChatClienteModal() {
             if (!currentUser || !currentUser.abonadoId) return;
             document.getElementById('modal-chat-cliente').classList.remove('hidden');
+            requestAnimationFrame(() => { const el=document.getElementById("input-chat-cliente"); if(el) el.focus({preventScroll:true}); });
             const canal = `cliente-${currentUser.abonadoId}`;
             abrirCanalChat(canal, 'cliente_despacho', () => renderBurbujasChat('chat-cliente-mensajes', mensajesChatActual));
         }
@@ -6844,6 +6859,14 @@
         }
 
         function llamarAdminCentral() {
+            if (currentUser?.rol === "TECNICO") {
+                if (!telefonoDespachoCentral || telefonoDespachoCentral === "PENDIENTE") {
+                    showToast("Número de Despacho no configurado", "Configura el teléfono de la Central de Despacho.", true);
+                    return;
+                }
+                window.location.href = `tel:${telefonoDespachoCentral}`;
+                return;
+            }
             const admin = appUsers.find(u => u.rol === "ADMIN" && u.activo !== false);
             const operador = appUsers.find(u => (u.rol === "OPERADOR" || u.rol === "DESPACHADOR") && u.activo !== false);
             const destino = admin || operador;
