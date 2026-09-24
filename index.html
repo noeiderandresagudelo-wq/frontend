@@ -2885,7 +2885,7 @@
 
         function obtenerPermisosRol(usuario = currentUser) {
             const rol = String(usuario?.rol || "").trim().toUpperCase();
-            return rolePermissions[rol] || rolePermissions.DESPACTHADOR || rolePermissions.DESPACHADOR || rolePermissions.CENTRAL || {
+            return rolePermissions[rol] || rolePermissions.DESPACHADOR || rolePermissions.CENTRAL || {
                 tabs: [],
                 canEdit: false,
                 canManageUsers: false
