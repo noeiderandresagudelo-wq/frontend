@@ -3811,7 +3811,7 @@
                         <span class="text-xs font-bold text-white truncate">${nombreMostrar}</span>
                         ${sinLeer ? `<span class="ml-auto w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>` : ''}
                     </div>
-                    <p class="text-[10px] text-slate-500 truncate mt-0.5">${m.remitente_nombre}: ${m.mensaje}</p>
+                    <p class="text-[10px] text-slate-500 truncate mt-0.5">${m.remitente_nombre}: ${String(m.mensaje || "").startsWith("[AUDIO]") ? "🎙️ Mensaje de audio" : m.mensaje}</p>
                 `;
                 container.appendChild(div);
             });
@@ -6950,7 +6950,7 @@
                     llamadaWebIniciador = false;
                     window.__alarvixOfertaLlamadaWeb = payload.offer;
                     mostrarModalLlamadaWeb(`Llamada entrante · ${llamadaWebActual.remoteName}`, "Un técnico está llamando a Despacho.", "entrante");
-                    reproducirSonidoNotificacion?.("llamada");
+                    reproducirSonidoAlarvix("llamada");
                 })
                 .on("broadcast", { event: "call-answer" }, async ({ payload }) => {
                     if (!llamadaWebActual || payload?.callId !== llamadaWebActual.id || !llamadaWebIniciador) return;
