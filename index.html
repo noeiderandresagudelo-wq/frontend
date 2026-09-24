@@ -2883,6 +2883,15 @@
             }
         };
 
+        function obtenerPermisosRol(usuario = currentUser) {
+            const rol = String(usuario?.rol || "").trim().toUpperCase();
+            return rolePermissions[rol] || rolePermissions.DESPACTHADOR || rolePermissions.DESPACHADOR || rolePermissions.CENTRAL || {
+                tabs: [],
+                canEdit: false,
+                canManageUsers: false
+            };
+        }
+
         // Datos maestros de supervisión y zonas tácticas de Atlántico
         let activeZones = [];
 
@@ -3059,7 +3068,7 @@
         }
 
         function aplicarVisibilidadModulosPorRol() {
-            const perms = currentUser && rolePermissions[currentUser.rol] ? rolePermissions[currentUser.rol] : null;
+            const perms = currentUser && obtenerPermisosRol(currentUser) ? obtenerPermisosRol(currentUser) : null;
             const modules = ['dashboard', 'central', 'servicios', 'tecnicos', 'personal', 'compras', 'inventario', 'cotizaciones', 'mensajes', 'clientes', 'finanzas', 'compliance', 'reportes', 'config'];
 
             modules.forEach(mod => {
@@ -4627,7 +4636,7 @@
 
         function enforcePermissions() {
             if (!currentUser) return;
-            const perms = rolePermissions[currentUser.rol];
+            const perms = obtenerPermisosRol(currentUser);
 
             // 1. Mostrar/ocultar botones en el sidebar
             const allTabs = ['dashboard', 'supervision', 'central', 'servicios', 'tecnicos', 'personal', 'rrhh', 'compras', 'inventario', 'cotizaciones', 'mensajes', 'clientes', 'finanzas', 'compliance', 'reportes', 'config'];
@@ -4802,7 +4811,7 @@
 
                 // Verificar permisos antes de cambiar de sección
                 if (currentUser) {
-                    const perms = rolePermissions[currentUser.rol] || rolePermissions.DESPACTHADOR || rolePermissions.CENTRAL;
+                    const perms = obtenerPermisosRol(currentUser);
                     if (!(perms?.tabs || []).includes(modId)) {
                         showToast("Bloqueado", "No tienes permisos de visualización para esta pestaña.", true);
                         return;
@@ -8418,7 +8427,7 @@ function renderBurbujasChat(containerId, mensajes) {
                 if (m.existencia <= 10) statusBadge = "bg-rose-500/10 text-rose-400 border border-rose-500/20";
                 else if (m.existencia <= 25) statusBadge = "bg-amber-500/10 text-amber-400 border border-amber-500/20";
 
-                const canEditStock = currentUser && rolePermissions[currentUser.rol] && rolePermissions[currentUser.rol].canEdit;
+                const canEditStock = currentUser && obtenerPermisosRol(currentUser) && obtenerPermisosRol(currentUser).canEdit;
 
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-900/30 border-b border-slate-850/50 transition";
@@ -9461,7 +9470,7 @@ function renderBurbujasChat(containerId, mensajes) {
          * el directorio de clientes/abonados (crmClientes) por medio de detección difusa de columnas.
          */
         function handleImportMalla(event) {
-            if (currentUser && !rolePermissions[currentUser.rol].canEdit) {
+            if (currentUser && !obtenerPermisosRol(currentUser).canEdit) {
                 showToast("Sin Permisos", "No tienes permisos de edición para importar la malla.", true);
                 event.target.value = '';
                 return;
@@ -9618,7 +9627,7 @@ function renderBurbujasChat(containerId, mensajes) {
          * Abre el modal de cliente. Sin argumento = crear nuevo; con un id = editar ese cliente.
          */
         function openClienteFormModal(id) {
-            if (currentUser && rolePermissions[currentUser.rol] && !rolePermissions[currentUser.rol].canEdit) {
+            if (currentUser && obtenerPermisosRol(currentUser) && !obtenerPermisosRol(currentUser).canEdit) {
                 showToast("Sin Permisos", "No tenés permisos de edición para clientes.", true);
                 return;
             }
@@ -9713,7 +9722,7 @@ function renderBurbujasChat(containerId, mensajes) {
         }
 
         function deleteCliente(id) {
-            if (currentUser && rolePermissions[currentUser.rol] && !rolePermissions[currentUser.rol].canEdit) {
+            if (currentUser && obtenerPermisosRol(currentUser) && !obtenerPermisosRol(currentUser).canEdit) {
                 showToast("Sin Permisos", "No tenés permisos de edición para clientes.", true);
                 return;
             }
@@ -9888,7 +9897,7 @@ function renderBurbujasChat(containerId, mensajes) {
             event.preventDefault();
             try {
                 // Validación estricta de permisos de edición
-                if (currentUser && !rolePermissions[currentUser.rol].canEdit) {
+                if (currentUser && !obtenerPermisosRol(currentUser).canEdit) {
                     showToast("Sin Permisos", "Tu rol no tiene permitido crear servicios técnicos.", true);
                     return;
                 }
@@ -9982,7 +9991,7 @@ function renderBurbujasChat(containerId, mensajes) {
 
         function openAddMaterialModal() {
             // Validar rol de edición
-            if (currentUser && !rolePermissions[currentUser.rol].canEdit) {
+            if (currentUser && !obtenerPermisosRol(currentUser).canEdit) {
                 showToast("Sin Permisos", "No tienes permisos de edición para la bodega de inventarios.", true);
                 return;
             }
@@ -9999,7 +10008,7 @@ function renderBurbujasChat(containerId, mensajes) {
          * Abre el mismo modal en modo edición, precargado con los datos del producto seleccionado.
          */
         function openEditMaterialModal(codigo) {
-            if (currentUser && !rolePermissions[currentUser.rol].canEdit) {
+            if (currentUser && !obtenerPermisosRol(currentUser).canEdit) {
                 showToast("Sin Permisos", "No tienes permisos de edición para la bodega de inventarios.", true);
                 return;
             }
@@ -10024,7 +10033,7 @@ function renderBurbujasChat(containerId, mensajes) {
             event.preventDefault();
             try {
                 // Confirmar permisos de edición en caliente
-                if (currentUser && !rolePermissions[currentUser.rol].canEdit) {
+                if (currentUser && !obtenerPermisosRol(currentUser).canEdit) {
                     showToast("Acceso Denegado", "Tu nivel de usuario no permite ingresar insumos.", true);
                     return;
                 }
@@ -10100,7 +10109,7 @@ function renderBurbujasChat(containerId, mensajes) {
          * Elimina un producto del catálogo de inventario de forma permanente, previa confirmación.
          */
         function deleteMaterial(codigo) {
-            if (currentUser && !rolePermissions[currentUser.rol].canEdit) {
+            if (currentUser && !obtenerPermisosRol(currentUser).canEdit) {
                 showToast("Sin Permisos", "No tienes permisos de edición para la bodega de inventarios.", true);
                 return;
             }
