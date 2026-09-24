@@ -2854,6 +2854,11 @@
                 canEdit: true,
                 canManageUsers: false
             },
+            DESPACHADOR: {
+                tabs: ['dashboard', 'central', 'mensajes', 'reportes'],
+                canEdit: true,
+                canManageUsers: false
+            },
             SUPERVISOR: {
                 tabs: ['dashboard', 'supervision', 'clientes', 'mensajes', 'reportes'],
                 canEdit: true,
@@ -4650,8 +4655,9 @@
             });
 
             // 3. Forzar redirección si el usuario está en una sección no permitida
-            if (!perms.tabs.includes(currentActiveTab)) {
-                switchModule(perms.tabs[0]);
+            if (!(perms?.tabs || []).includes(currentActiveTab)) {
+                const fallbackTab = (perms?.tabs || [])[0];
+                if (fallbackTab) switchModule(fallbackTab);
             }
         }
 
@@ -4796,8 +4802,8 @@
 
                 // Verificar permisos antes de cambiar de sección
                 if (currentUser) {
-                    const perms = rolePermissions[currentUser.rol];
-                    if (!perms.tabs.includes(modId)) {
+                    const perms = rolePermissions[currentUser.rol] || rolePermissions.DESPACTHADOR || rolePermissions.CENTRAL;
+                    if (!(perms?.tabs || []).includes(modId)) {
                         showToast("Bloqueado", "No tienes permisos de visualización para esta pestaña.", true);
                         return;
                     }
