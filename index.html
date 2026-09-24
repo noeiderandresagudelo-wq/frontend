@@ -232,7 +232,7 @@
             </div>
 
             <!-- Formulario de Entrada -->
-            <form id="form-login" onsubmit="return handleLogin(event)" class="space-y-4" style="display:block;">
+            <form id="form-login" class="space-y-4" style="display:block;" novalidate>
                 <div>
                     <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Correo electrónico</label>
                     <div class="relative">
@@ -3321,7 +3321,10 @@
         window.toggleRecoveryInline = toggleRecoveryInline;
 
         async function handleLogin(event) {
-            if (event) event.preventDefault();
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
 
             var usernameInput = document.getElementById('login-username');
             var passwordInput = document.getElementById('login-password');
@@ -3483,6 +3486,16 @@
                 limpiarGPSExpirado();
                 if (typeof renderMapPins === "function") renderMapPins();
             }, 15000);
+            var loginForm = document.getElementById('form-login');
+            if (loginForm) {
+                loginForm.addEventListener('submit', function (event) {
+                    // El login se controla desde JS para evitar que el navegador recargue
+                    // la página y borre las credenciales mientras Supabase responde.
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleLogin(event);
+                });
+            }
             var recoveryForm = document.getElementById('form-recovery-request');
             if (recoveryForm) recoveryForm.addEventListener('submit', handleRecoveryRequest);
             var resetForm = document.getElementById('form-reset-password');
