@@ -5912,7 +5912,10 @@
                 const p = list.filter(i => i.estado === "Pendiente").length;
                 const c = list.filter(i => i.estado === "En camino" || i.estado === "Asignado").length;
                 const s = list.filter(i => i.estado === "Llegó al sitio" || i.estado === "Trabajando").length;
-                const t = personalTecnicos.filter(t => t.estado === "Disponible" && (activeCentral === "BARRANQUILLA" ? t.ciudad === "BARRANQUILLA" : t.ciudad === activeCentral)).length;
+                limpiarGPSExpirado();
+                const t = personalTecnicos.filter(t => t.estado === "Disponible" &&
+                    tecnicoGPSActivo(t) &&
+                    (activeCentral === "BARRANQUILLA" ? t.ciudad === "BARRANQUILLA" : t.ciudad === activeCentral)).length;
                 const criticos = list.filter(i => i.prioridad === "ALTA" && i.estado !== "Cerrado" && i.estado !== "Finalizado").length;
 
                 document.getElementById('kpi-pendientes').innerText = p;
@@ -6979,8 +6982,35 @@
             return true;
         }
 
+        // Un técnico solo se considera conectado/GPS activo si su último latido
+        // de ubicación es reciente. La coordenada anterior nunca representa "en línea".
+        const GPS_ONLINE_WINDOW_MS = 3 * 60 * 1000;
+
+        function tecnicoGPSActivo(t) {
+            const lastSeen = Number(t?.gpsLastSeenMs);
+            return Number.isFinite(lastSeen) && (Date.now() - lastSeen) <= GPS_ONLINE_WINDOW_MS;
+        }
+
+        function limpiarGPSExpirado() {
+            personalTecnicos.forEach(t => {
+                if (!tecnicoGPSActivo(t)) {
+                    delete t.gpsLat;
+                    delete t.gpsLng;
+                    delete t.gpsUpdated;
+                    delete t.gpsLastSeenMs;
+                }
+            });
+        }
+
         async function cargarUbicacionesTecnicosDesdeSupabase() {
             if (!supabaseClient || !currentUser || !currentUser.tenant_id) return;
+
+            personalTecnicos.forEach(t => {
+                delete t.gpsLat;
+                delete t.gpsLng;
+                delete t.gpsUpdated;
+                delete t.gpsLastSeenMs;
+            });
 
             const { data, error } = await supabaseClient
                 .from("tecnicos_ubicaciones")
@@ -7004,9 +7034,11 @@
 
                 t.gpsLat = lat;
                 t.gpsLng = lng;
-                t.gpsUpdated = row.last_seen
-                    ? new Date(row.last_seen).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-                    : "en vivo (nube)";
+                const lastSeenMs = row.last_seen ? new Date(row.last_seen).getTime() : NaN;
+                if (!Number.isFinite(lastSeenMs) || (Date.now() - lastSeenMs) > GPS_ONLINE_WINDOW_MS) return;
+
+                t.gpsLastSeenMs = lastSeenMs;
+                t.gpsUpdated = new Date(lastSeenMs).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
             });
 
             renderMapPins();
@@ -7022,9 +7054,18 @@
                     const row = payload.new || {};
                     const t = personalTecnicos.find(x => String(x.id) === String(row.tecnico_id));
                     if (!t || typeof row.latitude !== "number" || typeof row.longitude !== "number") return;
-                    t.gpsLat = Number(row.latitude);
-                    t.gpsLng = Number(row.longitude);
-                    t.gpsUpdated = row.last_seen ? new Date(row.last_seen).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "en vivo (nube)";
+                    const lastSeenMs = row.last_seen ? new Date(row.last_seen).getTime() : NaN;
+                    if (!Number.isFinite(lastSeenMs) || (Date.now() - lastSeenMs) > GPS_ONLINE_WINDOW_MS) {
+                        delete t.gpsLat;
+                        delete t.gpsLng;
+                        delete t.gpsUpdated;
+                        delete t.gpsLastSeenMs;
+                    } else {
+                        t.gpsLat = Number(row.latitude);
+                        t.gpsLng = Number(row.longitude);
+                        t.gpsLastSeenMs = lastSeenMs;
+                        t.gpsUpdated = new Date(lastSeenMs).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+                    }
                     renderMapPins();
                 })
                 .subscribe(status => {
@@ -7140,7 +7181,9 @@
 
             const gpsStatus = document.getElementById('sim-gps-status');
             if (gpsStatus) {
-                const activos = personalTecnicos.filter(t => Number.isFinite(Number(t.gpsLat)) && Number.isFinite(Number(t.gpsLng)));
+                const activos = personalTecnicos.filter(t => tecnicoGPSActivo(t) &&
+                    Number.isFinite(Number(t.gpsLat)) &&
+                    Number.isFinite(Number(t.gpsLng)));
                 if (activos.length === 0) {
                     gpsStatus.textContent = 'Sin ubicación activa';
                     gpsStatus.className = 'text-[10px] text-slate-500 bg-slate-950/70 border border-slate-800 rounded-lg px-3 py-2';
