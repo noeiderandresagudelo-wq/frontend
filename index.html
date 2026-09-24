@@ -3956,6 +3956,19 @@
                 
                 // Botón de acción interactivo según el estado de la tarea
                 let actionBtnHtml = '';
+                const direccionDestino = String(cl.direccion || '').trim();
+                const ciudadDestino = String(cl.ciudad || '').trim();
+                const tieneDestino = direccionDestino && direccionDestino !== 'S/D';
+                const rutaBtnHtml = tieneDestino ? \`
+                    <button type="button" onclick="abrirRutaServicioTecnico('\${task.consecutivo}')" class="w-full bg-violet-600/15 hover:bg-violet-600 border border-violet-500/30 hover:border-violet-500 text-violet-300 hover:text-white text-[10px] font-black py-2.5 rounded-lg transition uppercase flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-route"></i> Ver ruta al servicio
+                    </button>
+                \` : \`
+                    <div class="w-full bg-slate-950 border border-amber-500/20 text-amber-400/80 text-[9px] font-bold py-2.5 rounded-lg text-center uppercase">
+                        <i class="fa-solid fa-location-question mr-1"></i> Dirección del servicio no registrada
+                    </div>
+                \`;
+
                 if (task.estado === "Pendiente" || task.estado === "Asignado") {
                     actionBtnHtml = `
                         <button onclick="updateMobileTaskState('${task.consecutivo}', 'En camino')" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black py-2.5 rounded-lg transition uppercase flex items-center justify-center gap-1.5 shadow-md shadow-blue-600/10">
@@ -4021,7 +4034,8 @@
                         </div>
                     ` : ''}
 
-                    <div class="pt-2 border-t border-slate-850">
+                    <div class="pt-2 border-t border-slate-850 space-y-2">
+                        ${rutaBtnHtml}
                         ${actionBtnHtml}
                     </div>
                 `;
@@ -4345,6 +4359,68 @@
 
             const url = `https://wa.me/${numeroWhatsapp}?text=${encodeURIComponent(mensaje)}`;
             window.open(url, '_blank');
+        }
+
+        /**
+         * Abre una ruta de navegación para el técnico usando el servicio asignado como destino.
+         * Usa la ubicación GPS actual del técnico como origen cuando está disponible.
+         * No requiere API key: utiliza Google Maps Directions en modo web.
+         */
+        async function abrirRutaServicioTecnico(consecutivo) {
+            try {
+                if (!currentUser || currentUser.rol !== "TECNICO") {
+                    showToast("Ruta no disponible", "Esta función está disponible desde la terminal del Técnico.", true);
+                    return;
+                }
+
+                const servicio = incidentesServicios.find(i => i.consecutivo === consecutivo);
+                if (!servicio) {
+                    showToast("Servicio no encontrado", "No fue posible localizar el servicio asignado.", true);
+                    return;
+                }
+
+                const cliente = crmClientes.find(c => c.id === servicio.abonadoId);
+                const direccion = String(cliente?.direccion || "").trim();
+                const ciudad = String(cliente?.ciudad || "").trim();
+                if (!direccion || direccion === "S/D") {
+                    showToast("Sin dirección", "Este servicio no tiene una dirección registrada para calcular la ruta.", true);
+                    return;
+                }
+
+                const destinoTexto = [direccion, ciudad].filter(Boolean).join(", ");
+                let origen = "";
+
+                if (navigator.geolocation) {
+                    try {
+                        const posicion = await new Promise((resolve, reject) => {
+                            navigator.geolocation.getCurrentPosition(resolve, reject, {
+                                enableHighAccuracy: true,
+                                maximumAge: 30000,
+                                timeout: 8000
+                            });
+                        });
+                        if (posicion?.coords) {
+                            origen = \`\${posicion.coords.latitude},\${posicion.coords.longitude}\`;
+                        }
+                    } catch (gpsError) {
+                        console.warn("[Alarvix Ruta] No se pudo obtener el GPS actual; se abrirá la ruta sin origen explícito.", gpsError);
+                    }
+                }
+
+                const params = new URLSearchParams({
+                    api: "1",
+                    destination: destinoTexto,
+                    travelmode: "driving"
+                });
+                if (origen) params.set("origin", origen);
+
+                const url = \`https://www.google.com/maps/dir/?\${params.toString()}\`;
+                window.open(url, "_blank", "noopener,noreferrer");
+                showToast("Ruta preparada", \`Destino: \${destinoTexto}\`);
+            } catch (error) {
+                console.error("[Alarvix Ruta] Error:", error);
+                showToast("No se pudo abrir la ruta", "Revisa la dirección del servicio e inténtalo nuevamente.", true);
+            }
         }
 
         function updateMobileTaskState(consecutivo, newState) {
