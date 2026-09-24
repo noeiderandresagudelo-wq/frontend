@@ -178,17 +178,39 @@
             opacity: 0.2;
         }
     
-<style>
-/* Chat responsive: mantiene siempre visible el campo de escritura al abrir teclado móvil. */
-#modal-chat-tecnico > div, #modal-chat-cliente > div { min-height: 0; }
-#chat-tecnico-mensajes, #chat-cliente-mensajes, #chat-admin-mensajes { overscroll-behavior: contain; }
-@media (max-width: 640px) {
-  #modal-chat-tecnico, #modal-chat-cliente { padding: .5rem; align-items: flex-end; }
-  #modal-chat-tecnico > div, #modal-chat-cliente > div { height: min(760px, calc(100dvh - 1rem)); max-height: calc(100dvh - 1rem); border-radius: 1rem 1rem .75rem .75rem; }
-  #view-mensajes > div { height: calc(100dvh - 7rem); max-height: none; }
+/* Chat responsive: el teclado móvil nunca tapa el compositor. */
+#modal-chat-tecnico > div,
+#modal-chat-cliente > div {
+  min-height: 0;
+  height: min(760px, calc(var(--alarvix-vh, 100dvh) - 2rem));
+  max-height: calc(var(--alarvix-vh, 100dvh) - 2rem);
 }
-</style>
-</style>
+#chat-tecnico-mensajes,
+#chat-cliente-mensajes,
+#chat-admin-mensajes {
+  min-height: 0;
+  overscroll-behavior: contain;
+  overflow-anchor: none;
+}
+@media (max-width: 640px) {
+  #modal-chat-tecnico,
+  #modal-chat-cliente {
+    padding: .5rem;
+    align-items: flex-end;
+  }
+  #modal-chat-tecnico > div,
+  #modal-chat-cliente > div {
+    width: 100%;
+    height: calc(var(--alarvix-vh, 100dvh) - 1rem);
+    max-height: calc(var(--alarvix-vh, 100dvh) - 1rem);
+    border-radius: 1rem 1rem .75rem .75rem;
+  }
+  #view-mensajes > div {
+    height: calc(var(--alarvix-vh, 100dvh) - 7rem);
+    max-height: calc(var(--alarvix-vh, 100dvh) - 7rem);
+  }
+}
+
 </head>
 <!-- Librería requerida para generar PDFs de forma nativa en el navegador -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -352,7 +374,7 @@
                     <i class="fa-solid fa-comment-dots text-sm"></i>
                     <span class="text-[8px] font-black uppercase tracking-wider">Chat</span>
                 </button>
-                <button onclick="llamarAdminCentral()" class="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition">
+                <button onclick="llamarAdminCentral()" class="flex flex-col items-center gap-1 text-slate-400 hover:text-white transition" title="Llamar a Despacho por la web">
                     <i class="fa-solid fa-phone text-sm"></i>
                     <span class="text-[8px] font-black uppercase tracking-wider">Central</span>
                 </button>
@@ -494,7 +516,7 @@
                 <!-- Inyectado dinámicamente -->
             </div>
 
-            <form onsubmit="event.preventDefault(); enviarMensajeDesdeTecnico();" class="p-3 border-t border-slate-800 flex gap-2 shrink-0 bg-slate-900">
+            <form onsubmit="event.preventDefault(); enviarMensajeDesdeTecnico();" class="p-3 border-t border-slate-800 flex gap-2 shrink-0 bg-slate-900 pb-[max(.75rem,env(safe-area-inset-bottom))]">
                 <button type="button" onclick="grabarAudioChatDesdeTecnico()" id="btn-audio-tecnico" title="Grabar audio" class="bg-slate-800 hover:bg-slate-700 text-slate-200 w-9 h-9 rounded-lg flex items-center justify-center shrink-0"><i class="fa-solid fa-microphone text-xs"></i></button>
                 <input type="text" id="input-chat-tecnico" placeholder="Escribí tu mensaje..." class="flex-grow bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
                 <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white w-9 h-9 rounded-lg flex items-center justify-center shrink-0"><i class="fa-solid fa-paper-plane text-xs"></i></button>
@@ -517,11 +539,35 @@
                 <!-- Inyectado dinámicamente -->
             </div>
 
-            <form onsubmit="event.preventDefault(); enviarMensajeDesdeCliente();" class="p-3 border-t border-slate-800 flex gap-2 shrink-0 bg-slate-900">
+            <form onsubmit="event.preventDefault(); enviarMensajeDesdeCliente();" class="p-3 border-t border-slate-800 flex gap-2 shrink-0 bg-slate-900 pb-[max(.75rem,env(safe-area-inset-bottom))]">
                 <button type="button" onclick="grabarAudioChatDesdeCliente()" id="btn-audio-cliente" title="Grabar audio" class="bg-slate-800 hover:bg-slate-700 text-slate-200 w-9 h-9 rounded-lg flex items-center justify-center shrink-0"><i class="fa-solid fa-microphone text-xs"></i></button>
                 <input type="text" id="input-chat-cliente" placeholder="Escribí tu mensaje..." class="flex-grow bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
                 <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white w-9 h-9 rounded-lg flex items-center justify-center shrink-0"><i class="fa-solid fa-paper-plane text-xs"></i></button>
             </form>
+        </div>
+    </div>
+
+    <!-- LLAMADA WEB TÉCNICO ↔ DESPACHO (WebRTC + Supabase Realtime) -->
+    <div id="modal-llamada-web" class="fixed inset-0 bg-slate-950/95 backdrop-blur-sm z-[9900] hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+            <div class="p-5 text-center border-b border-slate-800">
+                <div id="llamada-web-icono" class="mx-auto w-16 h-16 rounded-full bg-blue-600/15 border border-blue-500/20 flex items-center justify-center text-blue-400 text-2xl">
+                    <i class="fa-solid fa-headset"></i>
+                </div>
+                <h3 id="llamada-web-titulo" class="mt-3 text-sm font-black text-white uppercase tracking-wider">Llamada con Despacho</h3>
+                <p id="llamada-web-estado" class="mt-1 text-[10px] text-slate-400">Conectando...</p>
+            </div>
+            <div class="p-4 flex items-center justify-center gap-3">
+                <button id="btn-llamada-web-aceptar" type="button" onclick="aceptarLlamadaWeb()" class="hidden bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg text-xs font-black uppercase">
+                    <i class="fa-solid fa-phone mr-1"></i> Aceptar
+                </button>
+                <button id="btn-llamada-web-rechazar" type="button" onclick="rechazarLlamadaWeb()" class="hidden bg-rose-600 hover:bg-rose-500 text-white px-5 py-2.5 rounded-lg text-xs font-black uppercase">
+                    <i class="fa-solid fa-phone-slash mr-1"></i> Rechazar
+                </button>
+                <button id="btn-llamada-web-colgar" type="button" onclick="colgarLlamadaWeb()" class="hidden bg-rose-600 hover:bg-rose-500 text-white px-5 py-2.5 rounded-lg text-xs font-black uppercase">
+                    <i class="fa-solid fa-phone-slash mr-1"></i> Colgar
+                </button>
+            </div>
         </div>
     </div>
 
@@ -1871,10 +1917,10 @@
 
             <!-- VISTA: MENSAJES (Chat con Clientes y Técnicos) -->
             <section id="view-mensajes" class="space-y-6 hidden">
-                <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden h-[min(760px,calc(100dvh-8rem))] min-h-0 max-h-[calc(100dvh-8rem)]">
+                <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden h-[min(760px,calc(var(--alarvix-vh,100dvh)-8rem))] min-h-0 max-h-[calc(var(--alarvix-vh,100dvh)-8rem)]">
                     <div class="grid grid-cols-1 lg:grid-cols-3 h-full min-h-0">
                         <!-- Lista de conversaciones -->
-                        <div class="col-span-1 border-r border-slate-800 flex flex-col min-h-0 max-h-[190px] lg:max-h-none">
+                        <div class="col-span-1 border-r border-slate-800 flex flex-col min-h-0 max-h-[150px] lg:max-h-none">
                             <div class="p-3 border-b border-slate-800 flex items-center justify-between shrink-0">
                                 <h3 class="text-xs font-extrabold text-white uppercase tracking-wider">Conversaciones</h3>
                                 <button onclick="cargarConversacionesAdmin()" class="text-slate-400 hover:text-white text-xs"><i class="fa-solid fa-arrows-rotate"></i></button>
@@ -1890,7 +1936,7 @@
                                 <p class="text-[11px] text-slate-500 italic">Elegí una conversación de la izquierda para responder.</p>
                             </div>
                             <div id="chat-admin-mensajes" class="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 space-y-2.5"></div>
-                            <form id="form-chat-admin" onsubmit="event.preventDefault(); enviarMensajeDesdeAdmin();" class="p-3 border-t border-slate-800 flex gap-2 shrink-0 hidden bg-slate-900">
+                            <form id="form-chat-admin" onsubmit="event.preventDefault(); enviarMensajeDesdeAdmin();" class="p-3 border-t border-slate-800 flex gap-2 shrink-0 hidden bg-slate-900 pb-[max(.75rem,env(safe-area-inset-bottom))]">
                                 <button type="button" onclick="grabarAudioChatDesdeAdmin()" id="btn-audio-admin" title="Grabar audio" class="bg-slate-800 hover:bg-slate-700 text-slate-200 w-9 h-9 rounded-lg flex items-center justify-center shrink-0"><i class="fa-solid fa-microphone text-xs"></i></button>
                                 <input type="text" id="input-chat-admin" placeholder="Escribí tu respuesta..." class="min-w-0 flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
                                 <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white w-9 h-9 rounded-lg flex items-center justify-center shrink-0"><i class="fa-solid fa-paper-plane text-xs"></i></button>
@@ -3311,6 +3357,7 @@
 
                 completarLogin(currentUser);
                 await inicializarComunicacionSupabase();
+                await iniciarCanalLlamadasWeb();
                 return false;
             } catch (error) {
                 console.error("[Alarvix/Supabase] Excepción durante login:", error);
@@ -6858,39 +6905,178 @@
             mensajesChatActual = [];
         }
 
-        function llamarAdminCentral() {
-            if (currentUser?.rol === "TECNICO") {
-                if (!telefonoDespachoCentral || telefonoDespachoCentral === "PENDIENTE") {
-                    showToast("Número de Despacho no configurado", "Configura el teléfono de la Central de Despacho.", true);
+        // ============================================================
+        // LLAMADA WEB TÉCNICO ↔ DESPACHO
+        // Audio bidireccional mediante WebRTC. La señalización viaja por
+        // Supabase Realtime; NO usa la app Teléfono ni tel:/mailto:.
+        // ============================================================
+        let canalLlamadasWeb = null;
+        let peerLlamadaWeb = null;
+        let streamLlamadaWeb = null;
+        let llamadaWebActual = null;
+        let llamadaWebIniciador = false;
+        let candidatosPendientesLlamadaWeb = [];
+
+        function obtenerCanalLlamadasWeb() {
+            return `alarvix-llamadas-${currentUser?.tenant_id || "default"}`;
+        }
+
+        function mostrarModalLlamadaWeb(titulo, estado, modo) {
+            const modal = document.getElementById("modal-llamada-web");
+            if (!modal) return;
+            document.getElementById("llamada-web-titulo").textContent = titulo;
+            document.getElementById("llamada-web-estado").textContent = estado;
+            document.getElementById("btn-llamada-web-aceptar").classList.toggle("hidden", modo !== "entrante");
+            document.getElementById("btn-llamada-web-rechazar").classList.toggle("hidden", modo !== "entrante");
+            document.getElementById("btn-llamada-web-colgar").classList.toggle("hidden", modo === "entrante" || modo === "cerrado");
+            modal.classList.remove("hidden");
+        }
+
+        function ocultarModalLlamadaWeb() {
+            document.getElementById("modal-llamada-web")?.classList.add("hidden");
+        }
+
+        async function iniciarCanalLlamadasWeb() {
+            if (!supabaseClient || !currentUser || canalLlamadasWeb) return;
+            const rol = String(currentUser.rol || "").toUpperCase();
+            if (!["TECNICO","ADMIN","DESPACHADOR","SUPERVISOR"].includes(rol)) return;
+
+            canalLlamadasWeb = supabaseClient.channel(obtenerCanalLlamadasWeb());
+            canalLlamadasWeb
+                .on("broadcast", { event: "call-offer" }, async ({ payload }) => {
+                    if (rol === "TECNICO" || !payload || payload.fromUserId === currentUser.id) return;
+                    if (llamadaWebActual) return;
+                    llamadaWebActual = { id: payload.callId, remoteUserId: payload.fromUserId, remoteName: payload.fromUserName || "Técnico" };
+                    llamadaWebIniciador = false;
+                    window.__alarvixOfertaLlamadaWeb = payload.offer;
+                    mostrarModalLlamadaWeb(`Llamada entrante · ${llamadaWebActual.remoteName}`, "Un técnico está llamando a Despacho.", "entrante");
+                    reproducirSonidoNotificacion?.("llamada");
+                })
+                .on("broadcast", { event: "call-answer" }, async ({ payload }) => {
+                    if (!llamadaWebActual || payload?.callId !== llamadaWebActual.id || !llamadaWebIniciador) return;
+                    await peerLlamadaWeb?.setRemoteDescription(new RTCSessionDescription(payload.answer));
+                    document.getElementById("llamada-web-estado").textContent = "Llamada conectada.";
+                })
+                .on("broadcast", { event: "call-ice" }, async ({ payload }) => {
+                    if (!llamadaWebActual || payload?.callId !== llamadaWebActual.id || !payload.candidate) return;
+                    try {
+                        const candidate = new RTCIceCandidate(payload.candidate);
+                        if (peerLlamadaWeb?.remoteDescription) await peerLlamadaWeb.addIceCandidate(candidate);
+                        else candidatosPendientesLlamadaWeb.push(candidate);
+                    } catch (e) { console.warn("[Alarvix/WebRTC] ICE:", e); }
+                })
+                .on("broadcast", { event: "call-end" }, ({ payload }) => {
+                    if (!llamadaWebActual || payload?.callId !== llamadaWebActual.id) return;
+                    finalizarLlamadaWeb(false);
+                    showToast("Llamada finalizada", "La otra parte terminó la llamada.");
+                })
+                .subscribe((status) => {
+                    if (status === "SUBSCRIBED") console.log("[Alarvix/WebRTC] Canal de llamadas web conectado.");
+                });
+        }
+
+        async function prepararPeerLlamadaWeb() {
+            if (!window.RTCPeerConnection) throw new Error("Este navegador no soporta llamadas WebRTC.");
+            peerLlamadaWeb = new RTCPeerConnection({
+                iceServers: [
+                    { urls: "stun:stun.l.google.com:19302" },
+                    { urls: "stun:stun1.l.google.com:19302" }
+                ]
+            });
+            peerLlamadaWeb.onicecandidate = (event) => {
+                if (event.candidate && canalLlamadasWeb && llamadaWebActual) {
+                    canalLlamadasWeb.send({ type:"broadcast", event:"call-ice", payload:{ callId:llamadaWebActual.id, candidate:event.candidate.toJSON() } });
+                }
+            };
+            peerLlamadaWeb.ontrack = (event) => {
+                let audio = document.getElementById("audio-llamada-web");
+                if (!audio) {
+                    audio = document.createElement("audio");
+                    audio.id = "audio-llamada-web";
+                    audio.autoplay = true;
+                    audio.playsInline = true;
+                    audio.className = "hidden";
+                    document.body.appendChild(audio);
+                }
+                audio.srcObject = event.streams[0];
+                audio.play().catch(() => {});
+            };
+            streamLlamadaWeb = await navigator.mediaDevices.getUserMedia({ audio:true });
+            streamLlamadaWeb.getTracks().forEach(track => peerLlamadaWeb.addTrack(track, streamLlamadaWeb));
+        }
+
+        async function llamarAdminCentral() {
+            if (!currentUser || String(currentUser.rol).toUpperCase() !== "TECNICO") return;
+            if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection) {
+                showToast("Llamada web no disponible", "Este navegador o dispositivo no soporta WebRTC.", true);
+                return;
+            }
+            try {
+                await iniciarCanalLlamadasWeb();
+                if (!canalLlamadasWeb) throw new Error("No se pudo conectar con el canal de Despacho.");
+                if (llamadaWebActual) {
+                    showToast("Llamada en curso", "Ya existe una llamada web activa.", true);
                     return;
                 }
-                window.location.href = `tel:${telefonoDespachoCentral}`;
-                return;
+                llamadaWebActual = { id: crypto.randomUUID(), remoteName:"Despacho" };
+                llamadaWebIniciador = true;
+                candidatosPendientesLlamadaWeb = [];
+                mostrarModalLlamadaWeb("Llamando a Despacho", "Esperando que Despacho acepte...", "saliente");
+                await prepararPeerLlamadaWeb();
+                const offer = await peerLlamadaWeb.createOffer();
+                await peerLlamadaWeb.setLocalDescription(offer);
+                await canalLlamadasWeb.send({ type:"broadcast", event:"call-offer", payload:{ callId:llamadaWebActual.id, fromUserId:currentUser.id, fromUserName:currentUser.nombre || currentUser.email || "Técnico", offer:offer } });
+            } catch (e) {
+                console.error("[Alarvix/WebRTC] No se pudo iniciar llamada:", e);
+                finalizarLlamadaWeb(false);
+                showToast("No se pudo iniciar la llamada", e?.message || "Verifica el micrófono y la conexión.", true);
             }
-            const admin = appUsers.find(u => u.rol === "ADMIN" && u.activo !== false);
-            const operador = appUsers.find(u => (u.rol === "OPERADOR" || u.rol === "DESPACHADOR") && u.activo !== false);
-            const destino = admin || operador;
+        }
 
-            if (!destino) {
-                showToast("Sin contacto disponible", "No hay un admin u operador activo para llamar.", true);
-                return;
+        async function aceptarLlamadaWeb() {
+            if (!llamadaWebActual || llamadaWebIniciador) return;
+            try {
+                await prepararPeerLlamadaWeb();
+                const offer = window.__alarvixOfertaLlamadaWeb;
+                if (!offer) throw new Error("Oferta de llamada no disponible.");
+                await peerLlamadaWeb.setRemoteDescription(new RTCSessionDescription(offer));
+                for (const candidate of candidatosPendientesLlamadaWeb) await peerLlamadaWeb.addIceCandidate(candidate);
+                candidatosPendientesLlamadaWeb = [];
+                const answer = await peerLlamadaWeb.createAnswer();
+                await peerLlamadaWeb.setLocalDescription(answer);
+                await canalLlamadasWeb.send({ type:"broadcast", event:"call-answer", payload:{ callId:llamadaWebActual.id, answer:answer } });
+                mostrarModalLlamadaWeb("Llamada con Despacho", "Llamada conectada.", "activa");
+            } catch (e) {
+                console.error("[Alarvix/WebRTC] Error aceptando:", e);
+                showToast("No se pudo aceptar la llamada", e?.message || "Revisa el micrófono.", true);
+                finalizarLlamadaWeb(false);
             }
+        }
 
-            const telefono = destino.celular || destino.telefono || destino.phone || "";
-            if (telefono) {
-                window.location.href = `tel:${telefono}`;
-                return;
+        async function rechazarLlamadaWeb() {
+            if (!llamadaWebActual) return;
+            await canalLlamadasWeb?.send({ type:"broadcast", event:"call-end", payload:{ callId:llamadaWebActual.id } });
+            finalizarLlamadaWeb(false);
+        }
+
+        async function colgarLlamadaWeb() {
+            if (llamadaWebActual && canalLlamadasWeb) {
+                await canalLlamadasWeb.send({ type:"broadcast", event:"call-end", payload:{ callId:llamadaWebActual.id } });
             }
+            finalizarLlamadaWeb(false);
+        }
 
-            const email = destino.email || "";
-            if (!email) {
-                showToast("Sin contacto disponible", "No hay teléfono ni correo de la central configurado.", true);
-                return;
-            }
-
-            const asunto = encodeURIComponent("Alarvix - Contacto desde técnico");
-            const cuerpo = encodeURIComponent(`Hola ${destino.nombre}, te contacto desde la app de Alarvix.`);
-            window.location.href = `mailto:${email}?subject=${asunto}&body=${cuerpo}`;
+        function finalizarLlamadaWeb(notificar) {
+            try { streamLlamadaWeb?.getTracks().forEach(t => t.stop()); } catch {}
+            try { peerLlamadaWeb?.close(); } catch {}
+            streamLlamadaWeb = null;
+            peerLlamadaWeb = null;
+            llamadaWebActual = null;
+            llamadaWebIniciador = false;
+            candidatosPendientesLlamadaWeb = [];
+            window.__alarvixOfertaLlamadaWeb = null;
+            ocultarModalLlamadaWeb();
+            if (notificar) showToast("Llamada finalizada", "La llamada web terminó.");
         }
 
         /** Dibuja las burbujas de un canal dentro de un contenedor, distinguiendo mensajes propios. */
@@ -10719,13 +10905,14 @@ function renderBurbujasChat(containerId, mensajes) {
             } catch(err) { console.error("Error Chart Init:", err); }
 
             if (supabaseClient) {
+                iniciarCanalLlamadasWeb();
                 supabaseClient.auth.onAuthStateChange((event, session) => {
                     console.log("[Alarvix/Supabase] Auth event:", event);
                     if (event === "SIGNED_OUT") {
                         supabaseCommunicationStarted = false;
                         currentUser = null;
                     } else if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") && session?.user) {
-                        aplicarUsuarioSesion(session.user);
+                        aplicarUsuarioSesion(session.user).then(() => iniciarCanalLlamadasWeb());
                     } else if (event === "PASSWORD_RECOVERY") {
                         console.log("[Alarvix/Supabase] Sesión de recuperación detectada.");
                         document.getElementById('reset-screen')?.classList.remove('hidden');
@@ -10738,6 +10925,18 @@ function renderBurbujasChat(containerId, mensajes) {
             renderMapPins();
             restaurarSesionSupabase();
         };
+    </script>
+
+    <script>
+        (() => {
+            const actualizarAlarvixVH = () => {
+                const alto = window.visualViewport?.height || window.innerHeight;
+                document.documentElement.style.setProperty('--alarvix-vh', alto + 'px');
+            };
+            actualizarAlarvixVH();
+            window.addEventListener('resize', actualizarAlarvixVH, { passive: true });
+            window.visualViewport?.addEventListener('resize', actualizarAlarvixVH, { passive: true });
+        })();
     </script>
 
     <!-- Instalación PWA de Alarvix -->
