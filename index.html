@@ -3378,6 +3378,12 @@
         }
 
         document.addEventListener('DOMContentLoaded', function () {
+            actualizarBotonSonidoAlarvix();
+            // Revisa periódicamente que una ubicación vieja nunca siga contándose como GPS activo.
+            setInterval(() => {
+                limpiarGPSExpirado();
+                if (typeof renderMapPins === "function") renderMapPins();
+            }, 15000);
             var recoveryForm = document.getElementById('form-recovery-request');
             if (recoveryForm) recoveryForm.addEventListener('submit', handleRecoveryRequest);
             var resetForm = document.getElementById('form-reset-password');
