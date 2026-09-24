@@ -3370,9 +3370,32 @@
                     return false;
                 }
 
-                completarLogin(currentUser);
-                await inicializarComunicacionSupabase();
-                await iniciarCanalLlamadasWeb();
+                // La autenticación ya fue confirmada. La carga de módulos, Realtime y WebRTC
+                // no debe poder bloquear el acceso ni dejar la pantalla en blanco.
+                try {
+                    completarLogin(currentUser);
+                } catch (uiError) {
+                    console.error("[Alarvix] Error renderizando la sesión:", uiError);
+                    document.getElementById('login-screen')?.classList.remove('hidden');
+                    document.getElementById('tech-mobile-container')?.classList.add('hidden');
+                    document.getElementById('cliente-portal-container')?.classList.add('hidden');
+                    document.getElementById('sidebar')?.classList.add('hidden');
+                    document.querySelector('main')?.classList.add('hidden');
+                    showToast("Error de interfaz", "La cuenta fue autenticada, pero ocurrió un error al cargar el panel. Revisa la consola para más detalles.", true);
+                    return false;
+                }
+
+                // Sincronización y llamadas son servicios auxiliares: si fallan no se pierde el login.
+                try {
+                    await inicializarComunicacionSupabase();
+                } catch (syncError) {
+                    console.warn("[Alarvix] Sincronización inicial no disponible:", syncError);
+                }
+                try {
+                    await iniciarCanalLlamadasWeb();
+                } catch (callError) {
+                    console.warn("[Alarvix] Canal de llamadas web no disponible todavía:", callError);
+                }
                 return false;
             } catch (error) {
                 console.error("[Alarvix/Supabase] Excepción durante login:", error);
