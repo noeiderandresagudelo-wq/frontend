@@ -534,11 +534,14 @@
                     <span id="tech-pending-badge" class="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] px-2.5 py-0.5 rounded-full font-bold">0</span>
                 </div>
 
-                <!-- Ubicación GPS en vivo (se activa sola al ingresar; este botón solo aparece si hay que reintentar) -->
+                <!-- Estado de servicios del dispositivo. La ubicación se comparte con la Central cuando el técnico está en servicio. -->
+                <div id="tech-device-status" class="text-[9px] text-slate-500 text-center italic">
+                    Servicios del dispositivo: ubicación activa para la operación.
+                </div>
                 <button onclick="shareTechGPSLocation()" id="btn-share-gps" class="hidden w-full bg-rose-600/10 hover:bg-rose-600 hover:text-white border border-rose-500/30 text-rose-400 text-[10px] font-bold py-2.5 rounded-lg transition uppercase flex items-center justify-center gap-1.5">
-                    <i class="fa-solid fa-location-crosshairs"></i> Reintentar Activar Ubicación (Obligatoria)
+                    <i class="fa-solid fa-location-crosshairs"></i> Permitir ubicación para continuar
                 </button>
-                <p id="gps-status-label" class="text-[9px] text-slate-500 text-center italic"></p>
+                <p id="gps-status-label" class="hidden"></p>
 
                 <!-- Lista de tareas pendientes -->
                 <div id="tech-tasks-list" class="space-y-3">
@@ -3820,7 +3823,8 @@
                 document.getElementById('tech-name-label').innerText = currentUser.nombre;
                 refreshMobileView();
                 renderMobileSupervisorAction();
-                startLiveGPSTracking(); // La ubicación es obligatoria: se activa apenas entra el técnico
+                solicitarPermisosDispositivoTecnico().catch(() => {});
+            startLiveGPSTracking(); // La ubicación es obligatoria: se activa apenas entra el técnico
             } else if (currentUser.rol === "CLIENTE") {
                 // El Cliente tiene su propio Portal aislado: no ve el panel interno ni datos de otros clientes
                 document.getElementById('tech-mobile-container').classList.add('hidden');
@@ -4514,6 +4518,37 @@
          * ubicación, sino actualizaciones continuas mientras tenga la app abierta). Esto es lo
          * que realmente alimenta el pin del mapa de la Central en tiempo real, dentro de esta sesión.
          */
+        async function solicitarPermisosDispositivoTecnico() {
+            if (!currentUser || String(currentUser.rol || "").toUpperCase() !== "TECNICO") return;
+            const estado = document.getElementById("tech-device-status");
+
+            try {
+                if (navigator.mediaDevices?.getUserMedia) {
+                    const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    audioStream.getTracks().forEach(track => track.stop());
+                }
+            } catch (e) {
+                console.warn("[Alarvix permisos] Micrófono no autorizado:", e);
+            }
+
+            try {
+                const camera = window.Capacitor?.Plugins?.Camera;
+                if (camera?.checkPermissions && camera?.requestPermissions) {
+                    const p = await camera.checkPermissions();
+                    if (p.camera !== "granted") await camera.requestPermissions({ permissions: ["camera"] });
+                } else if (navigator.mediaDevices?.getUserMedia) {
+                    const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    videoStream.getTracks().forEach(track => track.stop());
+                }
+            } catch (e) {
+                console.warn("[Alarvix permisos] Cámara no autorizada:", e);
+            }
+
+            if (estado) {
+                estado.innerHTML = '<span class="text-emerald-400 font-bold">● Servicios listos:</span> llamadas y cámara disponibles. La ubicación se comparte con la Central durante el servicio.';
+            }
+        }
+
         function startLiveGPSTracking() {
             // En la APK Android, el rastreo nativo toma el control y mantiene el servicio
             // activo aunque se apague la pantalla. Si no estamos dentro de la APK, seguimos
@@ -4586,7 +4621,7 @@
             }
 
             const hace = segundos < 5 ? "justo ahora" : `hace ${segundos}s`;
-            label.innerHTML = `<span class="text-emerald-400 font-bold">🟢 GPS EN VIVO</span> · ${t && typeof t.gpsLat === "number" ? t.gpsLat.toFixed(4) + ', ' + t.gpsLng.toFixed(4) : ''} · actualizado ${hace}`;
+            label.innerHTML = `<span class="text-emerald-400 font-bold">● Ubicación activa</span> · compartida con la Central · ${hace}`;
         }
 
         // Cuando el celular vuelve de segundo plano (pantalla bloqueada, cambio de app), el navegador
