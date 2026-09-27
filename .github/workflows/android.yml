@@ -12,8 +12,8 @@ jobs:
     env:
       # Secrets aceptados en ambos formatos para no romper instalaciones existentes.
       # Vite necesita el prefijo VITE_ para sustituir %VITE_*% dentro de index.html.
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || secrets.SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
+      VITE_SUPABASE_URL: https://ocggspjpdvqisesdorrn.supabase.co
+      VITE_SUPABASE_ANON_KEY: sb_publishable_Sfh_MgCK5f9jljnDRv5qGw_zEb1sksk
       SUPABASE_URL: ${{ secrets.SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
     timeout-minutes: 30
