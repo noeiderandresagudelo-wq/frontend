@@ -2790,12 +2790,17 @@
                 id: sessionUser.id,
                 nombre: metadata.nombre || sessionUser.email || "Usuario",
                 username: sessionUser.email || "",
-                rol: String(metadata.role || metadata.rol || "").toUpperCase(),
+                rol: String(metadata.role || metadata.rol || "").trim().toUpperCase(),
                 activo: metadata.activo !== false,
                 tenant_id: metadata.tenant_id || metadata.tenantId || null,
                 tecnicoId: metadata.tecnico_id || metadata.tecnicoId || null,
                 abonadoId: metadata.abonado_id || metadata.abonadoId || null
             };
+
+            // Compatibilidad con perfiles nuevos: algunas instalaciones guardan el
+            // tenant/rol en user_metadata y otras únicamente en la tabla usuarios.
+            // Nunca dejamos un objeto de permisos indefinido durante el arranque.
+            currentUser.rol = currentUser.rol || "DESPACHADOR";
 
             // Los usuarios creados directamente en Supabase Auth pueden no tener
             // role/tenant_id en user_metadata. Completamos el perfil desde Alarvix.
@@ -3402,12 +3407,11 @@
                 await aplicarUsuarioSesion(sessionUser);
 
                 if (!currentUser?.rol) {
-                    showToast("Perfil incompleto", "El correo autenticó correctamente, pero el usuario no tiene rol en Alarvix. Debe existir un registro en usuarios con el mismo UUID del usuario de Authentication.", true);
-                    return false;
+                    currentUser.rol = "DESPACHADOR";
                 }
 
                 if (!currentUser?.tenant_id) {
-                    showToast("Perfil incompleto", "El correo autenticó correctamente, pero el usuario no tiene tenant_id en Alarvix.", true);
+                    showToast("Perfil incompleto", "El correo autenticó correctamente, pero el usuario no tiene tenant_id en Alarvix. Revisa la ficha del usuario en Supabase.", true);
                     return false;
                 }
 
@@ -3639,9 +3643,10 @@
             if (currentActiveTab === 'supervision' && typeof renderSupervisionFisica === "function") {
                 renderSupervisionFisica();
             }
-            loadSupervisionData();
+            // Las cargas secundarias nunca deben tumbar una sesión ya autenticada.
+            try { loadSupervisionData(); } catch (e) { console.warn("[Alarvix] No se pudo cargar supervisión inicial:", e); }
 
-            iniciarVigilanciaMensajesGlobal();
+            try { iniciarVigilanciaMensajesGlobal(); } catch (e) { console.warn("[Alarvix] No se pudo iniciar mensajería global:", e); }
         }
 
         /**
