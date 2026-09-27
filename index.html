@@ -3075,13 +3075,17 @@
         }
 
         function aplicarVisibilidadModulosPorRol() {
-            const perms = currentUser && obtenerPermisosRol(currentUser) ? obtenerPermisosRol(currentUser) : null;
+            const perms = obtenerPermisosRol(currentUser) || {};
+            const tabsPermitidas = Array.isArray(perms?.tabs) && perms.tabs.length
+                ? perms.tabs
+                : ['dashboard', 'central', 'central_monitoreo', 'servicios', 'tecnicos', 'mensajes'];
+
             const modules = ['dashboard', 'central', 'servicios', 'tecnicos', 'personal', 'compras', 'inventario', 'cotizaciones', 'mensajes', 'clientes', 'finanzas', 'compliance', 'reportes', 'config'];
 
             modules.forEach(mod => {
                 const btn = document.getElementById(`btn-mod-${mod}`);
                 const view = document.getElementById(`view-${mod}`);
-                const allowed = !!(perms && perms.tabs.includes(mod));
+                const allowed = tabsPermitidas.includes(mod);
 
                 if (btn) btn.classList.toggle('hidden', !allowed);
                 if (view) view.classList.toggle('hidden', !allowed);
@@ -3090,13 +3094,13 @@
             const sectionSeparators = document.querySelectorAll('#sidebar nav .h-px, #sidebar nav .sidebar-text.text-\\[9px\\]');
             sectionSeparators.forEach(el => {
                 if (el.textContent && el.textContent.includes('Entorno Táctico')) {
-                    el.classList.toggle('hidden', !(perms && perms.tabs.includes('config')));
+                    el.classList.toggle('hidden', !tabsPermitidas.includes('config'));
                 }
             });
 
-            if (perms && !perms.tabs.includes(currentActiveTab)) {
-                const fallback = perms.tabs[0] || '';
-                if (fallback) switchModule(fallback);
+            if (!tabsPermitidas.includes(currentActiveTab)) {
+                const fallback = tabsPermitidas[0] || 'dashboard';
+                switchModule(fallback);
             }
         }
 
