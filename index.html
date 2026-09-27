@@ -178,6 +178,71 @@
             opacity: 0.2;
         }
     
+/* Chat mobile fix: keep the close control visible and easy to tap even with the Android keyboard open. */
+#modal-chat-tecnico,
+#modal-chat-cliente {
+  padding: max(.5rem, env(safe-area-inset-top)) max(.5rem, env(safe-area-inset-right))
+           max(.5rem, env(safe-area-inset-bottom)) max(.5rem, env(safe-area-inset-left));
+}
+#modal-chat-tecnico > div,
+#modal-chat-cliente > div {
+  width: min(100%, 420px);
+  height: min(720px, calc(var(--alarvix-vh, 100dvh) - 1rem));
+  max-height: calc(var(--alarvix-vh, 100dvh) - 1rem);
+}
+#modal-chat-tecnico > div > div:first-child,
+#modal-chat-cliente > div > div:first-child {
+  min-height: 58px;
+  padding-top: max(.75rem, env(safe-area-inset-top));
+}
+#modal-chat-tecnico > div > div:first-child > button,
+#modal-chat-cliente > div > div:first-child > button {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  flex: 0 0 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: .75rem;
+  font-size: 18px;
+  line-height: 1;
+  z-index: 2;
+  touch-action: manipulation;
+}
+#modal-chat-tecnico form,
+#modal-chat-cliente form {
+  min-height: 58px;
+}
+@media (max-width: 640px) {
+  #modal-chat-tecnico,
+  #modal-chat-cliente {
+    padding: .35rem;
+    align-items: flex-start;
+  }
+  #modal-chat-tecnico > div,
+  #modal-chat-cliente > div {
+    width: 100%;
+    height: calc(var(--alarvix-vh, 100dvh) - .7rem);
+    max-height: calc(var(--alarvix-vh, 100dvh) - .7rem);
+    border-radius: 1rem;
+  }
+  #modal-chat-tecnico > div > div:first-child,
+  #modal-chat-cliente > div > div:first-child {
+    min-height: 56px;
+    padding: .5rem .65rem;
+    padding-top: max(.5rem, env(safe-area-inset-top));
+  }
+  #modal-chat-tecnico > div > div:first-child > button,
+  #modal-chat-cliente > div > div:first-child > button {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    min-height: 46px;
+  }
+}
+
 /* Chat responsive: el teclado móvil nunca tapa el compositor. */
 #modal-chat-tecnico > div,
 #modal-chat-cliente > div {
