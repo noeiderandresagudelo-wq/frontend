@@ -233,46 +233,7 @@
 
             <!-- Formulario de Entrada -->
             <div id="login-error-message" class="hidden rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[10px] text-rose-200" role="alert" aria-live="polite"></div>
-            <script>
-                // Interceptor de seguridad: el login NUNCA debe provocar un GET ni exponer
-                // correo/contraseña en la URL. Se define antes del resto de la lógica para
-                // que incluso una carga parcial de scripts no permita el submit nativo.
-                // Blindaje adicional: intercepta el submit en fase de captura para impedir
-                // cualquier navegación GET/POST nativa aunque otro script falle antes de montar el login.
-                document.addEventListener('submit', function(event) {
-                    const form = event.target;
-                    if (form && form.id === 'form-login') {
-                        event.preventDefault();
-                        event.stopPropagation();
-                    }
-                }, true);
-
-                window.alarvixSubmitLogin = async function(event) {
-                    if (event) {
-                        event.preventDefault();
-                        event.stopPropagation();
-                    }
-                    try {
-                        if (typeof window.handleLogin === 'function') {
-                            return await window.handleLogin(event);
-                        }
-                        const box = document.getElementById('login-error-message');
-                        if (box) {
-                            box.textContent = 'El módulo de autenticación todavía no está disponible. Recarga la aplicación e inténtalo nuevamente.';
-                            box.classList.remove('hidden');
-                        }
-                    } catch (error) {
-                        console.error('[Alarvix/Login] Error al procesar el formulario:', error);
-                        const box = document.getElementById('login-error-message');
-                        if (box) {
-                            box.textContent = error?.message || 'No fue posible procesar el inicio de sesión.';
-                            box.classList.remove('hidden');
-                        }
-                    }
-                    return false;
-                };
-            </script>
-            <form id="form-login" class="space-y-4" style="display:block;" method="post" action="#" novalidate autocomplete="on" onsubmit="event.preventDefault(); return alarvixSubmitLogin(event);">
+            <form id="form-login" class="space-y-4" style="display:block;" method="post" action="#" novalidate autocomplete="on" onsubmit="return window.handleLogin(event);">
                 <div>
                     <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Correo electrónico</label>
                     <div class="relative">
@@ -304,7 +265,7 @@
                     <p class="text-[10px] text-slate-400">Te enviaremos un enlace para crear una nueva contraseña.</p>
                 </div>
 
-                <form id="form-recovery-request" class="space-y-3">
+                <form id="form-recovery-request" class="space-y-3" onsubmit="return window.handleRecoveryRequest(event);">
                     <input type="email" id="recovery-email" placeholder="correo@empresa.com" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors">
                     <button type="submit" class="w-full bg-violet-600 hover:bg-violet-500 text-white font-extrabold text-xs py-3 rounded-lg transition uppercase shadow-lg shadow-violet-500/10">
                         Enviar enlace de recuperación
@@ -327,7 +288,7 @@
                 <p class="text-xs text-slate-400">Elige una nueva contraseña para recuperar el acceso.</p>
             </div>
 
-            <form id="form-reset-password" class="space-y-4">
+            <form id="form-reset-password" class="space-y-4" onsubmit="return window.handlePasswordReset(event);">
                 <div>
                     <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Nueva contraseña</label>
                     <input type="password" id="reset-password-new" placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors">
@@ -3522,7 +3483,7 @@
                 showToast("Recuperación", "Falta configurar Supabase.", true);
                 return;
             }
-            var recoveryRedirectUrl = "https://frontend-sigma-sand-67.vercel.app/";
+            var recoveryRedirectUrl = window.location.origin + window.location.pathname;
             var result = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: recoveryRedirectUrl });
             if (result.error) {
                 showToast("Recuperación", result.error.message, true);
@@ -3531,6 +3492,8 @@
             showToast("Recuperación", "Revisa tu correo para continuar con el cambio de contraseña.");
             toggleRecoveryInline(false);
         }
+
+        window.handleRecoveryRequest = handleRecoveryRequest;
 
         async function handlePasswordReset(event) {
             event.preventDefault();
@@ -3586,6 +3549,8 @@
             document.getElementById('reset-screen')?.classList.add('hidden');
             document.getElementById('login-screen')?.classList.remove('hidden');
         }
+
+        window.handlePasswordReset = handlePasswordReset;
 
         document.addEventListener('DOMContentLoaded', function () {
             actualizarBotonSonidoAlarvix();
