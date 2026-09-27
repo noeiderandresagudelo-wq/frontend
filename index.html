@@ -232,12 +232,42 @@
             </div>
 
             <!-- Formulario de Entrada -->
-            <form id="form-login" class="space-y-4" style="display:block;" novalidate autocomplete="on" onsubmit="event.preventDefault(); event.stopPropagation(); return (typeof window.handleLogin === 'function') ? window.handleLogin(event) : false;">
+            <div id="login-error-message" class="hidden rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[10px] text-rose-200" role="alert" aria-live="polite"></div>
+            <script>
+                // Interceptor de seguridad: el login NUNCA debe provocar un GET ni exponer
+                // correo/contraseña en la URL. Se define antes del resto de la lógica para
+                // que incluso una carga parcial de scripts no permita el submit nativo.
+                window.alarvixSubmitLogin = async function(event) {
+                    if (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    try {
+                        if (typeof window.handleLogin === 'function') {
+                            return await window.handleLogin(event);
+                        }
+                        const box = document.getElementById('login-error-message');
+                        if (box) {
+                            box.textContent = 'El módulo de autenticación todavía no está disponible. Recarga la aplicación e inténtalo nuevamente.';
+                            box.classList.remove('hidden');
+                        }
+                    } catch (error) {
+                        console.error('[Alarvix/Login] Error al procesar el formulario:', error);
+                        const box = document.getElementById('login-error-message');
+                        if (box) {
+                            box.textContent = error?.message || 'No fue posible procesar el inicio de sesión.';
+                            box.classList.remove('hidden');
+                        }
+                    }
+                    return false;
+                };
+            </script>
+            <form id="form-login" class="space-y-4" style="display:block;" novalidate autocomplete="on" onsubmit="return alarvixSubmitLogin(event);">
                 <div>
                     <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Correo electrónico</label>
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"><i class="fa-solid fa-user"></i></span>
-                        <input type="email" id="login-username" name="username" autocomplete="username" placeholder="correo@empresa.com" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors">
+                        <input type="email" id="login-username" autocomplete="username" placeholder="correo@empresa.com" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors">
                     </div>
                 </div>
 
@@ -245,11 +275,11 @@
                     <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Contraseña</label>
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"><i class="fa-solid fa-lock"></i></span>
-                        <input type="password" id="login-password" name="password" autocomplete="current-password" placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors">
+                        <input type="password" id="login-password" autocomplete="current-password" placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors">
                     </div>
                 </div>
 
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs py-3 rounded-lg transition uppercase shadow-lg shadow-blue-500/10">
+                <button type="button" id="btn-login-submit" onclick="return alarvixSubmitLogin(event);" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs py-3 rounded-lg transition uppercase shadow-lg shadow-blue-500/10">
                     Ingresar al Sistema Táctico <i class="fa-solid fa-arrow-right-to-bracket ml-1.5"></i>
                 </button>
             </form>
@@ -3348,6 +3378,11 @@
             }
 
             if (!uInput || !pInput) {
+                const loginErrorBox = document.getElementById('login-error-message');
+                if (loginErrorBox) {
+                    loginErrorBox.textContent = "Escribe el correo electrónico y la contraseña.";
+                    loginErrorBox.classList.remove('hidden');
+                }
                 showToast("Acceso Denegado", "Escribe el correo electrónico y la contraseña.", true);
                 return false;
             }
@@ -3372,8 +3407,20 @@
 
                 if (result.error || !result.data || !result.data.user) {
                     console.error("[Alarvix/Supabase] Error de login:", result.error);
-                    showToast("Acceso Denegado", result.error?.message || "Correo o contraseña inválidos.", true);
+                    const mensajeError = result.error?.message || "Correo o contraseña inválidos.";
+                    const loginErrorBox = document.getElementById('login-error-message');
+                    if (loginErrorBox) {
+                        loginErrorBox.textContent = mensajeError;
+                        loginErrorBox.classList.remove('hidden');
+                    }
+                    showToast("Acceso Denegado", mensajeError, true);
                     return false;
+                }
+
+                const loginErrorBox = document.getElementById('login-error-message');
+                if (loginErrorBox) {
+                    loginErrorBox.textContent = "";
+                    loginErrorBox.classList.add('hidden');
                 }
 
                 var sessionUser = result.data.user;
@@ -3456,7 +3503,7 @@
             }
         }
 
-        async function handleRecoveryRequest(event) {
+        window.handleLogin = handleLogin;\n\n        async function handleRecoveryRequest(event) {
             event.preventDefault();
             var email = document.getElementById('recovery-email').value.trim();
             if (!supabaseClient) {
