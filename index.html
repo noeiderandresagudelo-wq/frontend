@@ -237,6 +237,16 @@
                 // Interceptor de seguridad: el login NUNCA debe provocar un GET ni exponer
                 // correo/contraseña en la URL. Se define antes del resto de la lógica para
                 // que incluso una carga parcial de scripts no permita el submit nativo.
+                // Blindaje adicional: intercepta el submit en fase de captura para impedir
+                // cualquier navegación GET/POST nativa aunque otro script falle antes de montar el login.
+                document.addEventListener('submit', function(event) {
+                    const form = event.target;
+                    if (form && form.id === 'form-login') {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                }, true);
+
                 window.alarvixSubmitLogin = async function(event) {
                     if (event) {
                         event.preventDefault();
@@ -262,7 +272,7 @@
                     return false;
                 };
             </script>
-            <form id="form-login" class="space-y-4" style="display:block;" novalidate autocomplete="on" onsubmit="return alarvixSubmitLogin(event);">
+            <form id="form-login" class="space-y-4" style="display:block;" method="post" action="#" novalidate autocomplete="on" onsubmit="event.preventDefault(); return alarvixSubmitLogin(event);">
                 <div>
                     <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Correo electrónico</label>
                     <div class="relative">
