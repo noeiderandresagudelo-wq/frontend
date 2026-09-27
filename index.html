@@ -7345,12 +7345,27 @@
             canalLlamadasWeb = supabaseClient.channel(obtenerCanalLlamadasWeb());
             canalLlamadasWeb
                 .on("broadcast", { event: "call-offer" }, async ({ payload }) => {
-                    if (rol === "TECNICO" || !payload || payload.fromUserId === currentUser.id) return;
+                    if (!payload || payload.fromUserId === currentUser.id) return;
+                    if (payload.targetUserId && String(payload.targetUserId) !== String(currentUser.id)) return;
+                    if (![ "TECNICO", "ADMIN", "DESPACHADOR", "SUPERVISOR" ].includes(rol)) return;
                     if (llamadaWebActual) return;
-                    llamadaWebActual = { id: payload.callId, remoteUserId: payload.fromUserId, remoteName: payload.fromUserName || "Técnico" };
+
+                    llamadaWebActual = {
+                        id: payload.callId,
+                        remoteUserId: payload.fromUserId,
+                        remoteName: payload.fromUserName || (rol === "TECNICO" ? "Despacho" : "Técnico")
+                    };
                     llamadaWebIniciador = false;
                     window.__alarvixOfertaLlamadaWeb = payload.offer;
-                    mostrarModalLlamadaWeb(`Llamada entrante · ${llamadaWebActual.remoteName}`, "Un técnico está llamando a Despacho.", "entrante");
+
+                    const mensajeEntrada = rol === "TECNICO"
+                        ? "Despacho está llamando a este técnico."
+                        : "Un técnico está llamando a Despacho.";
+                    mostrarModalLlamadaWeb(
+                        `Llamada entrante · ${llamadaWebActual.remoteName}`,
+                        mensajeEntrada,
+                        "entrante"
+                    );
                     reproducirSonidoAlarvix("llamada");
                 })
                 .on("broadcast", { event: "call-answer" }, async ({ payload }) => {
@@ -7429,6 +7444,75 @@
                 await canalLlamadasWeb.send({ type:"broadcast", event:"call-offer", payload:{ callId:llamadaWebActual.id, fromUserId:currentUser.id, fromUserName:currentUser.nombre || currentUser.email || "Técnico", offer:offer } });
             } catch (e) {
                 console.error("[Alarvix/WebRTC] No se pudo iniciar llamada:", e);
+                finalizarLlamadaWeb(false);
+                showToast("No se pudo iniciar la llamada", e?.message || "Verifica el micrófono y la conexión.", true);
+            }
+        }
+
+        function obtenerUsuarioTecnicoPorFicha(tecnicoId) {
+            return appUsers.find(u =>
+                String(u.tecnicoId || "") === String(tecnicoId || "") &&
+                String(u.rol || "").toUpperCase() === "TECNICO" &&
+                u.activo !== false
+            ) || null;
+        }
+
+        async function llamarTecnicoWeb(tecnicoId) {
+            const rol = String(currentUser?.rol || "").toUpperCase();
+            if (!currentUser || !["ADMIN", "DESPACHADOR", "SUPERVISOR"].includes(rol)) return;
+
+            const tecnico = personalTecnicos.find(t => String(t.id) === String(tecnicoId));
+            const usuarioTecnico = obtenerUsuarioTecnicoPorFicha(tecnicoId);
+
+            if (!tecnico || !usuarioTecnico) {
+                showToast("Técnico no disponible", "El técnico no tiene una cuenta de Alarvix vinculada para recibir llamadas.", true);
+                return;
+            }
+
+            if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection) {
+                showToast("Llamada web no disponible", "Este navegador o dispositivo no soporta WebRTC.", true);
+                return;
+            }
+
+            try {
+                await iniciarCanalLlamadasWeb();
+                if (!canalLlamadasWeb) throw new Error("No se pudo conectar con el canal de llamadas.");
+
+                if (llamadaWebActual) {
+                    showToast("Llamada en curso", "Ya existe una llamada web activa.", true);
+                    return;
+                }
+
+                llamadaWebActual = {
+                    id: `call-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                    remoteUserId: usuarioTecnico.id,
+                    remoteName: tecnico.nombre || usuarioTecnico.nombre || "Técnico"
+                };
+                llamadaWebIniciador = true;
+
+                mostrarModalLlamadaWeb(
+                    `Llamando a ${llamadaWebActual.remoteName}`,
+                    "Esperando que el técnico acepte...",
+                    "saliente"
+                );
+
+                await prepararPeerLlamadaWeb();
+                const offer = await peerLlamadaWeb.createOffer();
+                await peerLlamadaWeb.setLocalDescription(offer);
+
+                await canalLlamadasWeb.send({
+                    type: "broadcast",
+                    event: "call-offer",
+                    payload: {
+                        callId: llamadaWebActual.id,
+                        fromUserId: currentUser.id,
+                        fromUserName: currentUser.nombre || currentUser.email || "Despacho",
+                        targetUserId: usuarioTecnico.id,
+                        offer
+                    }
+                });
+            } catch (e) {
+                console.error("[Alarvix/WebRTC] No se pudo llamar al técnico:", e);
                 finalizarLlamadaWeb(false);
                 showToast("No se pudo iniciar la llamada", e?.message || "Verifica el micrófono y la conexión.", true);
             }
@@ -8252,12 +8336,20 @@ function renderBurbujasChat(containerId, mensajes) {
             activeList.forEach(t => {
                 const div = document.createElement('div');
                 div.className = "p-3 bg-slate-950 border border-slate-850 rounded-xl flex items-center justify-between";
+                const usuarioTecnico = obtenerUsuarioTecnicoPorFicha(t.id);
+                const puedeLlamar = ["ADMIN", "DESPACHADOR", "SUPERVISOR"].includes(String(currentUser?.rol || "").toUpperCase()) && !!usuarioTecnico;
+                const techIdHtml = String(t.id).replace(/'/g, "\\'");
                 div.innerHTML = `
-                    <div class="space-y-0.5">
-                        <h4 class="text-xs font-bold text-white">${t.nombre}</h4>
-                        <span class="text-[10px] text-slate-500 block">${t.vehiculo}</span>
+                    <div class="space-y-0.5 min-w-0">
+                        <h4 class="text-xs font-bold text-white truncate">${t.nombre}</h4>
+                        <span class="text-[10px] text-slate-500 block truncate">${t.vehiculo}</span>
                     </div>
-                    <span class="px-2 py-0.5 rounded text-[9px] font-bold ${t.estado === "Disponible" ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">${t.estado}</span>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="px-2 py-0.5 rounded text-[9px] font-bold ${t.estado === "Disponible" ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">${t.estado}</span>
+                        ${puedeLlamar
+                            ? `<button type="button" onclick="llamarTecnicoWeb('${techIdHtml}')" title="Llamar al técnico por la web" class="w-8 h-8 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center transition shadow-lg"><i class="fa-solid fa-phone text-xs"></i></button>`
+                            : ""}
+                    </div>
                 `;
                 container.appendChild(div);
             });
