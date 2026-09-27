@@ -3487,8 +3487,13 @@
                 showToast("Recuperación", "Falta configurar Supabase.", true);
                 return;
             }
+            if (!email) {
+                showToast("Recuperación", "Escribe el correo electrónico de la cuenta.", true);
+                return;
+            }
+
             var recoveryRedirectUrl = window.location.origin + window.location.pathname;
-            var result = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: recoveryRedirectUrl });
+            var result = await supabaseClient.auth.resetPasswordForEmail(email.toLowerCase(), { redirectTo: recoveryRedirectUrl });
             if (result.error) {
                 showToast("Recuperación", result.error.message, true);
                 return;
@@ -3550,6 +3555,9 @@
             // Cerramos la sesión temporal de recuperación para obligar a iniciar
             // sesión nuevamente con la nueva contraseña.
             await supabaseClient.auth.signOut();
+            if (window.history && window.history.replaceState) {
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
             document.getElementById('reset-screen')?.classList.add('hidden');
             document.getElementById('login-screen')?.classList.remove('hidden');
         }
@@ -11116,12 +11124,22 @@ function renderBurbujasChat(containerId, mensajes) {
 
                 await aplicarUsuarioSesion(data.session.user);
 
-                if (!currentUser?.rol || !currentUser?.tenant_id) {
-                    console.warn("[Alarvix/Supabase] Sesión válida, pero perfil Alarvix incompleto.", currentUser);
-                    currentUser = null;
+                if (!currentUser?.rol) {
+                    currentUser.rol = "DESPACHADOR";
+                }
+
+                // La sesión de Supabase es válida aunque el perfil todavía no tenga
+                // tenant_id. No cerramos una sesión autenticada por un dato de perfil
+                // faltante; el tenant se resolverá cuando exista la asociación.
+                if (!currentUser?.tenant_id) {
+                    console.warn("[Alarvix/Supabase] Sesión restaurada sin tenant_id. Se mantiene el acceso.", currentUser);
+                }
+
+                if (currentUser.activo === false) {
                     await supabaseClient.auth.signOut();
+                    currentUser = null;
                     document.getElementById('login-screen')?.classList.remove('hidden');
-                    showToast("Perfil incompleto", "El usuario autenticó correctamente, pero falta rol o tenant en su perfil de Alarvix.", true);
+                    showToast("Cuenta Suspendida", "Este usuario está marcado como inactivo.", true);
                     return;
                 }
 
