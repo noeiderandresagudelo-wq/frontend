@@ -65,6 +65,8 @@ jobs:
       - name: Generate Alarvix icon and splash assets from the exact web logo
         run: |
           set -e
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
           mkdir -p mobile/resources
           test -f dist/icons/icon-512.png
 
