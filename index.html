@@ -2797,68 +2797,38 @@
                 abonadoId: metadata.abonado_id || metadata.abonadoId || null
             };
 
-            // Compatibilidad con perfiles nuevos: algunas instalaciones guardan el
-            // tenant/rol en user_metadata y otras únicamente en la tabla usuarios.
-            // Nunca dejamos un objeto de permisos indefinido durante el arranque.
+            // El perfil de Alarvix se relaciona EXCLUSIVAMENTE con el UUID
+            // entregado por Supabase Auth. Nunca usamos el correo/username para
+            // decidir qué perfil pertenece a la sesión autenticada.
             currentUser.rol = currentUser.rol || "DESPACHADOR";
 
-            // Los usuarios creados directamente en Supabase Auth pueden no tener
-            // role/tenant_id en user_metadata. Completamos el perfil desde Alarvix.
-            if (supabaseClient && (!currentUser.rol || !currentUser.tenant_id)) {
+            if (supabaseClient && sessionUser.id) {
                 try {
-                    let perfil = null;
-                    let error = null;
-
-                    const porId = await supabaseClient
+                    const perfilResult = await supabaseClient
                         .from("usuarios")
                         .select("*")
                         .eq("id", sessionUser.id)
                         .maybeSingle();
 
-                    perfil = porId.data || null;
-                    error = porId.error || null;
-
-                    // Compatibilidad con instalaciones antiguas: algunas filas de
-                    // usuarios conservan un id interno distinto al UUID de Auth.
-                    // En ese caso recuperamos el perfil por el correo de acceso.
-                    if (!perfil && sessionUser.email) {
-                        const porUsername = await supabaseClient
-                            .from("usuarios")
-                            .select("*")
-                            .eq("username", sessionUser.email)
-                            .maybeSingle();
-                        if (!porUsername.error && porUsername.data) {
-                            perfil = porUsername.data;
-                            error = null;
-                        } else if (!perfil) {
-                            const porCorreo = await supabaseClient
-                                .from("usuarios")
-                                .select("*")
-                                .eq("correo", sessionUser.email)
-                                .maybeSingle();
-                            if (!porCorreo.error && porCorreo.data) {
-                                perfil = porCorreo.data;
-                                error = null;
-                            }
-                        }
+                    if (perfilResult.error) {
+                        console.warn("[Alarvix/Supabase] Error cargando perfil por UUID:", perfilResult.error.message);
                     }
 
+                    const perfil = perfilResult.data || null;
                     if (perfil) {
                         currentUser = {
                             ...currentUser,
                             nombre: perfil.nombre || currentUser.nombre,
                             username: perfil.username || perfil.correo || currentUser.username,
-                            rol: String(perfil.rol || currentUser.rol || "").toUpperCase(),
+                            rol: String(perfil.rol || currentUser.rol || "").trim().toUpperCase(),
                             activo: perfil.activo !== false,
                             tenant_id: perfil.tenant_id || perfil.tenantId || perfil.empresa_id || perfil.empresaId || currentUser.tenant_id || null,
                             tecnicoId: perfil.tecnico_id || perfil.tecnicoId || currentUser.tecnicoId || null,
                             abonadoId: perfil.abonado_id || currentUser.abonadoId || null
                         };
-                    } else if (error) {
-                        console.warn("[Alarvix/Supabase] No se pudo cargar el perfil de usuarios:", error.message);
                     }
                 } catch (e) {
-                    console.warn("[Alarvix/Supabase] Excepción cargando perfil de usuarios:", e);
+                    console.warn("[Alarvix/Supabase] Excepción cargando perfil por UUID:", e);
                 }
             }
         }
@@ -3390,26 +3360,10 @@
             }
 
             try {
-                // Supabase Auth inicia sesión con el correo, no con el username
-                // interno de la tabla usuarios.
-                // Aceptamos correo o username: si el usuario escribió un username
-                // interno, primero intentamos resolver su correo de Auth desde la tabla usuarios.
-                var emailParaAuth = uInput;
-                if (!uInput.includes("@")) {
-                    try {
-                        const perfilLogin = await supabaseClient
-                            .from("usuarios")
-                            .select("correo, username")
-                            .or("username.eq." + encodeURIComponent(uInput) + ",correo.eq." + encodeURIComponent(uInput))
-                            .limit(1)
-                            .maybeSingle();
-                        if (!perfilLogin.error && perfilLogin.data?.correo) {
-                            emailParaAuth = perfilLogin.data.correo;
-                        }
-                    } catch (lookupLoginError) {
-                        console.warn("[Alarvix] No se pudo resolver username a correo:", lookupLoginError);
-                    }
-                }
+                // Supabase Auth recibe DIRECTAMENTE el correo escrito en el formulario.
+                // No hacemos ninguna consulta previa a public.usuarios y no convertimos
+                // el correo en username.
+                var emailParaAuth = uInput.toLowerCase();
 
                 var result = await supabaseClient.auth.signInWithPassword({
                     email: emailParaAuth,
