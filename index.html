@@ -10970,23 +10970,26 @@ function renderBurbujasChat(containerId, mensajes) {
             doc.text(cl.nombre.substring(0, 32), 120, yOffset + 8);
             doc.text(s.firmaCliente ? "Firma capturada en sitio" : "Sin firma registrada", 120, yOffset + 11);
 
-            // Para compartir por Android/WhatsApp devolvemos el PDF real con todo su contenido.
+            // El OPR se registra SIEMPRE, incluso cuando el usuario solo quiere compartirlo.
+            // Esto mantiene la trazabilidad documental del SGI independiente del canal de entrega.
+            await registrarOPRDocumental(s, identidad);
+
+            const nombreEmpresaArchivo = String(identidad.razonSocial || "Empresa")
+                .normalize("NFD").replace(/[\\u0300-\\u036f]/g, "")
+                .replace(/[^a-z0-9_-]+/gi, "_")
+                .replace(/^_+|_+$/g, "")
+                .substring(0, 60) || "Empresa";
+
+            // Para compartir por Android/WhatsApp devolvemos el PDF real con la identidad de la empresa.
             if (compartir) {
                 return {
                     blob: doc.output("blob"),
-                    nombre: `OPR_Alarvix_${s.consecutivo}.pdf`,
+                    nombre: `OPR_${nombreEmpresaArchivo}_${s.consecutivo}.pdf`,
                     consecutivo: s.consecutivo
                 };
             }
 
-            // Registrar el documento en el repositorio documental del SGI sin bloquear la descarga.
-            await registrarOPRDocumental(s, identidad);
-
             // Guardar archivo PDF directamente en el navegador del usuario.
-            const nombreEmpresaArchivo = String(identidad.razonSocial || "Empresa")
-                .replace(/[^a-z0-9áéíóúüñ_-]+/gi, "_")
-                .replace(/^_+|_+$/g, "")
-                .substring(0, 60) || "Empresa";
             doc.save(`OPR_${nombreEmpresaArchivo}_${s.consecutivo}.pdf`);
             showToast("Reporte Descargado", `Se descargó el OPR ${s.consecutivo} con la identidad documental de ${identidad.razonSocial}.`);
             return null;
