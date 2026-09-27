@@ -14,7 +14,8 @@
     "@capacitor/core": "^7.6.9",
     "@capacitor/local-notifications": "^7.0.7",
     "@capacitor-community/background-geolocation": "^1.2.26",
-    "@capacitor/splash-screen": "^7.0.7"
+    "@capacitor/splash-screen": "^7.0.7",
+    "@capacitor/camera": "^7.0.7"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.6.9"
