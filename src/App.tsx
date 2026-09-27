@@ -55,10 +55,7 @@ export default function App() {
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
   const [tokenDraft, setTokenDraft] = useState(token);
-  const [tokenOpen, setTokenOpen] = useState(false);
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-  const [loginLoading, setLoginLoading] = useState(false);
+  const [tokenOpen, setTokenOpen] = useState(!token);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [technicianLocations, setTechnicianLocations] = useState<TechnicianLocation[]>([]);
@@ -67,7 +64,7 @@ export default function App() {
 
   useEffect(() => {
     if (!token) return;
-    try { setAuth(decodeToken(token)); } catch { localStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(TOKEN_KEY); setToken(''); setTokenDraft(''); setAuth(null); }
+    try { setAuth(decodeToken(token)); } catch { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(TOKEN_KEY); setToken(''); }
   }, [token]);
 
   const refresh = useCallback(async () => {
@@ -150,34 +147,6 @@ export default function App() {
   }, [token, auth]);
 
 
-  async function loginWithPassword(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setLoginLoading(true);
-    setError('');
-    setNotice('');
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: loginEmail.trim(),
-        password: loginPassword,
-      });
-      if (error) throw new Error(error.message);
-      const accessToken = data.session?.access_token;
-      if (!accessToken) throw new Error('Supabase no devolvió un access token.');
-      const nextAuth = decodeToken(accessToken);
-      setToken(accessToken);
-      setAuth(nextAuth);
-      setTokenDraft(accessToken);
-      sessionStorage.setItem(TOKEN_KEY, accessToken);
-      setTokenOpen(false);
-      setLoginPassword('');
-      setNotice('Inicio de sesión correcto.');
-    } catch (e) {
-      setError(message(e));
-    } finally {
-      setLoginLoading(false);
-    }
-  }
-
   function connect(e: FormEvent) {
     e.preventDefault();
     try {
@@ -187,11 +156,8 @@ export default function App() {
     } catch (e) { setError(message(e)); }
   }
 
-  async function disconnect() {
-    await supabase.auth.signOut().catch(() => undefined);
-    localStorage.removeItem(TOKEN_KEY);
-    sessionStorage.removeItem(TOKEN_KEY);
-    setToken(''); setTokenDraft(''); setAuth(null); setCustomers([]); setServices([]); setTokenOpen(false);
+  function disconnect() {
+    sessionStorage.removeItem(TOKEN_KEY); setToken(''); setTokenDraft(''); setAuth(null); setCustomers([]); setServices([]); setTokenOpen(true);
   }
 
   async function saveCustomer(e: FormEvent<HTMLFormElement>) {
@@ -273,22 +239,13 @@ export default function App() {
     </aside>
     <main className="main-panel">
       <header className="topbar">
-        <div><p className="eyebrow">{auth ? `Tenant ${auth.tenantId.slice(0,8)}` : 'Acceso al sistema'}</p><h2>{page === 'dashboard' ? 'Gestión operativa' : page[0].toUpperCase() + page.slice(1)}</h2></div>
-        <div className="topbar-actions">{token && <button className="ghost-button" onClick={() => setTokenOpen(v => !v)}>Sesión</button>}<button className="ghost-button" disabled={!token || loading} onClick={() => void refresh()}>{loading ? 'Actualizando…' : 'Actualizar'}</button></div>
+        <div><p className="eyebrow">{auth ? `Tenant ${auth.tenantId.slice(0,8)}` : 'Conexión requerida'}</p><h2>{page === 'dashboard' ? 'Gestión operativa' : page[0].toUpperCase() + page.slice(1)}</h2></div>
+        <div className="topbar-actions"><button className="ghost-button" onClick={() => setTokenOpen(v => !v)}>Sesión</button><button className="ghost-button" disabled={!token || loading} onClick={() => void refresh()}>{loading ? 'Actualizando…' : 'Actualizar'}</button></div>
       </header>
-      {!token && !tokenOpen && <section className="panel token-panel">
-        <div className="panel-header"><div><p className="eyebrow">ALARVIX</p><h3>Ingresar al sistema</h3></div></div>
-        <p className="helper-text">Usa las credenciales de tu cuenta de Supabase. El acceso genera automáticamente la sesión segura para consultar tu tenant.</p>
-        <form className="token-form" onSubmit={loginWithPassword}>
-          <label>Correo electrónico<input type="email" required autoComplete="username" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="usuario@dominio.com" /></label>
-          <label>Contraseña<input type="password" required autoComplete="current-password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder="••••••••" /></label>
-          <div className="topbar-actions"><button className="primary-button" disabled={loginLoading}>{loginLoading ? 'Ingresando…' : 'Ingresar al sistema'}</button><button type="button" className="ghost-button" onClick={() => setTokenOpen(true)}>Conexión avanzada</button></div>
-        </form>
-      </section>}
-      {tokenOpen && <section className="panel token-panel"><div className="panel-header"><div><p className="eyebrow">Supabase</p><h3>Conexión avanzada</h3></div></div><p className="helper-text">Solo para desarrollo: puedes pegar un access token JWT válido. Nunca uses una service_role key aquí.</p><form className="token-form" onSubmit={connect}><label>Access token<textarea required value={tokenDraft} onChange={e => setTokenDraft(e.target.value)} /></label><div className="topbar-actions"><button className="primary-button">Conectar</button>{token && <button type="button" className="ghost-button" onClick={() => void disconnect()}>Desconectar</button>}{!token && <button type="button" className="ghost-button" onClick={() => setTokenOpen(false)}>Volver</button>}</div></form></section>}
+      {tokenOpen && <section className="panel token-panel"><div className="panel-header"><div><p className="eyebrow">Supabase</p><h3>Conexión directa</h3></div></div><p className="helper-text">El frontend consulta PostgreSQL directamente con RLS. Usa un access token válido de Supabase. La service_role nunca se expone aquí.</p><form className="token-form" onSubmit={connect}><label>Access token<textarea required value={tokenDraft} onChange={e => setTokenDraft(e.target.value)} /></label><div className="topbar-actions"><button className="primary-button">Conectar</button>{token && <button type="button" className="ghost-button" onClick={disconnect}>Desconectar</button>}</div></form></section>}
       {error && <div className="feedback error-feedback">{error}</div>}
       {notice && <div className="feedback success-feedback">{notice}</div>}
-      {!token ? null : loading ? <section className="panel loading-state">Cargando datos…</section> : page === 'dashboard' ? <Dashboard customers={customers} services={services} activeServices={activeServices} technicianLocations={technicianLocations} locationSharing={locationSharing} locationError={locationError} /> : page === 'clientes' ? <Customers customers={customers} canWrite={canWrite(auth?.role)} editing={editingCustomer} setEditing={setEditingCustomer} onSave={saveCustomer} onDelete={removeCustomer} /> : <Services services={services} canWrite={canWrite(auth?.role)} editing={editingService} setEditing={setEditingService} onSave={saveService} onDelete={removeService} />}
+      {!token ? <section className="panel disconnected-state"><h3>Conecta tu sesión</h3><p>Configura un access token de Supabase para consultar el tenant autorizado.</p></section> : loading ? <section className="panel loading-state">Cargando datos…</section> : page === 'dashboard' ? <Dashboard customers={customers} services={services} activeServices={activeServices} technicianLocations={technicianLocations} locationSharing={locationSharing} locationError={locationError} /> : page === 'clientes' ? <Customers customers={customers} canWrite={canWrite(auth?.role)} editing={editingCustomer} setEditing={setEditingCustomer} onSave={saveCustomer} onDelete={removeCustomer} /> : <Services services={services} canWrite={canWrite(auth?.role)} editing={editingService} setEditing={setEditingService} onSave={saveService} onDelete={removeService} />}
     </main>
   </div>;
 }
