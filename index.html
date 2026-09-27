@@ -233,7 +233,7 @@
 
             <!-- Formulario de Entrada -->
             <div id="login-error-message" class="hidden rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[10px] text-rose-200" role="alert" aria-live="polite"></div>
-            <form id="form-login" class="space-y-4" style="display:block;" method="post" action="#" novalidate autocomplete="on" onsubmit="return window.handleLogin(event);">
+            <form id="form-login" class="space-y-4" style="display:block;" method="get" action="javascript:void(0)" novalidate autocomplete="on" onsubmit="event.preventDefault(); event.stopPropagation(); window.handleLogin(event); return false;">
                 <div>
                     <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Correo electrónico</label>
                     <div class="relative">
@@ -250,7 +250,7 @@
                     </div>
                 </div>
 
-                <button id="btn-login-submit" type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs py-3 rounded-lg transition uppercase shadow-lg shadow-blue-500/10">
+                <button id="btn-login-submit" type="button" onclick="window.handleLogin(event)" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs py-3 rounded-lg transition uppercase shadow-lg shadow-blue-500/10">
                     Ingresar al Sistema Táctico <i class="fa-solid fa-arrow-right-to-bracket ml-1.5"></i>
                 </button>
             </form>
@@ -3341,7 +3341,7 @@
             var passwordInput = document.getElementById('login-password');
             var uInput = usernameInput ? String(usernameInput.value || '').trim() : '';
             var pInput = passwordInput ? String(passwordInput.value || '') : '';
-            var loginButton = document.querySelector('#form-login button[type="submit"]');
+            var loginButton = document.getElementById('btn-login-submit');
 
             if (!supabaseClient) {
                 showToast("Acceso Denegado", "Supabase no está inicializado. Revisa las variables VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY del despliegue.", true);
@@ -3562,14 +3562,19 @@
             var loginForm = document.getElementById('form-login');
             if (loginForm) {
                 loginForm.addEventListener('submit', function (event) {
-                    // El atributo onsubmit del formulario y este listener actúan como doble
-                    // barrera contra el submit nativo/reload. El login debe conservar lo escrito
-                    // cuando las credenciales sean incorrectas.
+                    // Barrera final: nunca permitimos que el navegador envíe el formulario a Vercel.
                     event.preventDefault();
                     event.stopImmediatePropagation();
                     void handleLogin(event);
                     return false;
                 }, true);
+                loginForm.addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        void handleLogin(event);
+                    }
+                });
             }
             var recoveryForm = document.getElementById('form-recovery-request');
             if (recoveryForm) recoveryForm.addEventListener('submit', handleRecoveryRequest);
