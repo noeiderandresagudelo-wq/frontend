@@ -110,27 +110,62 @@ jobs:
 
       - name: Generate Alarvix icon and splash assets from the exact web logo
         run: |
-          set -e
+          set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y imagemagick
-          mkdir -p mobile/resources
-          test -f dist/icons/icon-512.png
 
-          # Use the same Alarvix presentation logo already used by the web/PWA.
-          # The source is upscaled only to satisfy native asset minimum dimensions;
-          # the logo artwork itself is not changed.
-          convert dist/icons/icon-512.png -resize 1024x1024 mobile/resources/logo.png
+          # The repository keeps the web/PWA icon under /icons. It is not
+          # automatically copied to dist by Vite because it is outside /public.
+          # Prefer the exact 512px Alarvix icon and keep fallbacks for future
+          # repository layouts.
+          SOURCE_LOGO=""
+          for candidate in \
+            "icons/icon-512.png" \
+            "public/logo.png" \
+            "assets/logo.png" \
+            "dist/icons/icon-512.png"
+          do
+            if [ -f "$candidate" ]; then
+              SOURCE_LOGO="$candidate"
+              break
+            fi
+          done
+
+          if [ -z "$SOURCE_LOGO" ]; then
+            echo "ERROR: No se encontró una imagen fuente de Alarvix."
+            echo "Rutas comprobadas: icons/icon-512.png, public/logo.png, assets/logo.png, dist/icons/icon-512.png"
+            exit 1
+          fi
+
+          echo "Logo fuente seleccionado: $SOURCE_LOGO"
+          mkdir -p mobile/resources
+
+          # @capacitor/assets Easy Mode accepts logo.png/logo-dark.png.
+          # Upscale only the source dimensions; the artwork itself is preserved.
+          convert "$SOURCE_LOGO" -resize 1024x1024\! mobile/resources/logo.png
           cp mobile/resources/logo.png mobile/resources/logo-dark.png
 
+          # Generate native Android resources from the same Alarvix logo.
           cd mobile
           npm install --no-save @capacitor/assets
-          npx @capacitor/assets generate --android             --assetPath resources             --iconBackgroundColor "#0B0F19"             --iconBackgroundColorDark "#0B0F19"             --splashBackgroundColor "#0B0F19"             --splashBackgroundColorDark "#0B0F19"             --logoSplashScale 0.28
+          npx @capacitor/assets generate --android \
+            --assetPath resources \
+            --iconBackgroundColor "#0B0F19" \
+            --iconBackgroundColorDark "#0B0F19" \
+            --splashBackgroundColor "#0B0F19" \
+            --splashBackgroundColorDark "#0B0F19" \
+            --logoSplashScale 0.28
 
-          # Ensure the generated native splash resource exists; otherwise fail
-          # instead of producing an APK with the default Capacitor logo.
-          test -f android/app/src/main/res/drawable/splash.png || \
-            test -f android/app/src/main/res/drawable/splash.webp || \
-            (echo "ERROR: No se generó el splash nativo de Alarvix." && exit 1)
+          # Capacitor generates splash resources in Android density-specific
+          # resource folders, so do not require a single drawable/splash.png.
+          if ! find android/app/src/main/res -type f \( -name 'splash.png' -o -name 'splash.webp' \) -print -quit | grep -q .; then
+            echo "ERROR: @capacitor/assets no generó ningún recurso splash nativo."
+            find android/app/src/main/res -maxdepth 3 -type f | sort | head -200 || true
+            exit 1
+          fi
+
+          echo "Assets nativos de Alarvix generados correctamente."
+          find android/app/src/main/res -type f \( -name 'splash.png' -o -name 'splash.webp' \) -print | sort
 
       - name: Sync Capacitor plugins and latest web build
         working-directory: mobile
