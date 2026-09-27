@@ -4088,15 +4088,15 @@
                 const direccionDestino = String(cl.direccion || '').trim();
                 const ciudadDestino = String(cl.ciudad || '').trim();
                 const tieneDestino = direccionDestino && direccionDestino !== 'S/D';
-                const rutaBtnHtml = tieneDestino ? \`
-                    <button type="button" onclick="abrirRutaServicioTecnico('\${task.consecutivo}')" class="w-full bg-violet-600/15 hover:bg-violet-600 border border-violet-500/30 hover:border-violet-500 text-violet-300 hover:text-white text-[10px] font-black py-2.5 rounded-lg transition uppercase flex items-center justify-center gap-1.5">
+                const rutaBtnHtml = tieneDestino ? `
+                    <button type="button" onclick="abrirRutaServicioTecnico('${task.consecutivo}')" class="w-full bg-violet-600/15 hover:bg-violet-600 border border-violet-500/30 hover:border-violet-500 text-violet-300 hover:text-white text-[10px] font-black py-2.5 rounded-lg transition uppercase flex items-center justify-center gap-1.5">
                         <i class="fa-solid fa-route"></i> Ver ruta al servicio
                     </button>
-                \` : \`
+                ` : `
                     <div class="w-full bg-slate-950 border border-amber-500/20 text-amber-400/80 text-[9px] font-bold py-2.5 rounded-lg text-center uppercase">
                         <i class="fa-solid fa-location-question mr-1"></i> Dirección del servicio no registrada
                     </div>
-                \`;
+                `;
 
                 if (task.estado === "Pendiente" || task.estado === "Asignado") {
                     actionBtnHtml = `
@@ -4529,7 +4529,7 @@
                             });
                         });
                         if (posicion?.coords) {
-                            origen = \`\${posicion.coords.latitude},\${posicion.coords.longitude}\`;
+                            origen = `${posicion.coords.latitude},${posicion.coords.longitude}`;
                         }
                     } catch (gpsError) {
                         console.warn("[Alarvix Ruta] No se pudo obtener el GPS actual; se abrirá la ruta sin origen explícito.", gpsError);
@@ -4543,9 +4543,9 @@
                 });
                 if (origen) params.set("origin", origen);
 
-                const url = \`https://www.google.com/maps/dir/?\${params.toString()}\`;
+                const url = `https://www.google.com/maps/dir/?${params.toString()}`;
                 window.open(url, "_blank", "noopener,noreferrer");
-                showToast("Ruta preparada", \`Destino: \${destinoTexto}\`);
+                showToast("Ruta preparada", `Destino: ${destinoTexto}`);
             } catch (error) {
                 console.error("[Alarvix Ruta] Error:", error);
                 showToast("No se pudo abrir la ruta", "Revisa la dirección del servicio e inténtalo nuevamente.", true);
