@@ -62,13 +62,27 @@ jobs:
         working-directory: mobile
         run: npx cap add android
 
-      - name: Use Alarvix web logo as Android app icon
+      - name: Generate Alarvix icon and splash assets from the exact web logo
         run: |
+          set -e
           mkdir -p mobile/resources
-          cp dist/icons/icon-512.png mobile/resources/icon.png
+          test -f dist/icons/icon-512.png
+
+          # Use the same Alarvix presentation logo already used by the web/PWA.
+          # The source is upscaled only to satisfy native asset minimum dimensions;
+          # the logo artwork itself is not changed.
+          convert dist/icons/icon-512.png -resize 1024x1024 mobile/resources/logo.png
+          cp mobile/resources/logo.png mobile/resources/logo-dark.png
+
           cd mobile
-          npm install -D @capacitor/assets
-          npx capacitor-assets generate --android --iconBackgroundColor "#0B0F19" --iconBackgroundColorDark "#0B0F19"
+          npm install --no-save @capacitor/assets
+          npx @capacitor/assets generate --android             --assetPath resources             --iconBackgroundColor "#0B0F19"             --iconBackgroundColorDark "#0B0F19"             --splashBackgroundColor "#0B0F19"             --splashBackgroundColorDark "#0B0F19"             --logoSplashScale 0.28
+
+          # Ensure the generated native splash resource exists; otherwise fail
+          # instead of producing an APK with the default Capacitor logo.
+          test -f android/app/src/main/res/drawable/splash.png || \
+            test -f android/app/src/main/res/drawable/splash.webp || \
+            (echo "ERROR: No se generó el splash nativo de Alarvix." && exit 1)
 
       - name: Sync Capacitor plugins and latest web build
         working-directory: mobile
