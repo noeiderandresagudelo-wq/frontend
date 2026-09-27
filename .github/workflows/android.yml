@@ -62,6 +62,29 @@ jobs:
         working-directory: mobile
         run: npx cap add android
 
+      - name: Add Android permissions for technician calls and camera
+        working-directory: mobile
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          s = p.read_text()
+          permissions = [
+              "android.permission.CAMERA",
+              "android.permission.RECORD_AUDIO"
+          ]
+          marker = '<application'
+          additions = "".join(
+              f'    <uses-permission android:name="{perm}" />\\n'
+              for perm in permissions
+              if f'android:name="{perm}"' not in s
+          )
+          if marker not in s:
+              raise SystemExit("ERROR: AndroidManifest.xml no contiene <application")
+          s = s.replace(marker, additions + "    " + marker, 1)
+          p.write_text(s)
+          PY
+
       - name: Generate Alarvix icon and splash assets from the exact web logo
         run: |
           set -e
