@@ -44,8 +44,14 @@ jobs:
         run: |
           test -n "$VITE_SUPABASE_URL" || (echo "ERROR: Falta VITE_SUPABASE_URL/SUPABASE_URL en GitHub Secrets" && exit 1)
           test -n "$VITE_SUPABASE_ANON_KEY" || (echo "ERROR: Falta VITE_SUPABASE_ANON_KEY/SUPABASE_ANON_KEY en GitHub Secrets" && exit 1)
-          grep -q '%VITE_SUPABASE_URL%' dist/index.html && (echo "ERROR: VITE_SUPABASE_URL no fue inyectada en dist/index.html" && exit 1) || true
-          grep -q '%VITE_SUPABASE_ANON_KEY%' dist/index.html && (echo "ERROR: VITE_SUPABASE_ANON_KEY no fue inyectada en dist/index.html" && exit 1) || true
+          if grep -q '%VITE_SUPABASE_URL%' dist/index.html; then
+            echo "ERROR: VITE_SUPABASE_URL no fue inyectada en dist/index.html"
+            exit 1
+          fi
+          if grep -q '%VITE_SUPABASE_ANON_KEY%' dist/index.html; then
+            echo "ERROR: VITE_SUPABASE_ANON_KEY no fue inyectada en dist/index.html"
+            exit 1
+          fi
           echo "Supabase URL inyectada correctamente en el build web."
 
       - name: Install Android wrapper dependencies
