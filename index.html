@@ -10709,7 +10709,7 @@ function renderBurbujasChat(containerId, mensajes) {
 
                 let logoUrl = identidad?.logo_url || null;
                 if (!logoUrl && identidad?.logo_storage_path && window.SUPABASE_URL) {
-                    logoUrl = `${window.SUPABASE_URL}/storage/v1/object/public/empresa-logos/${String(identidad.logo_storage_path).replace(/^\\/+/, "")}`;
+                    logoUrl = `${window.SUPABASE_URL}/storage/v1/object/public/empresa-logos/${String(identidad.logo_storage_path).replace(/^\/+/, "")}`;
                 }
 
                 return {
