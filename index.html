@@ -2,7 +2,7 @@
 <html lang="es" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Alarvix Enterprise - ERP Multitenant</title>
 
     <!-- Configuración PWA (Progressive Web App) -->
@@ -210,6 +210,186 @@
     max-height: calc(var(--alarvix-vh, 100dvh) - 7rem);
   }
 }
+
+
+        /* ALARVIX_MOBILE_RESPONSIVE_V2
+           Ajuste integral para teléfonos pequeños, grandes, notch y teclado virtual. */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        body {
+            min-height: 100vh;
+            min-height: 100dvh;
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+            overscroll-behavior-x: none;
+        }
+
+        button,
+        input,
+        textarea,
+        select {
+            max-width: 100%;
+            min-width: 0;
+            font: inherit;
+        }
+
+        img,
+        video,
+        canvas,
+        svg {
+            max-width: 100%;
+        }
+
+        #tech-mobile-container {
+            width: 100vw;
+            width: 100dvw;
+            height: 100vh;
+            height: 100dvh;
+            min-height: 0;
+            padding:
+                env(safe-area-inset-top)
+                env(safe-area-inset-right)
+                env(safe-area-inset-bottom)
+                env(safe-area-inset-left);
+        }
+
+        #tech-mobile-container .phone-notch {
+            width: 100%;
+            height: 100%;
+            min-width: 0;
+            min-height: 0;
+        }
+
+        /* Evita que tarjetas, tablas y paneles anchos rompan la pantalla. */
+        .overflow-x-auto {
+            max-width: 100%;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        table {
+            max-width: 100%;
+        }
+
+        #map {
+            max-width: 100%;
+            height: clamp(240px, 45vh, 400px);
+        }
+
+        /* Teléfonos compactos: menos padding y tipografía ligeramente más contenida. */
+        @media (max-width: 390px) {
+            #tech-mobile-container .phone-notch header {
+                padding: .65rem .75rem;
+            }
+
+            #tech-mobile-container .phone-notch > .flex-grow {
+                padding: .75rem;
+            }
+
+            #tech-mobile-container .phone-notch > div:last-child {
+                padding-left: .65rem;
+                padding-right: .65rem;
+            }
+
+            #login-screen,
+            #reset-screen {
+                padding: .65rem;
+            }
+
+            #login-screen > div,
+            #reset-screen > div {
+                padding: 1rem;
+                max-height: calc(100dvh - 1.3rem);
+            }
+
+            .modal-content,
+            [role="dialog"] > div {
+                max-width: calc(100vw - 1rem);
+            }
+        }
+
+        /* Teléfonos muy estrechos. */
+        @media (max-width: 340px) {
+            #tech-mobile-container .phone-notch header {
+                padding: .55rem .6rem;
+            }
+
+            #tech-mobile-container .phone-notch > .flex-grow {
+                padding: .6rem;
+            }
+
+            #tech-mobile-container .phone-notch > div:last-child {
+                padding: .55rem .4rem;
+            }
+
+            #tech-mobile-container .phone-notch > div:last-child span {
+                font-size: 7px;
+            }
+        }
+
+        /* Paisaje en móviles: conservar el área útil y permitir scroll vertical. */
+        @media (max-width: 900px) and (orientation: landscape) {
+            #tech-mobile-container .phone-notch {
+                height: 100dvh;
+                max-height: none;
+            }
+
+            #tech-mobile-container .phone-notch > .flex-grow {
+                overflow-y: auto;
+                min-height: 0;
+            }
+
+            #login-screen > div,
+            #reset-screen > div {
+                max-height: calc(100dvh - 1rem);
+            }
+        }
+
+        /* Modales generales: nunca deben superar el ancho útil del teléfono. */
+        @media (max-width: 640px) {
+            [class*="fixed"][class*="inset-0"] {
+                max-width: 100vw;
+            }
+
+            .fixed.inset-0 > div {
+                max-width: calc(100vw - 1rem);
+            }
+
+            input,
+            textarea,
+            select {
+                font-size: 16px;
+            }
+
+            #modal-chat-tecnico,
+            #modal-chat-cliente {
+                padding:
+                    max(.5rem, env(safe-area-inset-top))
+                    max(.5rem, env(safe-area-inset-right))
+                    max(.5rem, env(safe-area-inset-bottom))
+                    max(.5rem, env(safe-area-inset-left));
+            }
+        }
+
+        /* Pantallas medianas/grandes: mantener la vista de teléfono centrada sin deformarla. */
+        @media (min-width: 561px) {
+            #tech-mobile-container {
+                padding: 1rem;
+            }
+        }
 
     </style>
 </head>
