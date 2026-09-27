@@ -16,6 +16,9 @@ jobs:
       VITE_SUPABASE_ANON_KEY: sb_publishable_Sfh_MgCK5f9jljnDRv5qGw_zEb1sksk
       SUPABASE_URL: ${{ secrets.SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
+      # URL pública de Alarvix para que la APK cargue siempre la versión más reciente.
+      # Configúrala en GitHub como Repository Variable o Secret: ALARVIX_APP_URL.
+      ALARVIX_APP_URL: ${{ vars.ALARVIX_APP_URL || secrets.ALARVIX_APP_URL }}
     timeout-minutes: 30
 
     steps:
@@ -57,6 +60,26 @@ jobs:
       - name: Install Android wrapper dependencies
         working-directory: mobile
         run: npm install
+
+      - name: Configure automatic remote updates for the APK
+        working-directory: mobile
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          p = Path("capacitor.config.json")
+          data = json.loads(p.read_text())
+          url = os.environ.get("ALARVIX_APP_URL", "").strip().rstrip("/")
+          if url:
+              data["server"] = {
+                  "url": url,
+                  "cleartext": False
+              }
+              print("APK configurada para cargar Alarvix desde la URL pública.")
+          else:
+              print("ALARVIX_APP_URL no está configurada; la APK usará el contenido local incluido en el build.")
+          p.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+          PY
 
       - name: Generate Android project
         working-directory: mobile
