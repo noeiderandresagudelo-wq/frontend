@@ -10638,7 +10638,102 @@ function renderBurbujasChat(containerId, mensajes) {
         /**
          * Construye de manera dinámica el documento de Auditoría Física u OPR en formato PDF interactivo.
          */
-        function descargarReportePDF(serviceId = null, compartir = false) {
+        async function cargarIdentidadDocumentalEmpresa() {
+            const fallback = {
+                razonSocial: "ALARVIX SERVICES ENTERPRISE",
+                nombreComercial: "ALARVIX SERVICES ENTERPRISE",
+                nit: "",
+                direccion: "",
+                ciudad: activeCentral || "",
+                telefono: "",
+                correo: "",
+                logoUrl: null,
+                nombreSgi: "Sistema de Gestión Integral",
+                codigoOpr: "OPR-SGI-001",
+                versionOpr: "01",
+                responsableSgi: ""
+            };
+
+            try {
+                const tenantId = currentUser?.tenant_id || currentUser?.tenantId || null;
+                if (!supabaseClient || !tenantId) return fallback;
+
+                const [{ data: empresa }, { data: identidad }, { data: sgi }, { data: documento }] = await Promise.all([
+                    supabaseClient.from("empresas").select("*").eq("id", tenantId).maybeSingle(),
+                    supabaseClient.from("empresas_identidad").select("*").eq("tenant_id", tenantId).maybeSingle(),
+                    supabaseClient.from("empresas_sgi").select("*").eq("tenant_id", tenantId).maybeSingle(),
+                    supabaseClient.from("empresas_documentos").select("*").eq("tenant_id", tenantId).eq("tipo_documento", "OPR").maybeSingle()
+                ]);
+
+                let logoUrl = identidad?.logo_url || null;
+                if (!logoUrl && identidad?.logo_storage_path && window.SUPABASE_URL) {
+                    logoUrl = `${window.SUPABASE_URL}/storage/v1/object/public/empresa-logos/${String(identidad.logo_storage_path).replace(/^\\/+/, "")}`;
+                }
+
+                return {
+                    razonSocial: empresa?.razon_social || empresa?.nombre_comercial || fallback.razonSocial,
+                    nombreComercial: empresa?.nombre_comercial || empresa?.razon_social || fallback.nombreComercial,
+                    nit: empresa?.nit || "",
+                    direccion: empresa?.direccion || "",
+                    ciudad: empresa?.ciudad || activeCentral || "",
+                    telefono: empresa?.telefono || "",
+                    correo: empresa?.correo || "",
+                    logoUrl,
+                    nombreSgi: sgi?.nombre_sistema || fallback.nombreSgi,
+                    codigoOpr: documento?.codigo_documento || fallback.codigoOpr,
+                    versionOpr: documento?.version || fallback.versionOpr,
+                    responsableSgi: sgi?.responsable_sgi || ""
+                };
+            } catch (error) {
+                console.warn("[Alarvix OPR] No se pudo cargar la identidad documental de la empresa:", error);
+                return fallback;
+            }
+        }
+
+        function cargarImagenPDF(url) {
+            return new Promise((resolve) => {
+                if (!url) return resolve(null);
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                img.onload = () => resolve(img);
+                img.onerror = () => resolve(null);
+                img.src = url;
+            });
+        }
+
+        async function registrarOPRDocumental(s, identidad) {
+            try {
+                if (!supabaseClient || !currentUser?.tenant_id) return;
+                const payload = {
+                    tenant_id: currentUser.tenant_id,
+                    consecutivo: s.consecutivo,
+                    codigo_documento: identidad.codigoOpr,
+                    version_documento: identidad.versionOpr,
+                    fecha_emision: new Date().toISOString(),
+                    cliente_nombre: (crmClientes.find(c => String(c.id) === String(s.abonadoId)) || {}).nombre || "",
+                    cliente_nit: (crmClientes.find(c => String(c.id) === String(s.abonadoId)) || {}).nit || "",
+                    cliente_direccion: (crmClientes.find(c => String(c.id) === String(s.abonadoId)) || {}).direccion || "",
+                    cliente_telefono: (crmClientes.find(c => String(c.id) === String(s.abonadoId)) || {}).telefono || "",
+                    cliente_correo: (crmClientes.find(c => String(c.id) === String(s.abonadoId)) || {}).email || "",
+                    descripcion_servicio: s.evidenciaDano || s.descripcion || "",
+                    responsable_operacion: (personalTecnicos.find(t => String(t.id) === String(s.tecnicoId)) || {}).nombre || "",
+                    responsable_sgi: identidad.responsableSgi || "",
+                    estado: "GENERADO",
+                    logo_utilizado_url: identidad.logoUrl || null,
+                    empresa_nombre_snapshot: identidad.razonSocial,
+                    empresa_nit_snapshot: identidad.nit || "",
+                    created_by: currentUser.id
+                };
+                const { error } = await supabaseClient
+                    .from("opr_documentos")
+                    .upsert(payload, { onConflict: "tenant_id,consecutivo" });
+                if (error) console.warn("[Alarvix OPR] No se pudo registrar opr_documentos:", error.message);
+            } catch (error) {
+                console.warn("[Alarvix OPR] Error registrando OPR documental:", error);
+            }
+        }
+
+        async function descargarReportePDF(serviceId = null, compartir = false) {
             const { jsPDF } = window.jspdf;
             
             // Si no hay un ID de servicio contextualizado, generar un reporte general consolidado
@@ -10664,6 +10759,8 @@ function renderBurbujasChat(containerId, mensajes) {
             });
 
             showToast("Procesando PDF", "Compilando trazas de auditoría y firmas...");
+            const identidad = await cargarIdentidadDocumentalEmpresa();
+            const logoEmpresa = await cargarImagenPDF(identidad.logoUrl);
 
             // --- CABECERA CORPORATIVA ---
             doc.setFillColor(11, 15, 25); // Slate oscuro de Alarvix
@@ -10671,14 +10768,36 @@ function renderBurbujasChat(containerId, mensajes) {
 
             doc.setTextColor(255, 255, 255);
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(18);
-            doc.text("ALARVIX SERVICES ENTERPRISE", 15, 15);
+            doc.setFontSize(15);
+            const xCabecera = logoEmpresa ? 45 : 15;
+
+            if (logoEmpresa) {
+                try {
+                    const ratio = logoEmpresa.width / logoEmpresa.height || 1;
+                    const logoW = 24;
+                    const logoH = Math.max(12, Math.min(25, logoW / ratio));
+                    doc.addImage(logoEmpresa, "PNG", 15, 6, logoW, logoH, undefined, "FAST");
+                } catch (logoError) {
+                    console.warn("[Alarvix OPR] No se pudo insertar el logo:", logoError);
+                }
+            }
+
+            doc.text(identidad.razonSocial.substring(0, 42), xCabecera, 14);
             
+            doc.setFontSize(8);
+            doc.setFont("helvetica", "normal");
+            const datosEmpresa = [
+                identidad.nit ? `NIT ${identidad.nit}` : "",
+                identidad.ciudad || "",
+                identidad.telefono || ""
+            ].filter(Boolean).join(" | ");
+            if (datosEmpresa) doc.text(datosEmpresa.substring(0, 70), xCabecera, 19);
+
             doc.setFontSize(9);
             doc.setFont("helvetica", "normal");
-            doc.text("ORDEN DE PRESTACIÓN DE SERVICIO TÉCNICO (OPR)", 15, 22);
+            doc.text("ORDEN DE PRESTACIÓN DE SERVICIO TÉCNICO (OPR)", xCabecera, 25);
             doc.setTextColor(156, 163, 175);
-            doc.text(`Constancia Oficial de Cierre de Incidente de Seguridad Electrónica`, 15, 27);
+            doc.text("Documento controlado por el Sistema de Gestión Integral", xCabecera, 30);
 
             // Código consecutivo en cabecera
             doc.setFillColor(59, 130, 246); // Azul accent
@@ -10686,9 +10805,12 @@ function renderBurbujasChat(containerId, mensajes) {
             doc.setTextColor(255, 255, 255);
             doc.setFont("helvetica", "bold");
             doc.setFontSize(10);
-            doc.text("CONSECUTIVO ST", 148, 16);
-            doc.setFontSize(12);
+            doc.text("CONSECUTIVO OPR", 148, 16);
+            doc.setFontSize(11);
             doc.text(s.consecutivo, 148, 23);
+            doc.setFontSize(6.5);
+            doc.setFont("helvetica", "normal");
+            doc.text(`${identidad.codigoOpr} | V.${identidad.versionOpr}`, 148, 27);
 
             // --- SECCIÓN 1: DATOS DEL ABONADO ---
             doc.setTextColor(17, 24, 39);
@@ -10852,9 +10974,16 @@ function renderBurbujasChat(containerId, mensajes) {
                 };
             }
 
-            // Guardar archivo PDF directamente en el navegador del usuario
-            doc.save(`OPR_Alarvix_${s.consecutivo}.pdf`);
-            showToast("Reporte Descargado", `Se descargó el archivo OPR_${s.consecutivo}.pdf con éxito.`);
+            // Registrar el documento en el repositorio documental del SGI sin bloquear la descarga.
+            await registrarOPRDocumental(s, identidad);
+
+            // Guardar archivo PDF directamente en el navegador del usuario.
+            const nombreEmpresaArchivo = String(identidad.razonSocial || "Empresa")
+                .replace(/[^a-z0-9áéíóúüñ_-]+/gi, "_")
+                .replace(/^_+|_+$/g, "")
+                .substring(0, 60) || "Empresa";
+            doc.save(`OPR_${nombreEmpresaArchivo}_${s.consecutivo}.pdf`);
+            showToast("Reporte Descargado", `Se descargó el OPR ${s.consecutivo} con la identidad documental de ${identidad.razonSocial}.`);
             return null;
         }
 
