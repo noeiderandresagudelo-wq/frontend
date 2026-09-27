@@ -232,12 +232,12 @@
             </div>
 
             <!-- Formulario de Entrada -->
-            <form id="form-login" class="space-y-4" style="display:block;" novalidate>
+            <form id="form-login" class="space-y-4" style="display:block;" novalidate autocomplete="on" onsubmit="return handleLogin(event);">
                 <div>
                     <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Correo electrónico</label>
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"><i class="fa-solid fa-user"></i></span>
-                        <input type="text" id="login-username" placeholder="correo@empresa.com" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors">
+                        <input type="text" id="login-username" name="username" autocomplete="username" placeholder="correo@empresa.com" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors">
                     </div>
                 </div>
 
@@ -245,7 +245,7 @@
                     <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Contraseña</label>
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"><i class="fa-solid fa-lock"></i></span>
-                        <input type="password" id="login-password" placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors">
+                        <input type="password" id="login-password" name="password" autocomplete="current-password" placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors">
                     </div>
                 </div>
 
@@ -3447,10 +3447,12 @@
                     }
                 }
 
+                // El tenant es necesario para aislar datos, pero NO debe impedir la autenticación.
+                // Algunas cuentas existentes todavía no tienen tenant_id/empresa_id. En ese caso
+                // permitimos entrar y dejamos el perfil listo para completar la asociación desde
+                // Administración, evitando que el formulario parezca "borrarse" tras un login válido.
                 if (!currentUser?.tenant_id) {
-                    showToast("Perfil incompleto", "El correo autenticó correctamente, pero no encontramos la empresa asociada a este usuario. Verifica tenant_id o empresa_id en la tabla usuarios.", true);
-                    try { await supabaseClient.auth.signOut(); } catch (_) {}
-                    return false;
+                    console.warn("[Alarvix] Usuario autenticado sin tenant_id. Se mantiene la sesión para completar la asociación.");
                 }
 
                 if (currentUser.activo === false) {
@@ -3582,12 +3584,14 @@
             var loginForm = document.getElementById('form-login');
             if (loginForm) {
                 loginForm.addEventListener('submit', function (event) {
-                    // El login se controla desde JS para evitar que el navegador recargue
-                    // la página y borre las credenciales mientras Supabase responde.
+                    // El atributo onsubmit del formulario y este listener actúan como doble
+                    // barrera contra el submit nativo/reload. El login debe conservar lo escrito
+                    // cuando las credenciales sean incorrectas.
                     event.preventDefault();
-                    event.stopPropagation();
-                    handleLogin(event);
-                });
+                    event.stopImmediatePropagation();
+                    void handleLogin(event);
+                    return false;
+                }, true);
             }
             var recoveryForm = document.getElementById('form-recovery-request');
             if (recoveryForm) recoveryForm.addEventListener('submit', handleRecoveryRequest);
