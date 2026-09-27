@@ -2792,7 +2792,7 @@
                 username: sessionUser.email || "",
                 rol: String(metadata.role || metadata.rol || "").trim().toUpperCase(),
                 activo: metadata.activo !== false,
-                tenant_id: metadata.tenant_id || metadata.tenantId || null,
+                tenant_id: metadata.tenant_id || metadata.tenantId || metadata.empresa_id || metadata.empresaId || null,
                 tecnicoId: metadata.tecnico_id || metadata.tecnicoId || null,
                 abonadoId: metadata.abonado_id || metadata.abonadoId || null
             };
@@ -2850,8 +2850,8 @@
                             username: perfil.username || perfil.correo || currentUser.username,
                             rol: String(perfil.rol || currentUser.rol || "").toUpperCase(),
                             activo: perfil.activo !== false,
-                            tenant_id: perfil.tenant_id || currentUser.tenant_id || null,
-                            tecnicoId: perfil.tecnico_id || currentUser.tecnicoId || null,
+                            tenant_id: perfil.tenant_id || perfil.tenantId || perfil.empresa_id || perfil.empresaId || currentUser.tenant_id || null,
+                            tecnicoId: perfil.tecnico_id || perfil.tecnicoId || currentUser.tecnicoId || null,
                             abonadoId: perfil.abonado_id || currentUser.abonadoId || null
                         };
                     } else if (error) {
@@ -3392,8 +3392,27 @@
             try {
                 // Supabase Auth inicia sesión con el correo, no con el username
                 // interno de la tabla usuarios.
+                // Aceptamos correo o username: si el usuario escribió un username
+                // interno, primero intentamos resolver su correo de Auth desde la tabla usuarios.
+                var emailParaAuth = uInput;
+                if (!uInput.includes("@")) {
+                    try {
+                        const perfilLogin = await supabaseClient
+                            .from("usuarios")
+                            .select("correo, username")
+                            .or("username.eq." + encodeURIComponent(uInput) + ",correo.eq." + encodeURIComponent(uInput))
+                            .limit(1)
+                            .maybeSingle();
+                        if (!perfilLogin.error && perfilLogin.data?.correo) {
+                            emailParaAuth = perfilLogin.data.correo;
+                        }
+                    } catch (lookupLoginError) {
+                        console.warn("[Alarvix] No se pudo resolver username a correo:", lookupLoginError);
+                    }
+                }
+
                 var result = await supabaseClient.auth.signInWithPassword({
-                    email: uInput,
+                    email: emailParaAuth,
                     password: pInput
                 });
 
@@ -3410,8 +3429,27 @@
                     currentUser.rol = "DESPACHADOR";
                 }
 
+                // Compatibilidad multiempresa: perfiles antiguos pueden guardar la empresa
+                // como empresa_id/empresaId en vez de tenant_id. Si existe una sola empresa
+                // activa en la instalación, la usamos como bootstrap seguro del tenant.
+                if (!currentUser?.tenant_id && supabaseClient) {
+                    try {
+                        const empresaBootstrap = await supabaseClient
+                            .from("empresas")
+                            .select("id")
+                            .eq("estado", "ACTIVA")
+                            .limit(2);
+                        if (!empresaBootstrap.error && empresaBootstrap.data?.length === 1) {
+                            currentUser.tenant_id = empresaBootstrap.data[0].id;
+                        }
+                    } catch (tenantError) {
+                        console.warn("[Alarvix] No fue posible resolver tenant de bootstrap:", tenantError);
+                    }
+                }
+
                 if (!currentUser?.tenant_id) {
-                    showToast("Perfil incompleto", "El correo autenticó correctamente, pero el usuario no tiene tenant_id en Alarvix. Revisa la ficha del usuario en Supabase.", true);
+                    showToast("Perfil incompleto", "El correo autenticó correctamente, pero no encontramos la empresa asociada a este usuario. Verifica tenant_id o empresa_id en la tabla usuarios.", true);
+                    try { await supabaseClient.auth.signOut(); } catch (_) {}
                     return false;
                 }
 
