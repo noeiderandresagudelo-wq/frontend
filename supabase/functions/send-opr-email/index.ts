@@ -48,6 +48,30 @@ serve(async (req) => {
     const to = String(body?.to || "").trim();
     const opr = body?.opr || {};
 
+    // Identidad documental de la empresa que utiliza Alarvix.
+    let empresa = null;
+    let identidad = null;
+    try {
+      const tenantId = authData.user.user_metadata?.tenant_id || authData.user.user_metadata?.tenantId || null;
+      if (tenantId) {
+        const [{ data: empresaRow }, { data: identidadRow }] = await Promise.all([
+          supabase.from("empresas").select("razon_social,nombre_comercial,nit,ciudad,telefono,correo").eq("id", tenantId).maybeSingle(),
+          supabase.from("empresas_identidad").select("logo_url,logo_storage_path").eq("tenant_id", tenantId).maybeSingle()
+        ]);
+        empresa = empresaRow || null;
+        identidad = identidadRow || null;
+      }
+    } catch (identityError) {
+      console.warn("No se pudo cargar identidad documental:", identityError);
+    }
+
+    let logoUrl = identidad?.logo_url || null;
+    if (!logoUrl && identidad?.logo_storage_path && supabaseUrl) {
+      logoUrl = \`${supabaseUrl}/storage/v1/object/public/empresa-logos/${String(identidad.logo_storage_path).replace(/^\\/+/, "")}\`;
+    }
+
+    const nombreEmpresa = empresa?.razon_social || empresa?.nombre_comercial || "Empresa cliente";
+
     const partesCorreo = to.split("@");
     const correoValido = to.length >= 3 &&
       partesCorreo.length === 2 &&
@@ -60,17 +84,14 @@ serve(async (req) => {
     }
     if (!opr.consecutivo) return json({ error: "Falta el consecutivo del OPR." }, 400);
 
-    const subject = `Alarvix | OPR ${opr.consecutivo} | Servicio técnico finalizado`;
+    const subject = `${nombreEmpresa} | OPR ${opr.consecutivo} | Servicio técnico finalizado`;
     const html = `<!doctype html>
 <html lang="es"><body style="margin:0;background:#f1f5f9;font-family:Arial,sans-serif;color:#0f172a">
 <div style="max-width:700px;margin:24px auto;background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden">
-  <div style="background:#0b0f19;color:#fff;padding:22px 26px">
-    <div style="font-size:20px;font-weight:800;letter-spacing:1px">ALARVIX ENTERPRISE</div>
-    <div style="font-size:12px;color:#cbd5e1;margin-top:5px">Orden de Prestación de Servicio Técnico (OPR)</div>
-  </div>
+  <div style="background:#0b0f19;color:#fff;padding:22px 26px">\n    ${logoUrl ? `<img src="${esc(logoUrl)}" alt="${esc(nombreEmpresa)}" style="max-height:54px;max-width:180px;object-fit:contain;display:block;margin-bottom:10px">` : ""}\n    <div style="font-size:20px;font-weight:800;letter-spacing:1px">${esc(nombreEmpresa)}</div>\n    ${empresa?.nit ? `<div style="font-size:11px;color:#cbd5e1;margin-top:3px">NIT ${esc(empresa.nit)}</div>` : ""}\n    <div style="font-size:12px;color:#cbd5e1;margin-top:5px">Orden de Prestación de Servicio Técnico (OPR)</div>\n  </div>
   <div style="padding:24px 26px">
     <p style="margin-top:0">Estimado cliente,</p>
-    <p>Se ha generado la constancia del servicio técnico realizado. El registro permanece almacenado en Alarvix para consulta y trazabilidad.</p>
+    <p>Se ha generado la constancia del servicio técnico realizado por ${esc(nombreEmpresa)}. El registro permanece almacenado en el sistema para consulta y trazabilidad.</p>
     <table style="width:100%;border-collapse:collapse;font-size:14px">
       <tr><td style="padding:8px;border-bottom:1px solid #e2e8f0;font-weight:700">OPR</td><td style="padding:8px;border-bottom:1px solid #e2e8f0">${esc(opr.consecutivo)}</td></tr>
       <tr><td style="padding:8px;border-bottom:1px solid #e2e8f0;font-weight:700">Cliente</td><td style="padding:8px;border-bottom:1px solid #e2e8f0">${esc(opr.cliente)}</td></tr>
@@ -82,7 +103,7 @@ serve(async (req) => {
       <tr><td style="padding:8px;font-weight:700;vertical-align:top">Trabajo realizado</td><td style="padding:8px;white-space:pre-wrap">${esc(opr.trabajoRealizado)}</td></tr>
     </table>
     <div style="margin-top:22px;padding:14px;background:#f8fafc;border-radius:10px;font-size:12px;color:#475569">
-      Este correo fue solicitado desde Alarvix Enterprise. El OPR original continúa guardado en el sistema.
+      Este correo fue solicitado desde la plataforma de gestión. El OPR original continúa guardado en el sistema de ${esc(nombreEmpresa)}.
     </div>
   </div>
 </div></body></html>`;
