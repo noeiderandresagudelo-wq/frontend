@@ -37,3 +37,12 @@ El dashboard utiliza un mapa embebido de OpenStreetMap. No se usa Google Maps, M
     npm run build
 
 Vercel usa Node 22 o superior según el campo engines de package.json.
+
+
+## Actualizaciones automáticas de la APK
+
+La compilación Android admite cargar la aplicación desde una URL web remota para que los cambios de la aplicación web lleguen a las APK instaladas sin reinstalarla. Para activarlo, configura en GitHub Actions una **Repository Variable** o **Repository Secret** llamada `ALARVIX_APP_URL` con la URL HTTPS pública donde está desplegada Alarvix.
+
+Si `ALARVIX_APP_URL` no existe, la APK conserva el comportamiento anterior y usa el contenido web incluido localmente.
+
+Los cambios que afecten código o plugins nativos de Android (permisos, GPS nativo, cámara nativa, plugins Capacitor, icono o splash) siguen requiriendo una nueva APK.
