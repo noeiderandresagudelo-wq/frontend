@@ -10776,7 +10776,7 @@ function renderBurbujasChat(containerId, mensajes) {
                     const ratio = logoEmpresa.width / logoEmpresa.height || 1;
                     const logoW = 24;
                     const logoH = Math.max(12, Math.min(25, logoW / ratio));
-                    doc.addImage(logoEmpresa, "PNG", 15, 6, logoW, logoH, undefined, "FAST");
+                    doc.addImage(logoEmpresa, "AUTO", 15, 6, logoW, logoH, undefined, "FAST");
                 } catch (logoError) {
                     console.warn("[Alarvix OPR] No se pudo insertar el logo:", logoError);
                 }
