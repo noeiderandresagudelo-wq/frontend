@@ -279,7 +279,7 @@
                     </div>
                 </div>
 
-                <button type="button" id="btn-login-submit" onclick="return alarvixSubmitLogin(event);" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs py-3 rounded-lg transition uppercase shadow-lg shadow-blue-500/10">
+                <button id="btn-login-submit" type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs py-3 rounded-lg transition uppercase shadow-lg shadow-blue-500/10">
                     Ingresar al Sistema Táctico <i class="fa-solid fa-arrow-right-to-bracket ml-1.5"></i>
                 </button>
             </form>
@@ -3503,7 +3503,9 @@
             }
         }
 
-        window.handleLogin = handleLogin;\n\n        async function handleRecoveryRequest(event) {
+        window.handleLogin = handleLogin;
+
+        async function handleRecoveryRequest(event) {
             event.preventDefault();
             var email = document.getElementById('recovery-email').value.trim();
             if (!supabaseClient) {
