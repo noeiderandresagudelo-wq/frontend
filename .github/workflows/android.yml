@@ -62,6 +62,14 @@ jobs:
         working-directory: mobile
         run: npx cap add android
 
+      - name: Use Alarvix web logo as Android app icon
+        run: |
+          mkdir -p mobile/resources
+          cp dist/icons/icon-512.png mobile/resources/icon.png
+          cd mobile
+          npm install -D @capacitor/assets
+          npx capacitor-assets generate --android --iconBackgroundColor "#0B0F19" --iconBackgroundColorDark "#0B0F19"
+
       - name: Sync Capacitor plugins and latest web build
         working-directory: mobile
         run: npx cap sync android
