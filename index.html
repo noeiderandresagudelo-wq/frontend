@@ -232,12 +232,12 @@
             </div>
 
             <!-- Formulario de Entrada -->
-            <form id="form-login" class="space-y-4" style="display:block;" novalidate autocomplete="on" onsubmit="return handleLogin(event);">
+            <form id="form-login" class="space-y-4" style="display:block;" novalidate autocomplete="on" onsubmit="event.preventDefault(); event.stopPropagation(); return (typeof window.handleLogin === 'function') ? window.handleLogin(event) : false;">
                 <div>
                     <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Correo electrónico</label>
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"><i class="fa-solid fa-user"></i></span>
-                        <input type="text" id="login-username" name="username" autocomplete="username" placeholder="correo@empresa.com" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors">
+                        <input type="email" id="login-username" name="username" autocomplete="username" placeholder="correo@empresa.com" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 transition-colors">
                     </div>
                 </div>
 
