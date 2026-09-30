@@ -3188,7 +3188,7 @@
                 canManageUsers: false
             },
             TECNICO: {
-                tabs: ['tecnicos', 'mensajes'],
+                tabs: ['tecnicos', 'estudios', 'mensajes'],
                 canEdit: false // El Técnico no tiene permisos de edición generales, pero el simulador móvil se controla localmente
             },
             COTIZADOR: {
@@ -4371,13 +4371,37 @@
             container.innerHTML = '';
 
             // Filtrar únicamente los servicios asignados a este técnico que estén pendientes o activos
+            // Estudios de seguridad asignados al técnico: se manejan aparte de los servicios operativos.
+            const techStudies = estudiosSeguridad.filter(function(e) {
+                return e.tecnicoId === currentUser.tecnicoId &&
+                    !['Cerrado','Aprobado para instalación','Viable con adecuaciones','No viable'].includes(e.estado);
+            });
+            const studiesContainer = document.getElementById('tech-security-studies-list');
+            if (studiesContainer) {
+                studiesContainer.innerHTML = '';
+                techStudies.forEach(function(e) {
+                    const card = document.createElement('div');
+                    card.className = 'bg-slate-900 border border-violet-500/20 rounded-xl p-3 space-y-2';
+                    let action = '';
+                    if (e.estado === 'Asignado') {
+                        action = '<button onclick="iniciarEstudioTecnico(\''+e.id+'\')" class="w-full bg-orange-600 hover:bg-orange-500 text-white rounded-lg py-2 text-[10px] font-black uppercase">🚗 Iniciar desplazamiento</button>';
+                    } else if (e.estado === 'En camino') {
+                        action = '<button onclick="llegarEstudioTecnico(\''+e.id+'\')" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg py-2 text-[10px] font-black uppercase">📍 Llegué al sitio</button>';
+                    } else if (e.estado === 'Llegó al sitio') {
+                        action = '<button onclick="cambiarEstadoEstudio(\''+e.id+'\',\'Informe pendiente\')" class="w-full bg-violet-600 hover:bg-violet-500 text-white rounded-lg py-2 text-[10px] font-black uppercase">📝 Terminar visita</button>';
+                    }
+                    card.innerHTML = '<div class="flex justify-between gap-2"><div><p class="text-[9px] text-violet-400 font-black uppercase">Estudio de Seguridad · '+escEstudio(e.id)+'</p><p class="text-xs text-white font-bold mt-1">'+escEstudio(e.cliente)+'</p><p class="text-[9px] text-slate-500 mt-1">'+escEstudio(e.direccion)+'</p></div><span class="text-[9px] font-bold text-violet-300">'+escEstudio(e.estado)+'</span></div><p class="text-[10px] text-slate-400">'+escEstudio(e.necesidad)+'</p>'+action;
+                    studiesContainer.appendChild(card);
+                });
+            }
+
             const techTasks = incidentesServicios.filter(i => 
                 i.tecnicoId === currentUser.tecnicoId && 
                 i.estado !== "Cerrado" && 
                 i.estado !== "Finalizado"
             );
 
-            document.getElementById('tech-pending-badge').innerText = techTasks.length;
+            document.getElementById('tech-pending-badge').innerText = techTasks.length + techStudies.length;
 
             if (techTasks.length === 0) {
                 container.innerHTML = `
@@ -5444,6 +5468,18 @@
             document.getElementById('modal-estudio-seguridad').classList.remove('hidden');
         }
 
+        function iniciarEstudioTecnico(id) {
+            const e = estudiosSeguridad.find(function(x){return x.id === id;});
+            if (!e || e.tecnicoId !== (currentUser && currentUser.tecnicoId)) return;
+            cambiarEstadoEstudio(id, 'En camino');
+        }
+
+        function llegarEstudioTecnico(id) {
+            const e = estudiosSeguridad.find(function(x){return x.id === id;});
+            if (!e || e.tecnicoId !== (currentUser && currentUser.tecnicoId)) return;
+            cambiarEstadoEstudio(id, 'Llegó al sitio');
+        }
+
         function cambiarEstadoEstudio(id, nuevoEstado) {
             const e = estudiosSeguridad.find(function(x){return x.id === id;});
             if (!e) return;
@@ -5499,7 +5535,7 @@
                 const techName=tech ? (tech.nombre||tech.id) : (e.tecnicoId||'Sin asignar');
                 let accion='';
                 if(e.estado==='Pendiente') accion='<button onclick="asignarEstudioTecnico(\''+e.id+'\')" class="px-2 py-1 rounded bg-blue-600/15 text-blue-400 border border-blue-500/20 text-[9px] font-bold">Asignar</button>';
-                else if(e.estado==='Asignado') accion='<button onclick="cambiarEstadoEstudio(\''+e.id+'\',\'En camino\')" class="px-2 py-1 rounded bg-orange-600/15 text-orange-400 border border-orange-500/20 text-[9px] font-bold">Simular en camino</button>';
+                else if(e.estado==='Asignado') accion='<span class="px-2 py-1 rounded bg-slate-800 text-slate-500 text-[9px] font-bold">Esperando salida del técnico</span>';
                 else if(e.estado==='En camino') accion='<button onclick="cambiarEstadoEstudio(\''+e.id+'\',\'Llegó al sitio\')" class="px-2 py-1 rounded bg-cyan-600/15 text-cyan-400 border border-cyan-500/20 text-[9px] font-bold">Llegó al sitio</button>';
                 else if(e.estado==='Llegó al sitio') accion='<button onclick="cambiarEstadoEstudio(\''+e.id+'\',\'Informe pendiente\')" class="px-2 py-1 rounded bg-violet-600/15 text-violet-400 border border-violet-500/20 text-[9px] font-bold">Cerrar visita</button>';
                 return '<tr class="hover:bg-slate-950/60"><td class="p-3"><span class="font-mono font-bold text-violet-300">'+escEstudio(e.id)+'</span><div class="text-[9px] text-slate-600">'+new Date(e.fechaCreacion).toLocaleDateString('es-CO')+'</div></td><td class="p-3"><div class="font-bold text-white">'+escEstudio(e.cliente)+'</div><div class="text-[9px] text-slate-500">'+escEstudio(e.ciudad)+' · '+escEstudio(e.direccion)+'</div></td><td class="p-3"><span class="text-violet-300 font-bold">'+escEstudio(e.tipo)+'</span><div class="text-[9px] text-slate-500 max-w-[240px] truncate">'+escEstudio(e.necesidad)+'</div></td><td class="p-3 text-slate-300">'+escEstudio(techName)+'</td><td class="p-3 text-center"><span class="inline-flex px-2 py-1 rounded border text-[9px] font-bold uppercase '+estadoEstudioClass(e.estado)+'">'+escEstudio(e.estado)+'</span></td><td class="p-3"><div class="flex flex-wrap gap-1 justify-center">'+accion+'<button onclick="editarEstudioSeguridad(\''+e.id+'\')" class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-[9px] font-bold">Editar</button></div></td></tr>';
