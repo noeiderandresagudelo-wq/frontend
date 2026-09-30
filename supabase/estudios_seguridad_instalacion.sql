@@ -19,7 +19,8 @@ create table if not exists public.estudios_seguridad_instalacion (
   fecha_creacion timestamptz not null default now(),
   timeline jsonb not null default '[]'::jsonb,
   created_by uuid,
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  opr_report jsonb
 );
 
 create index if not exists idx_estudios_seguridad_tenant
@@ -73,3 +74,8 @@ drop trigger if exists trg_estudios_seguridad_instalacion_updated_at on public.e
 create trigger trg_estudios_seguridad_instalacion_updated_at
 before update on public.estudios_seguridad_instalacion
 for each row execute function public.set_estudios_seguridad_instalacion_updated_at();
+
+
+-- Permite almacenar el OPR técnico del estudio sin crear otra tabla.
+ALTER TABLE public.estudios_seguridad_instalacion
+  ADD COLUMN IF NOT EXISTS opr_report jsonb;
