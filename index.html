@@ -2093,9 +2093,16 @@
                                     </select>
                                 </div>
 
-                                <div id="cot-diagnostico-tecnico" class="hidden p-2.5 bg-blue-500/5 border border-blue-500/20 rounded-lg space-y-1">
-                                    <span class="text-[8px] font-bold text-blue-400 uppercase block"><i class="fa-solid fa-user-gear"></i> Diagnóstico Reportado por el Técnico</span>
-                                    <p id="cot-diagnostico-texto" class="text-[10px] text-slate-300 leading-snug"></p>
+                                <div id="cot-diagnostico-tecnico" class="hidden p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl space-y-2.5">
+                                    <div class="flex items-center justify-between gap-2"><span class="text-[8px] font-black text-blue-400 uppercase"><i class="fa-solid fa-user-gear"></i> Ficha técnica de origen</span><span id="cot-origen-badge" class="text-[8px] px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 font-bold uppercase">OPR / Servicio</span></div>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div class="bg-slate-950/70 rounded-lg p-2 border border-slate-800"><span class="text-[8px] text-slate-500 uppercase block">Fecha de visita</span><strong id="cot-tecnico-fecha" class="text-[10px] text-white block mt-0.5">--</strong></div>
+                                        <div class="bg-slate-950/70 rounded-lg p-2 border border-slate-800"><span class="text-[8px] text-slate-500 uppercase block">Hora / evento</span><strong id="cot-tecnico-hora" class="text-[10px] text-white block mt-0.5">--</strong></div>
+                                        <div class="bg-slate-950/70 rounded-lg p-2 border border-slate-800"><span class="text-[8px] text-slate-500 uppercase block">Técnico responsable</span><strong id="cot-tecnico-nombre" class="text-[10px] text-white block mt-0.5 truncate">--</strong></div>
+                                        <div class="bg-slate-950/70 rounded-lg p-2 border border-slate-800"><span class="text-[8px] text-slate-500 uppercase block">Servicio / OPR</span><strong id="cot-tecnico-servicio" class="text-[10px] text-purple-300 block mt-0.5 truncate">--</strong></div>
+                                    </div>
+                                    <div><span class="text-[8px] text-slate-500 uppercase block mb-1">Diagnóstico / motivo para cotizar</span><p id="cot-diagnostico-texto" class="text-[10px] text-slate-200 leading-snug bg-slate-950/60 rounded-lg p-2.5 border border-slate-800"></p></div>
+                                    <div id="cot-contexto-tecnico-extra" class="hidden"><span class="text-[8px] text-slate-500 uppercase block mb-1">Hallazgos y requerimientos técnicos</span><p id="cot-contexto-tecnico-texto" class="text-[10px] text-slate-300 leading-snug bg-slate-950/60 rounded-lg p-2.5 border border-slate-800 whitespace-pre-line"></p></div>
                                     <p id="cot-diagnostico-meta" class="text-[9px] text-slate-500 italic"></p>
                                 </div>
 
@@ -7479,26 +7486,32 @@
 
         function cotizacionToRow(c) {
             return {
-                codigo: c.codigo,
-                servicio_id: c.servicioId,
-                cliente: c.cliente,
-                mano_obra: c.manoObra,
-                iva: c.iva,
-                total: c.total,
-                estado: c.estado,
-                materiales: c.materiales || []
+                codigo: c.codigo, servicio_id: c.servicioId, cliente: c.cliente,
+                mano_obra: c.manoObra, iva: c.iva, total: c.total, estado: c.estado,
+                materiales: c.materiales || [],
+                fecha_creacion: c.fechaCreacion || null, fecha_actualizacion: c.fechaActualizacion || null,
+                cotizador_id: c.cotizadorId || null, cotizador_nombre: c.cotizadorNombre || null,
+                tecnico_id: c.tecnicoId || null, tecnico_nombre: c.tecnicoNombre || null,
+                fecha_visita_tecnica: c.fechaVisitaTecnica || null,
+                diagnostico_tecnico: c.diagnosticoTecnico || null,
+                informe_tecnico: c.informeTecnico && typeof c.informeTecnico === 'object' ? c.informeTecnico : null,
+                insumos_sugeridos: Array.isArray(c.insumosSugeridos) ? c.insumosSugeridos : [],
+                trazabilidad: c.trazabilidad && typeof c.trazabilidad === 'object' ? c.trazabilidad : null,
+                origen: c.origen || 'Servicio técnico / OPR'
             };
         }
         function rowToCotizacion(row) {
             return {
-                codigo: row.codigo,
-                servicioId: row.servicio_id,
-                cliente: row.cliente,
-                manoObra: row.mano_obra,
-                iva: row.iva,
-                total: row.total,
-                estado: row.estado,
-                materiales: row.materiales || []
+                codigo: row.codigo, servicioId: row.servicio_id, cliente: row.cliente,
+                manoObra: row.mano_obra, iva: row.iva, total: row.total, estado: row.estado,
+                materiales: row.materiales || [],
+                fechaCreacion: row.fecha_creacion || null, fechaActualizacion: row.fecha_actualizacion || null,
+                cotizadorId: row.cotizador_id || null, cotizadorNombre: row.cotizador_nombre || null,
+                tecnicoId: row.tecnico_id || null, tecnicoNombre: row.tecnico_nombre || null,
+                fechaVisitaTecnica: row.fecha_visita_tecnica || null,
+                diagnosticoTecnico: row.diagnostico_tecnico || '', informeTecnico: row.informe_tecnico || null,
+                insumosSugeridos: row.insumos_sugeridos || [], trazabilidad: row.trazabilidad || null,
+                origen: row.origen || 'Servicio técnico / OPR'
             };
         }
 
@@ -9986,38 +9999,46 @@ function renderBurbujasChat(containerId, mensajes) {
         function onCotServicioChange(consecutivo) {
             const s = incidentesServicios.find(i => i.consecutivo === consecutivo);
             const diagPanel = document.getElementById('cot-diagnostico-tecnico');
+            if (!s) { if (diagPanel) diagPanel.classList.add('hidden'); return; }
 
-            if (!s) {
-                if (diagPanel) diagPanel.classList.add('hidden');
-                return;
-            }
+            const info = s.informeTecnico || {};
+            const tecnico = personalTecnicos.find(t => t.id === s.tecnicoId) || {};
+            const tecnicoNombre = info.tecnico || tecnico.nombre || 'Técnico no registrado';
+            const fechaFuente = info.fechaVisita || info.fecha || s.fechaCreacion || null;
+            const fecha = fechaFuente ? new Date(fechaFuente) : null;
+            const fechaTexto = fecha && !isNaN(fecha.getTime()) ? fecha.toLocaleDateString('es-CO') : 'No registrada';
+            const horaTexto = fecha && !isNaN(fecha.getTime()) ? fecha.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}) : 'No registrada';
+            const diagnostico = info.descripcion || s.evidenciaDano || s.descripcion || 'El técnico no dejó una descripción técnica registrada.';
+            const requerimientos = [
+                info.hallazgos ? 'Hallazgos: ' + info.hallazgos : '',
+                info.requerimientos ? 'Requerimientos: ' + info.requerimientos : '',
+                info.observaciones ? 'Observaciones: ' + info.observaciones : '',
+                Array.isArray(s.insumosUsados) && s.insumosUsados.length ? 'Insumos registrados: ' + s.insumosUsados.map(x => (x.codigo || '') + ' x' + (x.cantidad || 0)).join(', ') : ''
+            ].filter(Boolean).join('\n');
 
-            // Mostrar el diagnóstico/OPR que dejó el técnico en campo, si existe, para que el
-            // Cotizador tenga contexto de por qué el servicio requiere presupuesto.
             if (diagPanel) {
-                if (s.informeTecnico && s.informeTecnico.descripcion) {
-                    document.getElementById('cot-diagnostico-texto').innerText = s.informeTecnico.descripcion;
-                    document.getElementById('cot-diagnostico-meta').innerText = `${s.informeTecnico.tipoAtencion || 'Servicio'} · Reportado por ${s.informeTecnico.tecnico || 'Técnico'} el ${s.informeTecnico.fecha || ''}`;
-                    diagPanel.classList.remove('hidden');
-                } else {
-                    diagPanel.classList.add('hidden');
-                }
+                document.getElementById('cot-tecnico-fecha').innerText = fechaTexto;
+                document.getElementById('cot-tecnico-hora').innerText = horaTexto;
+                document.getElementById('cot-tecnico-nombre').innerText = tecnicoNombre;
+                document.getElementById('cot-tecnico-servicio').innerText = s.consecutivo || consecutivo;
+                document.getElementById('cot-diagnostico-texto').innerText = diagnostico;
+                document.getElementById('cot-diagnostico-meta').innerText = (info.tipoAtencion || 'Servicio técnico') + ' · ' + (info.requiereCotizacion ? 'Marcado para cotización' : 'Contexto técnico') + ' · Actualizado ' + fechaTexto + ' ' + horaTexto;
+                const extra = document.getElementById('cot-contexto-tecnico-extra');
+                const extraText = document.getElementById('cot-contexto-tecnico-texto');
+                if (extra && extraText) { extraText.innerText = requerimientos || 'No se registraron hallazgos adicionales en el OPR.'; extra.classList.toggle('hidden', !requerimientos); }
+                const badge = document.getElementById('cot-origen-badge');
+                if (badge) badge.innerText = info.requiereCotizacion ? 'OPR / Requiere cotización' : 'OPR / Diagnóstico';
+                diagPanel.classList.remove('hidden');
             }
 
-            // Si estamos en modo edición de una cotización ya existente, no pisamos sus materiales
-            // (esos se cargan explícitamente desde editCotizacion). Solo autocompletamos para cotizaciones nuevas.
             const editando = document.getElementById('cot-editing-codigo').value;
             if (!editando) {
                 tempCotMateriales = [];
-                const items = s.insumosUsados || [];
-                items.forEach(it => {
+                (s.insumosUsados || []).forEach(it => {
                     const mat = catalogoInventario.find(x => x.codigo === it.codigo);
-                    if (mat) {
-                        tempCotMateriales.push({ codigo: it.codigo, nombre: mat.nombre, costo: mat.costo, qty: it.cantidad });
-                    }
+                    if (mat) tempCotMateriales.push({ codigo: it.codigo, nombre: mat.nombre, costo: mat.costo, qty: it.cantidad });
                 });
             }
-
             calculateCotizacionPreview();
         }
 
@@ -10133,6 +10154,25 @@ function renderBurbujasChat(containerId, mensajes) {
                 const grandTotal = subtotal + iva;
 
                 const editingCode = document.getElementById('cot-editing-codigo').value;
+                const nowCotizacion = new Date();
+                const tecnicoOrigen = personalTecnicos.find(t => t.id === s.tecnicoId) || {};
+                const infoTecnicaOrigen = s.informeTecnico || {};
+                const fechaTecnicaOrigen = infoTecnicaOrigen.fechaVisita || infoTecnicaOrigen.fecha || s.fechaCreacion || null;
+                const trazabilidadBase = {
+                    fechaCreacion: nowCotizacion.toISOString(),
+                    cotizadorId: currentUser?.id || null,
+                    cotizadorNombre: currentUser?.nombre || currentUser?.username || 'Usuario no identificado',
+                    tecnicoId: s.tecnicoId || null,
+                    tecnicoNombre: infoTecnicaOrigen.tecnico || tecnicoOrigen.nombre || 'Técnico no registrado',
+                    fechaVisitaTecnica: fechaTecnicaOrigen,
+                    servicioId: s.consecutivo,
+                    tipoAtencion: infoTecnicaOrigen.tipoAtencion || null,
+                    diagnosticoTecnico: infoTecnicaOrigen.descripcion || s.evidenciaDano || s.descripcion || '',
+                    informeTecnico: infoTecnicaOrigen,
+                    evidenciaTecnica: s.evidenciaDano || null,
+                    insumosSugeridos: Array.isArray(s.insumosUsados) ? s.insumosUsados : [],
+                    origen: 'Servicio técnico / OPR'
+                };
 
                 let codigoCotSincronizar = editingCode;
 
@@ -10153,6 +10193,16 @@ function renderBurbujasChat(containerId, mensajes) {
                     cot.iva = iva;
                     cot.total = grandTotal;
                     cot.materiales = [...tempCotMateriales];
+                    cot.fechaActualizacion = nowCotizacion.toISOString();
+                    cot.cotizadorId = currentUser?.id || cot.cotizadorId || null;
+                    cot.cotizadorNombre = currentUser?.nombre || cot.cotizadorNombre || 'Usuario no identificado';
+                    cot.tecnicoId = s.tecnicoId || cot.tecnicoId || null;
+                    cot.tecnicoNombre = infoTecnicaOrigen.tecnico || tecnicoOrigen.nombre || cot.tecnicoNombre || 'Técnico no registrado';
+                    cot.fechaVisitaTecnica = fechaTecnicaOrigen || cot.fechaVisitaTecnica || null;
+                    cot.diagnosticoTecnico = infoTecnicaOrigen.descripcion || s.evidenciaDano || cot.diagnosticoTecnico || '';
+                    cot.informeTecnico = infoTecnicaOrigen || cot.informeTecnico || null;
+                    cot.insumosSugeridos = Array.isArray(s.insumosUsados) ? s.insumosUsados : (cot.insumosSugeridos || []);
+                    cot.trazabilidad = { ...(cot.trazabilidad || {}), ...trazabilidadBase, fechaActualizacion: nowCotizacion.toISOString() };
                     cot.estado = "Pendiente"; // Al editarla, vuelve a requerir aprobación del Cotizador
 
                     s.estado = "Esperando aprobación";
@@ -10171,7 +10221,19 @@ function renderBurbujasChat(containerId, mensajes) {
                         iva: iva,
                         total: grandTotal,
                         estado: "Pendiente", // El Cotizador decide luego si queda Aprobada o Rechazada
-                        materiales: [...tempCotMateriales] // Persistimos el desglose completo de materiales
+                        materiales: [...tempCotMateriales],
+                        fechaCreacion: nowCotizacion.toISOString(),
+                        fechaActualizacion: nowCotizacion.toISOString(),
+                        cotizadorId: currentUser?.id || null,
+                        cotizadorNombre: currentUser?.nombre || currentUser?.username || 'Usuario no identificado',
+                        tecnicoId: s.tecnicoId || null,
+                        tecnicoNombre: infoTecnicaOrigen.tecnico || tecnicoOrigen.nombre || 'Técnico no registrado',
+                        fechaVisitaTecnica: fechaTecnicaOrigen,
+                        diagnosticoTecnico: infoTecnicaOrigen.descripcion || s.evidenciaDano || s.descripcion || '',
+                        informeTecnico: infoTecnicaOrigen,
+                        insumosSugeridos: Array.isArray(s.insumosUsados) ? s.insumosUsados : [],
+                        trazabilidad: trazabilidadBase,
+                        origen: 'Servicio técnico / OPR'
                     });
 
                     s.estado = "Esperando aprobación";
