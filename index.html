@@ -2175,6 +2175,7 @@
                                             <th class="p-3">Código</th>
                                             <th class="p-3">Servicio Técnico</th>
                                             <th class="p-3">Cliente</th>
+                                            <th class="p-3">Trazabilidad</th>
                                             <th class="p-3 text-center">Estado</th>
                                             <th class="p-3 text-right">Total Presupuestado</th>
                                             <th class="p-3 text-center">Instalación</th>
@@ -10304,7 +10305,7 @@ function renderBurbujasChat(containerId, mensajes) {
             container.innerHTML = '';
 
             if (cotizacionesEmitidas.length === 0) {
-                container.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-500 italic">No hay cotizaciones registradas.</td></tr>`;
+                container.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-500 italic">No hay cotizaciones registradas.</td></tr>`;
                 return;
             }
 
@@ -10355,6 +10356,14 @@ function renderBurbujasChat(containerId, mensajes) {
                     <td class="p-3 font-mono font-bold text-purple-400">${c.codigo}</td>
                     <td class="p-3 font-mono text-slate-400">${c.servicioId}</td>
                     <td class="p-3 font-bold text-white">${c.cliente}</td>
+                    <td class="p-3">
+                        <div class="space-y-0.5 min-w-[175px]">
+                            <span class="text-[9px] font-bold text-slate-300 block"><i class="fa-solid fa-user-gear text-blue-400 mr-1"></i>Técnico: ${c.tecnicoNombre || 'No registrado'}</span>
+                            <span class="text-[8px] text-slate-500 block"><i class="fa-solid fa-calendar-day mr-1"></i>Visita: ${c.fechaVisitaTecnica ? new Date(c.fechaVisitaTecnica).toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'}) : 'No registrada'}</span>
+                            <span class="text-[8px] text-slate-500 block"><i class="fa-solid fa-user-tie mr-1"></i>Cotizó: ${c.cotizadorNombre || 'No registrado'}</span>
+                            <span class="text-[8px] text-slate-500 block"><i class="fa-solid fa-clock mr-1"></i>Emitida: ${c.fechaCreacion ? new Date(c.fechaCreacion).toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'}) : 'No registrada'}</span>
+                        </div>
+                    </td>
                     <td class="p-3 text-center">
                         ${puedeDecidir
                             ? `<select onchange="updateCotizacionEstado('${c.codigo}', this.value)" class="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[9px] font-bold uppercase tracking-wider ${badgeClass} focus:outline-none cursor-pointer">${estadoOptions}</select>`
