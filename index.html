@@ -5803,30 +5803,122 @@
             return true;
         }
 
-        async function asignarEstudioTecnico(id) {
-            const e = estudiosSeguridad.find(function(x){return x.id === id;});
-            if (!e) return;
-            const opciones = personalTecnicos.filter(function(t){return t.activo !== false;});
-            if (!opciones.length) { showToast('Sin técnicos','No hay técnicos disponibles para asignar el estudio.',true); return; }
-            const seleccion = prompt('Escribe el ID del técnico a asignar:\n\n' + opciones.map(function(t){return t.id + ' · ' + (t.nombre || 'Sin nombre');}).join('\n'), e.tecnicoId || opciones[0].id);
-            if (!seleccion) return;
-            const tecnico = opciones.find(function(t){return t.id === seleccion.trim();});
-            if (!tecnico) { showToast('Técnico no encontrado','Usa exactamente el ID mostrado en la lista.',true); return; }
-            e.tecnicoId = tecnico.id;
-            e.tecnicoAuthId = tecnico.authUserId || null;
-            if (e.estado === 'Pendiente') e.estado = 'Asignado';
-            e.timeline = Array.isArray(e.timeline) ? e.timeline : [];
-            e.timeline.push({fecha:new Date().toISOString(),msg:'Estudio asignado al técnico',user:currentUser ? currentUser.nombre : 'Central'});
-            const guardado = await persistirEstudiosSeguridad(e);
-            if (!guardado) {
-                showToast('No se pudo asignar', 'La asignación no llegó a Supabase.', true);
-                await syncEstudiosSeguridadNube();
+        function abrirAsignarEstudioTecnico(id) {
+            const estudio = estudiosSeguridad.find(function(x){ return String(x.id) === String(id); });
+            const modal = document.getElementById('modal-asignar-estudio-seguridad');
+            const select = document.getElementById('asignar-estudio-tecnico');
+            const titulo = document.getElementById('asignar-estudio-titulo');
+            const info = document.getElementById('asignar-estudio-info');
+            if (!estudio || !modal || !select) return;
+
+            const opciones = personalTecnicos.filter(function(t){ return t.activo !== false; });
+            if (!opciones.length) {
+                showToast('Sin técnicos', 'No hay técnicos activos disponibles para asignar el estudio.', true);
                 return;
             }
+
+            select.innerHTML = '<option value="">Selecciona un técnico...</option>' +
+                opciones.map(function(t){
+                    const idTecnico = String(t.id || '').trim();
+                    const nombre = String(t.nombre || 'Sin nombre').trim();
+                    const ciudad = String(t.ciudad || '').trim();
+                    const auth = uuidValido(t.authUserId);
+                    return '<option value="' + escEstudio(idTecnico) + '" data-auth-id="' + escEstudio(auth || '') + '">' +
+                        escEstudio(nombre) + ' · ID ' + escEstudio(idTecnico) +
+                        (ciudad ? ' · ' + escEstudio(ciudad) : '') +
+                        '</option>';
+                }).join('');
+
+            const hiddenId = document.getElementById('asignar-estudio-id');
+            if (hiddenId) hiddenId.value = String(estudio.id || '');
+            if (estudio.tecnicoId) {
+                select.value = String(estudio.tecnicoId);
+            }
+
+            if (titulo) titulo.innerText = 'Asignar técnico · ' + (estudio.id || '');
+            if (info) info.innerText = (estudio.cliente || 'Cliente') + ' · ' + (estudio.direccion || 'Sin dirección');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(function(){ select.focus(); }, 50);
+        }
+
+        function cerrarAsignarEstudioTecnico() {
+            const modal = document.getElementById('modal-asignar-estudio-seguridad');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        async function confirmarAsignarEstudioTecnico(event) {
+            if (event) event.preventDefault();
+
+            const modal = document.getElementById('modal-asignar-estudio-seguridad');
+            const select = document.getElementById('asignar-estudio-tecnico');
+            const id = document.getElementById('asignar-estudio-id');
+            const boton = document.getElementById('asignar-estudio-guardar');
+            const estudio = estudiosSeguridad.find(function(x){ return String(x.id) === String(id ? id.value : ''); });
+
+            if (!estudio || !select || !select.value) {
+                showToast('Selecciona un técnico', 'Debes elegir un técnico de la lista.', true);
+                return false;
+            }
+
+            const tecnico = personalTecnicos.find(function(t){ return String(t.id || '').trim() === String(select.value).trim(); });
+            if (!tecnico) {
+                showToast('Técnico no encontrado', 'El técnico seleccionado ya no está disponible.', true);
+                return false;
+            }
+
+            const anterior = {
+                tecnicoId: estudio.tecnicoId,
+                tecnicoAuthId: estudio.tecnicoAuthId,
+                estado: estudio.estado,
+                timeline: Array.isArray(estudio.timeline) ? estudio.timeline.slice() : []
+            };
+
+            estudio.tecnicoId = textoNulo(tecnico.id);
+            estudio.tecnicoAuthId = uuidValido(tecnico.authUserId);
+            if (estudio.estado === 'Pendiente') estudio.estado = 'Asignado';
+            estudio.timeline = Array.isArray(estudio.timeline) ? estudio.timeline : [];
+            estudio.timeline.push({
+                fecha: new Date().toISOString(),
+                msg: 'Estudio asignado al técnico',
+                user: currentUser ? currentUser.nombre : 'Central'
+            });
+
+            if (boton) {
+                boton.disabled = true;
+                boton.innerText = 'Guardando...';
+            }
+
+            const guardado = await persistirEstudiosSeguridad(estudio);
+
+            if (boton) {
+                boton.disabled = false;
+                boton.innerText = 'Asignar técnico';
+            }
+
+            if (!guardado) {
+                estudio.tecnicoId = anterior.tecnicoId;
+                estudio.tecnicoAuthId = anterior.tecnicoAuthId;
+                estudio.estado = anterior.estado;
+                estudio.timeline = anterior.timeline;
+                showToast('No se pudo asignar', 'La asignación no llegó a Supabase. Revisa la consola para ver el error exacto.', true);
+                return false;
+            }
+
+            cerrarAsignarEstudioTecnico();
             renderEstudiosSeguridad();
             refreshAllKPIs();
-            showToast('Técnico asignado', e.id + ' quedó asignado a ' + (tecnico.nombre || tecnico.id) + '.');
+            if (currentUser && currentUser.rol === 'TECNICO' && typeof refreshMobileView === 'function') refreshMobileView();
+
+            showToast(
+                'Técnico asignado',
+                estudio.id + ' quedó asignado a ' + (tecnico.nombre || tecnico.id) + '.'
+            );
+            return true;
         }
+
 
         function renderEstudiosSeguridad() {
             const body = document.getElementById('estudios-seguridad-body');
@@ -5850,7 +5942,7 @@
                 const tech=personalTecnicos.find(function(t){return t.id===e.tecnicoId;});
                 const techName=tech ? (tech.nombre||tech.id) : (e.tecnicoId||'Sin asignar');
                 let accion='';
-                if(e.estado==='Pendiente') accion='<button onclick="asignarEstudioTecnico(\''+e.id+'\')" class="px-2 py-1 rounded bg-blue-600/15 text-blue-400 border border-blue-500/20 text-[9px] font-bold">Asignar</button>';
+                if(e.estado==='Pendiente') accion='<button onclick="abrirAsignarEstudioTecnico(\''+e.id+'\')" class="px-2 py-1 rounded bg-blue-600/15 text-blue-400 border border-blue-500/20 text-[9px] font-bold">Asignar</button>';
                 else if(e.estado==='Asignado') accion='<span class="px-2 py-1 rounded bg-slate-800 text-slate-500 text-[9px] font-bold">Esperando salida del técnico</span>';
                 else if(e.estado==='En camino') accion='<button onclick="cambiarEstadoEstudio(\''+e.id+'\',\'Llegó al sitio\')" class="px-2 py-1 rounded bg-cyan-600/15 text-cyan-400 border border-cyan-500/20 text-[9px] font-bold">Llegó al sitio</button>';
                 else if(e.estado==='Llegó al sitio') accion='<button onclick="abrirOPREstudio(\''+e.id+'\')" class="px-2 py-1 rounded bg-violet-600/15 text-violet-400 border border-violet-500/20 text-[9px] font-bold">Diligenciar OPR</button>';
@@ -12356,6 +12448,31 @@ function renderBurbujasChat(containerId, mensajes) {
             }
         });
     </script>
+
+    <!-- ASIGNAR TÉCNICO DEL ESTUDIO DE SEGURIDAD -->
+    <div id="modal-asignar-estudio-seguridad" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[9400] hidden items-center justify-center p-4">
+      <form onsubmit="confirmarAsignarEstudioTecnico(event)" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 w-full max-w-md shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div class="min-w-0">
+            <h3 id="asignar-estudio-titulo" class="text-sm font-black text-white uppercase truncate">Asignar técnico</h3>
+            <p id="asignar-estudio-info" class="text-[9px] text-slate-500 mt-1 truncate">Estudio de seguridad</p>
+          </div>
+          <button type="button" onclick="cerrarAsignarEstudioTecnico()" class="w-9 h-9 shrink-0 rounded-lg bg-slate-800 text-slate-300">✕</button>
+        </div>
+        <input id="asignar-estudio-id" type="hidden">
+        <label class="block space-y-2">
+          <span class="text-[10px] text-slate-400 uppercase font-black">Técnico responsable</span>
+          <select id="asignar-estudio-tecnico" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-sm text-white outline-none focus:border-blue-500">
+            <option value="">Selecciona un técnico...</option>
+          </select>
+          <span class="text-[9px] text-slate-500">Se mostrará nombre, ID y ciudad del técnico disponible.</span>
+        </label>
+        <div class="flex gap-2 justify-end pt-2 border-t border-slate-800">
+          <button type="button" onclick="cerrarAsignarEstudioTecnico()" class="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 text-xs font-bold">Cancelar</button>
+          <button id="asignar-estudio-guardar" type="submit" class="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase">Asignar técnico</button>
+        </div>
+      </form>
+    </div>
 
     <!-- OPR DEL ESTUDIO DE SEGURIDAD -->
     <div id="modal-opr-estudio-seguridad" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[9500] hidden flex items-center justify-center p-4 overflow-y-auto">
