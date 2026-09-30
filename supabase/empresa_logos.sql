@@ -41,3 +41,7 @@ create policy "empresa logos read public"
 on storage.objects
 for select to public
 using (bucket_id = 'empresa-logos');
+
+-- Garantiza una sola identidad corporativa por tenant, necesaria para el upsert del frontend.
+create unique index if not exists empresas_identidad_tenant_unique
+on public.empresas_identidad (tenant_id);
