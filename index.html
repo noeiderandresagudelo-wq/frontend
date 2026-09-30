@@ -5067,7 +5067,7 @@
                     tipoAtencion,
                     descripcion: trabajoRealizado,
                     requiereCotizacion: requiereCot,
-                    fecha: "2026-07-11",
+                    fecha: new Date().toISOString().slice(0, 10),
                     tecnico: (personalTecnicos.find(t => t.id === s.tecnicoId) || {}).nombre || "Técnico de Campo",
                     fotoEvidencia: oprFotoEvidenciaTemp || null
                 };
@@ -6566,23 +6566,46 @@
                 document.getElementById('kpi-camino').innerText = c;
                 document.getElementById('kpi-sitio').innerText = s;
                 document.getElementById('kpi-tecnicos').innerText = t;
-                document.getElementById('kpi-criticos').innerText = criticos;
-                document.getElementById('kpi-tiempo-respuesta').innerText = "28m";
-                document.getElementById('stat-unidades-activas').innerText = unidadesActivas;
-                document.getElementById('stat-alertas-criticas').innerText = criticos;
-                document.getElementById('stat-cerrados-hoy').innerText = cerradosHoy;
+                // Métricas del panel ejecutivo.
+                // Se calculan antes de pintarlas para evitar ReferenceError.
+                const hoy = new Date();
+                const esHoy = (fecha) => {
+                    if (!fecha) return false;
+                    const partesFecha = String(fecha).split(/[-/]/).map(Number);
+                    if (partesFecha.length !== 3 || partesFecha.some(Number.isNaN)) return false;
+                    const [anio, mes, dia] = partesFecha;
+                    return anio === hoy.getFullYear() &&
+                        mes === (hoy.getMonth() + 1) &&
+                        dia === hoy.getDate();
+                };
 
                 const cerradosHoy = list.filter(i => {
                     if (!["Cerrado", "Finalizado"].includes(i.estado)) return false;
-                    const raw = i.fechaCierre || i.fecha_cierre || i.fechaFinalizacion || i.updatedAt || i.fechaCreacion || "";
+                    const timeline = Array.isArray(i.timeline) ? i.timeline : [];
+                    const cierre = [...timeline].reverse().find(t => {
+                        const msg = String(t?.msg || '').toLowerCase();
+                        return msg.includes('cambio de estado a [cerrado]') ||
+                            msg.includes('cambio de estado a [finalizado]');
+                    });
+                    if (cierre && esHoy(cierre.fecha)) return true;
+                    const raw = i.fechaCierre || i.fecha_cierre || i.fechaFinalizacion || i.updatedAt || '';
+                    if (!raw) return false;
                     const d = new Date(raw);
-                    const hoy = new Date();
                     return !Number.isNaN(d.getTime()) &&
                         d.getFullYear() === hoy.getFullYear() &&
                         d.getMonth() === hoy.getMonth() &&
                         d.getDate() === hoy.getDate();
                 }).length;
-                const unidadesActivas = list.filter(i => !["Cerrado", "Finalizado"].includes(i.estado)).length;
+
+                const unidadesActivas = list.filter(i =>
+                    !["Cerrado", "Finalizado"].includes(i.estado)
+                ).length;
+
+                document.getElementById('kpi-criticos').innerText = criticos;
+                document.getElementById('kpi-tiempo-respuesta').innerText = '28m';
+                document.getElementById('stat-unidades-activas').innerText = unidadesActivas;
+                document.getElementById('stat-alertas-criticas').innerText = criticos;
+                document.getElementById('stat-cerrados-hoy').innerText = cerradosHoy;
 
                 renderDashboardAlerts(list);
                 renderDashboardRecent(list);
