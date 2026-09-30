@@ -10646,12 +10646,35 @@ function renderBurbujasChat(containerId, mensajes) {
             doc.text(`Ciudad / Nodo Base:     ${cl.ciudad}`, 15, 68);
             doc.text(`Servicio Relacionado:   ${cot.servicioId || 'N/A'}`, 15, 74);
 
+            // --- TRAZABILIDAD DEL ORIGEN TÉCNICO ---
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9);
+            doc.text("ORIGEN Y TRAZABILIDAD TÉCNICA", 15, 82);
+            doc.line(15, 84, 195, 84);
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(8);
+            doc.text(`Técnico de visita: ${cot.tecnicoNombre || 'No registrado'}`, 15, 90);
+            const fechaVisitaPdf = cot.fechaVisitaTecnica ? new Date(cot.fechaVisitaTecnica) : null;
+            const fechaVisitaTxt = fechaVisitaPdf && !isNaN(fechaVisitaPdf.getTime()) ? fechaVisitaPdf.toLocaleDateString('es-CO') + ' ' + fechaVisitaPdf.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}) : 'No registrada';
+            doc.text(`Fecha / hora de visita: ${fechaVisitaTxt}`, 15, 95);
+            doc.text(`Cotización elaborada por: ${cot.cotizadorNombre || 'No registrado'}`, 105, 90);
+            const fechaCotPdf = cot.fechaCreacion ? new Date(cot.fechaCreacion) : null;
+            const fechaCotTxt = fechaCotPdf && !isNaN(fechaCotPdf.getTime()) ? fechaCotPdf.toLocaleDateString('es-CO') + ' ' + fechaCotPdf.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}) : 'No registrada';
+            doc.text(`Fecha / hora de cotización: ${fechaCotTxt}`, 105, 95);
+            doc.setFont("helvetica", "bold");
+            doc.text("Diagnóstico técnico que origina el presupuesto:", 15, 101);
+            doc.setFont("helvetica", "normal");
+            const diagPdf = String(cot.diagnosticoTecnico || (s && (s.informeTecnico?.descripcion || s.evidenciaDano)) || 'Sin diagnóstico registrado.');
+            const diagLines = doc.splitTextToSize(diagPdf, 180);
+            doc.text(diagLines.slice(0,3), 15, 106);
+
             // --- SECCIÓN 2: DESGLOSE ECONÓMICO ---
             doc.setFont("helvetica", "bold");
-            doc.text("2. DESGLOSE DE CONCEPTOS, REPUESTOS Y LABORES", 15, 84);
-            doc.line(15, 86, 195, 86);
+            doc.setFontSize(10);
+            doc.text("2. DESGLOSE DE CONCEPTOS, REPUESTOS Y LABORES", 15, 124);
+            doc.line(15, 126, 195, 126);
 
-            let yOffset = 92;
+            let yOffset = 132;
             doc.setFontSize(8);
             doc.setFillColor(241, 245, 249);
             doc.rect(15, yOffset - 4, 180, 6, "F");
