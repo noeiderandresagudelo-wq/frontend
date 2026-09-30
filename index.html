@@ -6597,8 +6597,11 @@
                         d.getDate() === hoy.getDate();
                 }).length;
 
-                const unidadesActivas = list.filter(i =>
-                    !["Cerrado", "Finalizado"].includes(i.estado)
+                const unidadesActivas = personalTecnicos.filter(t =>
+                    tecnicoGPSActivo(t) &&
+                    (activeCentral === "BARRANQUILLA"
+                        ? t.ciudad === "BARRANQUILLA"
+                        : t.ciudad === activeCentral)
                 ).length;
 
                 document.getElementById('kpi-criticos').innerText = criticos;
