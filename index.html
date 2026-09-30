@@ -5403,9 +5403,10 @@
         let estudiosSeguridad = JSON.parse(localStorage.getItem('alarvix_estudios_seguridad') || '[]');
         let estudiosSeguridadRealtimeActiva = false;
 
-        function persistirEstudiosSeguridad() {
+        async function persistirEstudiosSeguridad(estudioActual) {
             localStorage.setItem('alarvix_estudios_seguridad', JSON.stringify(estudiosSeguridad));
-            syncEstudiosSeguridadNube();
+            if (estudioActual) return await syncEstudioSeguridadNube(estudioActual);
+            return await syncEstudiosSeguridadNube();
         }
 
         function estudioSeguridadToRow(e) {
@@ -5637,22 +5638,22 @@
                 (authIdActual && tecnicoAuthEstudio === authIdActual);
         }
 
-        function iniciarEstudioTecnico(id) {
+        async function iniciarEstudioTecnico(id) {
             const e = estudiosSeguridad.find(function(x){return x.id === id;});
             if (!estudioPerteneceAlTecnicoActual(e)) {
                 showToast('Estudio no disponible','Este estudio no está asignado a tu usuario.',true);
                 return;
             }
-            cambiarEstadoEstudio(id, 'En camino');
+            await cambiarEstadoEstudio(id, 'En camino');
         }
 
-        function llegarEstudioTecnico(id) {
+        async function llegarEstudioTecnico(id) {
             const e = estudiosSeguridad.find(function(x){return x.id === id;});
             if (!estudioPerteneceAlTecnicoActual(e)) {
                 showToast('Estudio no disponible','Este estudio no está asignado a tu usuario.',true);
                 return;
             }
-            cambiarEstadoEstudio(id, 'Llegó al sitio');
+            await cambiarEstadoEstudio(id, 'Llegó al sitio');
         }
 
         function abrirRutaEstudioTecnico(id) {
@@ -5667,20 +5668,28 @@
             window.open(url, '_blank', 'noopener,noreferrer');
         }
 
-        function cambiarEstadoEstudio(id, nuevoEstado) {
+        async function cambiarEstadoEstudio(id, nuevoEstado) {
             const e = estudiosSeguridad.find(function(x){return x.id === id;});
-            if (!e) return;
+            if (!e) return false;
             const anterior = e.estado;
             e.estado = nuevoEstado;
             e.timeline = Array.isArray(e.timeline) ? e.timeline : [];
             e.timeline.push({fecha:new Date().toISOString(),msg:'Cambio de estado: ' + nuevoEstado,user:currentUser ? currentUser.nombre : 'Sistema'});
-            persistirEstudiosSeguridad();
+            const guardado = await persistirEstudiosSeguridad(e);
+            if (!guardado) {
+                e.estado = anterior;
+                e.timeline.pop();
+                localStorage.setItem('alarvix_estudios_seguridad', JSON.stringify(estudiosSeguridad));
+                renderEstudiosSeguridad();
+                if (currentUser && currentUser.rol === 'TECNICO' && typeof refreshMobileView === 'function') refreshMobileView();
+                showToast('No se pudo actualizar', 'El cambio no llegó a Supabase. Se mantuvo el estado anterior.', true);
+                return false;
+            }
             renderEstudiosSeguridad();
             refreshAllKPIs();
-            if (currentUser && currentUser.rol === 'TECNICO' && typeof refreshMobileView === 'function') {
-                refreshMobileView();
-            }
+            if (currentUser && currentUser.rol === 'TECNICO' && typeof refreshMobileView === 'function') refreshMobileView();
             showToast('Estado actualizado', e.id + ': ' + anterior + ' → ' + nuevoEstado);
+            return true;
         }
 
         function asignarEstudioTecnico(id) {
