@@ -6554,7 +6554,7 @@
                 });
 
                 const p = list.filter(i => i.estado === "Pendiente").length;
-                const c = list.filter(i => i.estado === "En camino" || i.estado === "Asignado").length;
+                const c = list.filter(i => i.estado === "En camino").length;
                 const s = list.filter(i => i.estado === "Llegó al sitio" || i.estado === "Trabajando").length;
                 limpiarGPSExpirado();
                 const t = personalTecnicos.filter(t => t.estado === "Disponible" &&
