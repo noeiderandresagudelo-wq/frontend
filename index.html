@@ -865,7 +865,7 @@
                 <button onclick="switchModule('estudios')" id="btn-mod-estudios" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-bold transition text-left text-slate-400 hover:text-white hover:bg-slate-800/60">
                     <i class="fa-solid fa-shield-halved text-sm w-4 text-center text-violet-400"></i>
                     <span class="sidebar-text">Estudios de Seguridad</span>
-                    <span id="badge-estudios-pendientes" class="ml-auto hidden bg-violet-500/20 text-violet-300 text-[10px] px-1.5 py-0.5 rounded font-bold">0</span>
+                    <span id="badge-estudios-seguridad-pendientes" class="ml-auto hidden bg-violet-500/20 text-violet-300 text-[10px] px-1.5 py-0.5 rounded font-bold">0</span>
                 </button>
 
                 <button onclick="switchModule('tecnicos')" id="btn-mod-tecnicos" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-bold transition text-left text-slate-400 hover:text-white hover:bg-slate-800/60">
@@ -1952,7 +1952,7 @@
                     </div>
                     <div class="overflow-x-auto"><table class="w-full min-w-[900px] text-left">
                         <thead class="bg-slate-950/70 text-[9px] text-slate-500 uppercase"><tr><th class="p-3">Estudio</th><th class="p-3">Cliente</th><th class="p-3">Necesidad</th><th class="p-3">Técnico</th><th class="p-3 text-center">Estado</th><th class="p-3 text-center">Acciones</th></tr></thead>
-                        <tbody id="estudios-body" class="divide-y divide-slate-800/60 text-xs"></tbody>
+                        <tbody id="estudios-seguridad-body" class="divide-y divide-slate-800/60 text-xs"></tbody>
                     </table></div>
                 </div>
             </section>
@@ -5516,12 +5516,12 @@
         }
 
         function renderEstudiosSeguridad() {
-            const body = document.getElementById('estudios-body');
+            const body = document.getElementById('estudios-seguridad-body');
             if (!body) return;
             const q = (document.getElementById('search-estudios') ? document.getElementById('search-estudios').value : '').trim().toLowerCase();
             const filtro = document.getElementById('filter-estudios-estado') ? document.getElementById('filter-estudios-estado').value : '';
             const lista = estudiosSeguridad.filter(function(e){ return (!q || (e.id+' '+e.cliente+' '+e.direccion+' '+e.tipo).toLowerCase().includes(q)) && (!filtro || e.estado === filtro); });
-            const badge = document.getElementById('badge-estudios-pendientes');
+            const badge = document.getElementById('badge-estudios-seguridad-pendientes');
             const pendientes = estudiosSeguridad.filter(function(e){return ['Pendiente','Asignado','Informe pendiente'].includes(e.estado);}).length;
             if (badge) { badge.innerText = pendientes; badge.classList.toggle('hidden',pendientes === 0); }
             const kpis = {
