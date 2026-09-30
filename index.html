@@ -5406,6 +5406,17 @@
         let estudiosSeguridadRealtimeActiva = false;
         try { localStorage.removeItem('alarvix_estudios_seguridad'); } catch (_) {}
 
+        function uuidValido(value) {
+            const v = String(value || '').trim();
+            return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v) ? v : null;
+        }
+
+        function textoNulo(value) {
+            if (value === undefined || value === null) return null;
+            const v = String(value).trim();
+            return v === '' ? null : v;
+        }
+
         async function persistirEstudiosSeguridad(estudioActual) {
             if (!supabaseClient || !currentUser) {
                 console.error('[Alarvix/Supabase] No hay conexión o sesión para guardar el estudio.');
@@ -5416,26 +5427,31 @@
         }
 
         function estudioSeguridadToRow(e) {
-            const tenantId = currentUser ? (currentUser.tenant_id || currentUser.tenantId || null) : null;
+            const tenantId = textoNulo(currentUser ? (currentUser.tenant_id || currentUser.tenantId) : null);
+            const tecnicoAuthId = uuidValido(e.tecnicoAuthId);
+            const createdBy = uuidValido(e.createdBy || (currentUser ? currentUser.id : null));
+
+            // IMPORTANTE: id y tenant_id son TEXT en la tabla actual de Supabase.
+            // tecnico_auth_id y created_by son UUID y solo se envían si realmente son UUID.
             return {
-                id: e.id,
+                id: textoNulo(e.id),
                 tenant_id: tenantId,
-                cliente: e.cliente || '',
-                contacto: e.contacto || '',
-                direccion: e.direccion || '',
-                ciudad: e.ciudad || '',
-                tipo: e.tipo || '',
-                tecnico_id: e.tecnicoId || null,
-                tecnico_auth_id: e.tecnicoAuthId || null,
-                necesidad: e.necesidad || '',
-                area: e.area || '',
-                accesos: e.accesos || '',
-                zonas: e.zonas || '',
-                estado: e.estado || 'Pendiente',
+                cliente: textoNulo(e.cliente) || '',
+                contacto: textoNulo(e.contacto),
+                direccion: textoNulo(e.direccion) || '',
+                ciudad: textoNulo(e.ciudad),
+                tipo: textoNulo(e.tipo),
+                tecnico_id: textoNulo(e.tecnicoId),
+                tecnico_auth_id: tecnicoAuthId,
+                necesidad: textoNulo(e.necesidad),
+                area: textoNulo(e.area),
+                accesos: textoNulo(e.accesos),
+                zonas: textoNulo(e.zonas),
+                estado: textoNulo(e.estado) || 'Pendiente',
                 fecha_creacion: e.fechaCreacion || new Date().toISOString(),
                 timeline: Array.isArray(e.timeline) ? e.timeline : [],
-                opr_report: e.oprReport || null,
-                created_by: e.createdBy || (currentUser ? currentUser.id : null)
+                opr_report: e.oprReport && typeof e.oprReport === 'object' ? e.oprReport : null,
+                created_by: createdBy
             };
         }
 
@@ -5469,7 +5485,13 @@
                     .from('estudios_seguridad_instalacion')
                     .upsert(row, { onConflict: 'id' });
                 if (error) {
-                    console.error('[Alarvix/Supabase] Error al guardar estudio de seguridad:', error);
+                    console.error('[Alarvix/Supabase] Error al guardar estudio de seguridad:', {
+                        message: error.message,
+                        code: error.code,
+                        details: error.details,
+                        hint: error.hint,
+                        payload: row
+                    });
                     return false;
                 }
                 return true;
@@ -5531,7 +5553,7 @@
                         else estudiosSeguridad.unshift(nuevo);
                     }
 
-                    localStorage.setItem('alarvix_estudios_seguridad', JSON.stringify(estudiosSeguridad));
+                    // Supabase es la única fuente de verdad. No persistir estudios en localStorage.
                     renderEstudiosSeguridad();
                     if (currentUser.rol === 'TECNICO' && typeof refreshMobileView === 'function') refreshMobileView();
                 })
@@ -5769,7 +5791,6 @@
             if (!guardado) {
                 e.estado = anterior;
                 e.timeline.pop();
-                localStorage.setItem('alarvix_estudios_seguridad', JSON.stringify(estudiosSeguridad));
                 renderEstudiosSeguridad();
                 if (currentUser && currentUser.rol === 'TECNICO' && typeof refreshMobileView === 'function') refreshMobileView();
                 showToast('No se pudo actualizar', 'El cambio no llegó a Supabase. Se mantuvo el estado anterior.', true);
