@@ -859,6 +859,12 @@
                     <span class="sidebar-text">Servicios Técnicos</span>
                 </button>
 
+                <button onclick="switchModule('estudios')" id="btn-mod-estudios" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-bold transition text-left text-slate-400 hover:text-white hover:bg-slate-800/60">
+                    <i class="fa-solid fa-shield-halved text-sm w-4 text-center text-violet-400"></i>
+                    <span class="sidebar-text">Estudios de Seguridad</span>
+                    <span id="badge-estudios-pendientes" class="ml-auto hidden bg-violet-500/20 text-violet-300 text-[10px] px-1.5 py-0.5 rounded font-bold">0</span>
+                </button>
+
                 <button onclick="switchModule('tecnicos')" id="btn-mod-tecnicos" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-bold transition text-left text-slate-400 hover:text-white hover:bg-slate-800/60">
                     <i class="fa-solid fa-user-gear text-sm w-4 text-center text-emerald-400"></i>
                     <span class="sidebar-text">Técnicos & Movilidad</span>
@@ -1910,6 +1916,44 @@
             </section>
 
             <!-- VISTA 4: TÉCNICOS & MOVILIDAD (Con simulador de Aplicación Móvil integrado) -->
+            <section id="view-estudios" class="space-y-6 hidden">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                    <div>
+                        <p class="text-[9px] font-black text-violet-400 uppercase tracking-[0.2em]">Preinstalación · Visita técnica</p>
+                        <h2 class="text-xl font-black text-white tracking-tight">Estudios de Seguridad</h2>
+                        <p class="text-[11px] text-slate-500 mt-1">Inspecciones realizadas a clientes antes de definir una instalación.</p>
+                    </div>
+                    <button onclick="openCreateEstudioModal()" class="bg-violet-600 hover:bg-violet-500 text-white px-4 py-2.5 rounded-lg text-xs font-black uppercase tracking-wider">
+                        <i class="fa-solid fa-plus mr-1"></i> Nuevo estudio
+                    </button>
+                </div>
+                <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3"><p class="text-[9px] text-slate-500 uppercase font-bold">Pendientes</p><p id="est-kpi-pendientes" class="text-2xl font-black text-white mt-1">0</p></div>
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3"><p class="text-[9px] text-slate-500 uppercase font-bold">Asignados</p><p id="est-kpi-asignados" class="text-2xl font-black text-blue-400 mt-1">0</p></div>
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3"><p class="text-[9px] text-slate-500 uppercase font-bold">En visita</p><p id="est-kpi-visita" class="text-2xl font-black text-amber-400 mt-1">0</p></div>
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3"><p class="text-[9px] text-slate-500 uppercase font-bold">Informe pendiente</p><p id="est-kpi-informe" class="text-2xl font-black text-orange-400 mt-1">0</p></div>
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3"><p class="text-[9px] text-slate-500 uppercase font-bold">Aprobados</p><p id="est-kpi-aprobados" class="text-2xl font-black text-emerald-400 mt-1">0</p></div>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                    <div class="p-4 border-b border-slate-800 flex flex-col md:flex-row gap-2 md:items-center md:justify-between">
+                        <div>
+                            <h3 class="text-xs font-extrabold text-white uppercase tracking-wider">Visitas de preinstalación</h3>
+                            <p class="text-[9px] text-slate-500 mt-1">El estado cambia a “En camino” únicamente cuando el técnico inicia el desplazamiento.</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <input id="search-estudios" oninput="renderEstudiosSeguridad()" placeholder="Buscar cliente o estudio..." class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-[10px] text-white focus:outline-none focus:border-violet-500">
+                            <select id="filter-estudios-estado" onchange="renderEstudiosSeguridad()" class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-[10px] text-slate-300 focus:outline-none">
+                                <option value="">Todos los estados</option><option>Pendiente</option><option>Asignado</option><option>En camino</option><option>Llegó al sitio</option><option>Informe pendiente</option><option>Aprobado para instalación</option><option>Viable con adecuaciones</option><option>No viable</option><option>Cerrado</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto"><table class="w-full min-w-[900px] text-left">
+                        <thead class="bg-slate-950/70 text-[9px] text-slate-500 uppercase"><tr><th class="p-3">Estudio</th><th class="p-3">Cliente</th><th class="p-3">Necesidad</th><th class="p-3">Técnico</th><th class="p-3 text-center">Estado</th><th class="p-3 text-center">Acciones</th></tr></thead>
+                        <tbody id="estudios-body" class="divide-y divide-slate-800/60 text-xs"></tbody>
+                    </table></div>
+                </div>
+            </section>
+
             <section id="view-tecnicos" class="space-y-6 hidden">
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     <!-- Listado de Técnicos -->
@@ -2410,6 +2454,29 @@
                     <button type="button" onclick="closeCreateServiceModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2.5 rounded-lg text-xs font-bold transition">Cancelar</button>
                     <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg text-xs font-black transition uppercase tracking-wider shadow-md shadow-blue-500/15">Inyectar ST 🚀</button>
                 </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-estudio-seguridad" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-[8600] hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 w-full max-w-2xl shadow-2xl my-6">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+                <div><p class="text-[9px] font-black text-violet-400 uppercase tracking-wider">Preinstalación</p><h3 id="estudio-modal-title" class="text-sm font-black text-white">Nuevo Estudio de Seguridad</h3></div>
+                <button onclick="closeEstudioModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
+            </div>
+            <form id="form-estudio-seguridad" onsubmit="guardarEstudioSeguridad(event)" class="space-y-4">
+                <input type="hidden" id="estudio-edit-id">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Cliente / Empresa</label><input id="estudio-cliente" required placeholder="Ej. Empresa ABC S.A.S." class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-violet-500"></div>
+                    <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Contacto</label><input id="estudio-contacto" placeholder="Nombre y teléfono" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-violet-500"></div>
+                    <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Dirección</label><input id="estudio-direccion" required placeholder="Lugar a inspeccionar" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-violet-500"></div>
+                    <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Ciudad</label><input id="estudio-ciudad" value="BARRANQUILLA" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-violet-500"></div>
+                    <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Servicio que desea instalar</label><select id="estudio-tipo" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-violet-500"><option>CCTV</option><option>Alarmas</option><option>Control de acceso</option><option>Cerca eléctrica</option><option>Monitoreo</option><option>GPS</option><option>Otro</option></select></div>
+                    <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Técnico para la visita</label><select id="estudio-tecnico" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-violet-500"></select></div>
+                </div>
+                <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Necesidad / solicitud del cliente</label><textarea id="estudio-necesidad" required rows="3" placeholder="Qué desea instalar y qué necesita proteger..." class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-violet-500"></textarea></div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3"><input id="estudio-area" placeholder="Área aproximada" class="bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white"><input id="estudio-accesos" placeholder="Cantidad de accesos" class="bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white"><input id="estudio-zonas" placeholder="Zonas críticas" class="bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white"></div>
+                <div class="flex gap-2 justify-end pt-3 border-t border-slate-800"><button type="button" onclick="closeEstudioModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2.5 rounded-lg text-xs font-bold">Cancelar</button><button type="submit" class="bg-violet-600 hover:bg-violet-500 text-white px-5 py-2.5 rounded-lg text-xs font-black uppercase">Guardar estudio</button></div>
             </form>
         </div>
     </div>
@@ -3095,23 +3162,23 @@
         // Matriz de Configuración de Accesos y Permisos por Rol
         const rolePermissions = {
             ADMIN: {
-                tabs: ['dashboard', 'supervision', 'central', 'servicios', 'tecnicos', 'personal', 'rrhh', 'compras', 'inventario', 'cotizaciones', 'clientes', 'finanzas', 'compliance', 'mensajes', 'reportes', 'config'],
+                tabs: ['dashboard', 'supervision', 'central', 'servicios', 'estudios', 'tecnicos', 'personal', 'rrhh', 'compras', 'inventario', 'cotizaciones', 'clientes', 'finanzas', 'compliance', 'mensajes', 'reportes', 'config'],
                 canEdit: true,
                 canManageUsers: true
             },
             
             CENTRAL: {
-                tabs: ['dashboard', 'central', 'supervision', 'mensajes', 'reportes'],
+                tabs: ['dashboard', 'central', 'estudios', 'supervision', 'mensajes', 'reportes'],
                 canEdit: true,
                 canManageUsers: false
             },
             DESPACHADOR: {
-                tabs: ['dashboard', 'central', 'mensajes', 'reportes'],
+                tabs: ['dashboard', 'central', 'estudios', 'mensajes', 'reportes'],
                 canEdit: true,
                 canManageUsers: false
             },
             SUPERVISOR: {
-                tabs: ['dashboard', 'supervision', 'clientes', 'mensajes', 'reportes'],
+                tabs: ['dashboard', 'estudios', 'supervision', 'clientes', 'mensajes', 'reportes'],
                 canEdit: true,
                 canManageUsers: false
             },
@@ -3324,7 +3391,7 @@
                 ? perms.tabs
                 : ['dashboard', 'central', 'central_monitoreo', 'servicios', 'tecnicos', 'mensajes'];
 
-            const modules = ['dashboard', 'central', 'servicios', 'tecnicos', 'personal', 'compras', 'inventario', 'cotizaciones', 'mensajes', 'clientes', 'finanzas', 'compliance', 'reportes', 'config'];
+            const modules = ['dashboard', 'central', 'servicios', 'estudios', 'tecnicos', 'personal', 'compras', 'inventario', 'cotizaciones', 'mensajes', 'clientes', 'finanzas', 'compliance', 'reportes', 'config'];
 
             modules.forEach(mod => {
                 const btn = document.getElementById(`btn-mod-${mod}`);
@@ -5279,6 +5346,166 @@
             }
         }
 
+
+        // ==================== ESTUDIOS DE SEGURIDAD ====================
+        let estudiosSeguridad = JSON.parse(localStorage.getItem('alarvix_estudios_seguridad') || '[]');
+
+        function persistirEstudiosSeguridad() {
+            localStorage.setItem('alarvix_estudios_seguridad', JSON.stringify(estudiosSeguridad));
+        }
+
+        function escEstudio(value) {
+            return String(value == null ? '' : value).replace(/[&<>"']/g, function(ch) {
+                return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch];
+            });
+        }
+
+        function estadoEstudioClass(estado) {
+            const map = {'Pendiente':'bg-amber-500/10 text-amber-400 border-amber-500/20','Asignado':'bg-blue-500/10 text-blue-400 border-blue-500/20','En camino':'bg-orange-500/10 text-orange-400 border-orange-500/20','Llegó al sitio':'bg-cyan-500/10 text-cyan-400 border-cyan-500/20','Informe pendiente':'bg-violet-500/10 text-violet-400 border-violet-500/20','Aprobado para instalación':'bg-emerald-500/10 text-emerald-400 border-emerald-500/20','Viable con adecuaciones':'bg-yellow-500/10 text-yellow-400 border-yellow-500/20','No viable':'bg-rose-500/10 text-rose-400 border-rose-500/20','Cerrado':'bg-slate-500/10 text-slate-400 border-slate-500/20'};
+            return map[estado] || 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+        }
+
+        function renderEstudioTecnicosSelect(selected) {
+            const select = document.getElementById('estudio-tecnico');
+            if (!select) return;
+            const tecnicos = personalTecnicos.filter(function(t){ return t.activo !== false; });
+            select.innerHTML = '<option value="">Sin asignar todavía</option>' + tecnicos.map(function(t){ return '<option value="' + escEstudio(t.id) + '">' + escEstudio(t.nombre || t.id) + ' · ' + escEstudio(t.ciudad || 'Sin ciudad') + '</option>'; }).join('');
+            select.value = selected || '';
+        }
+
+        function openCreateEstudioModal() {
+            const form = document.getElementById('form-estudio-seguridad');
+            if (form) form.reset();
+            document.getElementById('estudio-edit-id').value = '';
+            document.getElementById('estudio-modal-title').innerText = 'Nuevo Estudio de Seguridad';
+            document.getElementById('estudio-ciudad').value = activeCentral || 'BARRANQUILLA';
+            renderEstudioTecnicosSelect('');
+            document.getElementById('modal-estudio-seguridad').classList.remove('hidden');
+        }
+
+        function closeEstudioModal() {
+            const modal = document.getElementById('modal-estudio-seguridad');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function guardarEstudioSeguridad(event) {
+            event.preventDefault();
+            const editId = document.getElementById('estudio-edit-id').value;
+            const tecnicoId = document.getElementById('estudio-tecnico').value;
+            const now = new Date();
+            const anterior = editId ? estudiosSeguridad.find(function(x){return x.id === editId;}) : null;
+            const estudio = {
+                id: editId || 'EST-' + String(Date.now()).slice(-6),
+                cliente: document.getElementById('estudio-cliente').value.trim(),
+                contacto: document.getElementById('estudio-contacto').value.trim(),
+                direccion: document.getElementById('estudio-direccion').value.trim(),
+                ciudad: document.getElementById('estudio-ciudad').value.trim().toUpperCase(),
+                tipo: document.getElementById('estudio-tipo').value,
+                tecnicoId: tecnicoId,
+                necesidad: document.getElementById('estudio-necesidad').value.trim(),
+                area: document.getElementById('estudio-area').value.trim(),
+                accesos: document.getElementById('estudio-accesos').value.trim(),
+                zonas: document.getElementById('estudio-zonas').value.trim(),
+                estado: tecnicoId ? 'Asignado' : 'Pendiente',
+                fechaCreacion: anterior ? anterior.fechaCreacion : now.toISOString(),
+                timeline: anterior ? (anterior.timeline || []) : [{fecha:now.toISOString(),msg:'Estudio creado',user:currentUser ? currentUser.nombre : 'Central'}]
+            };
+            if (tecnicoId && (!anterior || anterior.tecnicoId !== tecnicoId)) {
+                estudio.timeline.push({fecha:now.toISOString(),msg:'Estudio asignado al técnico',user:currentUser ? currentUser.nombre : 'Central'});
+            }
+            if (editId) {
+                const idx = estudiosSeguridad.findIndex(function(x){return x.id === editId;});
+                if (idx >= 0) estudiosSeguridad[idx] = Object.assign({}, estudiosSeguridad[idx], estudio);
+            } else {
+                estudiosSeguridad.unshift(estudio);
+            }
+            persistirEstudiosSeguridad();
+            closeEstudioModal();
+            renderEstudiosSeguridad();
+            refreshAllKPIs();
+            showToast(editId ? 'Estudio actualizado' : 'Estudio creado', estudio.id + ' quedó en estado ' + estudio.estado + '.');
+        }
+
+        function editarEstudioSeguridad(id) {
+            const e = estudiosSeguridad.find(function(x){return x.id === id;});
+            if (!e) return;
+            document.getElementById('estudio-edit-id').value = e.id;
+            document.getElementById('estudio-modal-title').innerText = 'Editar ' + e.id;
+            document.getElementById('estudio-cliente').value = e.cliente || '';
+            document.getElementById('estudio-contacto').value = e.contacto || '';
+            document.getElementById('estudio-direccion').value = e.direccion || '';
+            document.getElementById('estudio-ciudad').value = e.ciudad || '';
+            document.getElementById('estudio-tipo').value = e.tipo || 'CCTV';
+            document.getElementById('estudio-necesidad').value = e.necesidad || '';
+            document.getElementById('estudio-area').value = e.area || '';
+            document.getElementById('estudio-accesos').value = e.accesos || '';
+            document.getElementById('estudio-zonas').value = e.zonas || '';
+            renderEstudioTecnicosSelect(e.tecnicoId || '');
+            document.getElementById('modal-estudio-seguridad').classList.remove('hidden');
+        }
+
+        function cambiarEstadoEstudio(id, nuevoEstado) {
+            const e = estudiosSeguridad.find(function(x){return x.id === id;});
+            if (!e) return;
+            const anterior = e.estado;
+            e.estado = nuevoEstado;
+            e.timeline = Array.isArray(e.timeline) ? e.timeline : [];
+            e.timeline.push({fecha:new Date().toISOString(),msg:'Cambio de estado: ' + nuevoEstado,user:currentUser ? currentUser.nombre : 'Sistema'});
+            persistirEstudiosSeguridad();
+            renderEstudiosSeguridad();
+            refreshAllKPIs();
+            showToast('Estado actualizado', e.id + ': ' + anterior + ' → ' + nuevoEstado);
+        }
+
+        function asignarEstudioTecnico(id) {
+            const e = estudiosSeguridad.find(function(x){return x.id === id;});
+            if (!e) return;
+            const opciones = personalTecnicos.filter(function(t){return t.activo !== false;});
+            if (!opciones.length) { showToast('Sin técnicos','No hay técnicos disponibles para asignar el estudio.',true); return; }
+            const seleccion = prompt('Escribe el ID del técnico a asignar:\n\n' + opciones.map(function(t){return t.id + ' · ' + (t.nombre || 'Sin nombre');}).join('\n'), e.tecnicoId || opciones[0].id);
+            if (!seleccion) return;
+            const tecnico = opciones.find(function(t){return t.id === seleccion.trim();});
+            if (!tecnico) { showToast('Técnico no encontrado','Usa exactamente el ID mostrado en la lista.',true); return; }
+            e.tecnicoId = tecnico.id;
+            if (e.estado === 'Pendiente') e.estado = 'Asignado';
+            e.timeline = Array.isArray(e.timeline) ? e.timeline : [];
+            e.timeline.push({fecha:new Date().toISOString(),msg:'Estudio asignado al técnico',user:currentUser ? currentUser.nombre : 'Central'});
+            persistirEstudiosSeguridad();
+            renderEstudiosSeguridad();
+            refreshAllKPIs();
+            showToast('Técnico asignado', e.id + ' quedó asignado a ' + (tecnico.nombre || tecnico.id) + '.');
+        }
+
+        function renderEstudiosSeguridad() {
+            const body = document.getElementById('estudios-body');
+            if (!body) return;
+            const q = (document.getElementById('search-estudios') ? document.getElementById('search-estudios').value : '').trim().toLowerCase();
+            const filtro = document.getElementById('filter-estudios-estado') ? document.getElementById('filter-estudios-estado').value : '';
+            const lista = estudiosSeguridad.filter(function(e){ return (!q || (e.id+' '+e.cliente+' '+e.direccion+' '+e.tipo).toLowerCase().includes(q)) && (!filtro || e.estado === filtro); });
+            const badge = document.getElementById('badge-estudios-pendientes');
+            const pendientes = estudiosSeguridad.filter(function(e){return ['Pendiente','Asignado','Informe pendiente'].includes(e.estado);}).length;
+            if (badge) { badge.innerText = pendientes; badge.classList.toggle('hidden',pendientes === 0); }
+            const kpis = {
+                pendientes:estudiosSeguridad.filter(function(e){return e.estado === 'Pendiente';}).length,
+                asignados:estudiosSeguridad.filter(function(e){return e.estado === 'Asignado';}).length,
+                visita:estudiosSeguridad.filter(function(e){return ['En camino','Llegó al sitio'].includes(e.estado);}).length,
+                informe:estudiosSeguridad.filter(function(e){return e.estado === 'Informe pendiente';}).length,
+                aprobados:estudiosSeguridad.filter(function(e){return ['Aprobado para instalación','Viable con adecuaciones'].includes(e.estado);}).length
+            };
+            Object.keys(kpis).forEach(function(k){const el=document.getElementById('est-kpi-'+k);if(el)el.innerText=kpis[k];});
+            if (!lista.length) { body.innerHTML='<tr><td colspan="6" class="p-8 text-center text-[10px] text-slate-600 italic">No hay estudios que coincidan con el filtro.</td></tr>'; return; }
+            body.innerHTML = lista.map(function(e){
+                const tech=personalTecnicos.find(function(t){return t.id===e.tecnicoId;});
+                const techName=tech ? (tech.nombre||tech.id) : (e.tecnicoId||'Sin asignar');
+                let accion='';
+                if(e.estado==='Pendiente') accion='<button onclick="asignarEstudioTecnico(\''+e.id+'\')" class="px-2 py-1 rounded bg-blue-600/15 text-blue-400 border border-blue-500/20 text-[9px] font-bold">Asignar</button>';
+                else if(e.estado==='Asignado') accion='<button onclick="cambiarEstadoEstudio(\''+e.id+'\',\'En camino\')" class="px-2 py-1 rounded bg-orange-600/15 text-orange-400 border border-orange-500/20 text-[9px] font-bold">Simular en camino</button>';
+                else if(e.estado==='En camino') accion='<button onclick="cambiarEstadoEstudio(\''+e.id+'\',\'Llegó al sitio\')" class="px-2 py-1 rounded bg-cyan-600/15 text-cyan-400 border border-cyan-500/20 text-[9px] font-bold">Llegó al sitio</button>';
+                else if(e.estado==='Llegó al sitio') accion='<button onclick="cambiarEstadoEstudio(\''+e.id+'\',\'Informe pendiente\')" class="px-2 py-1 rounded bg-violet-600/15 text-violet-400 border border-violet-500/20 text-[9px] font-bold">Cerrar visita</button>';
+                return '<tr class="hover:bg-slate-950/60"><td class="p-3"><span class="font-mono font-bold text-violet-300">'+escEstudio(e.id)+'</span><div class="text-[9px] text-slate-600">'+new Date(e.fechaCreacion).toLocaleDateString('es-CO')+'</div></td><td class="p-3"><div class="font-bold text-white">'+escEstudio(e.cliente)+'</div><div class="text-[9px] text-slate-500">'+escEstudio(e.ciudad)+' · '+escEstudio(e.direccion)+'</div></td><td class="p-3"><span class="text-violet-300 font-bold">'+escEstudio(e.tipo)+'</span><div class="text-[9px] text-slate-500 max-w-[240px] truncate">'+escEstudio(e.necesidad)+'</div></td><td class="p-3 text-slate-300">'+escEstudio(techName)+'</td><td class="p-3 text-center"><span class="inline-flex px-2 py-1 rounded border text-[9px] font-bold uppercase '+estadoEstudioClass(e.estado)+'">'+escEstudio(e.estado)+'</span></td><td class="p-3"><div class="flex flex-wrap gap-1 justify-center">'+accion+'<button onclick="editarEstudioSeguridad(\''+e.id+'\')" class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-[9px] font-bold">Editar</button></div></td></tr>';
+            }).join('');
+        }
+
         function switchModule(modId) {
             try {
             const modulosRetirados = ['supervision', 'rrhh'];
@@ -5296,7 +5523,7 @@
                     }
                 }
 
-                const modules = ['dashboard', 'supervision', 'central', 'servicios', 'tecnicos', 'personal', 'rrhh', 'compras', 'inventario', 'cotizaciones', 'mensajes', 'clientes', 'finanzas', 'compliance', 'reportes', 'config'];
+                const modules = ['dashboard', 'supervision', 'central', 'servicios', 'estudios', 'tecnicos', 'personal', 'rrhh', 'compras', 'inventario', 'cotizaciones', 'mensajes', 'clientes', 'finanzas', 'compliance', 'reportes', 'config'];
                 modules.forEach(m => {
                     const el = document.getElementById('view-' + m);
                     const btn = document.getElementById('btn-mod-' + m);
@@ -5312,6 +5539,7 @@
                   
                 currentActiveTab = modId;
 
+                if (modId === 'estudios') renderEstudiosSeguridad();
                 // En celular, cerramos el menú lateral automáticamente al elegir una sección
                 if (window.innerWidth < 768) {
                     toggleMobileSidebar(false);
