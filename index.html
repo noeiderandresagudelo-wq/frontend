@@ -5189,7 +5189,9 @@
                     tipoAtencion,
                     descripcion: trabajoRealizado,
                     requiereCotizacion: requiereCot,
-                    fecha: new Date().toISOString().slice(0, 10),
+                    fecha: new Date().toISOString(),
+                    fechaVisita: (Array.isArray(s.timeline) ? ((s.timeline.find(t => t && /Llegó/i.test(t.msg || '')) || {}).fecha || null) : null) || new Date().toISOString(),
+                    fechaCierre: new Date().toISOString(),
                     tecnico: (personalTecnicos.find(t => t.id === s.tecnicoId) || {}).nombre || "Técnico de Campo",
                     fotoEvidencia: oprFotoEvidenciaTemp || null
                 };
@@ -9411,7 +9413,8 @@ function renderBurbujasChat(containerId, mensajes) {
 
                 // Poblar especificaciones básicas
                 document.getElementById('opr-consecutivo').innerText = s.consecutivo;
-                document.getElementById('opr-fecha').innerText = s.fechaCreacion.split(' ')[0] || "2026-07-11";
+                const fechaPrincipalOPR = s.informeTecnico?.fechaVisita || s.informeTecnico?.fechaCierre || s.fechaCreacion;
+                document.getElementById('opr-fecha').innerText = fechaPrincipalOPR ? new Date(fechaPrincipalOPR).toLocaleDateString('es-CO') : "--/--/----";
                 document.getElementById('opr-abonado-id').innerText = s.abonadoId;
                 document.getElementById('opr-cliente-nombre').innerText = cl.nombre;
                 document.getElementById('opr-cliente-direccion').innerText = cl.direccion;
@@ -9458,9 +9461,13 @@ function renderBurbujasChat(containerId, mensajes) {
                 }
 
                 // Tiempos del Flujo
-                const tCreacion = s.timeline.find(t => t.msg.includes("Creación") || t.msg.includes("Ingreso"))?.hora || s.fechaCreacion.split(' ')[1] || "---";
-                const tRuta = s.timeline.find(t => t.msg.includes("recorrido") || t.msg.includes("Ruta"))?.hora || "---";
-                const tArribo = s.timeline.find(t => t.msg.includes("Llegó") || t.msg.includes("arribo"))?.hora || "---";
+                const formatoTiempo = (item, fallback) => {
+                    const valor = item && (item.fecha || item.timestamp);
+                    return valor ? new Date(valor).toLocaleString('es-CO') : ((item && item.hora) || fallback || "---");
+                };
+                const tCreacion = formatoTiempo(s.timeline.find(t => /Creación|Ingreso/i.test(t.msg || '')), s.fechaCreacion);
+                const tRuta = formatoTiempo(s.timeline.find(t => /recorrido|Ruta|Despacho/i.test(t.msg || '')), "---");
+                const tArribo = formatoTiempo(s.timeline.find(t => /Llegó|arribo/i.test(t.msg || '')), "---");
                 
                 const now = new Date();
                 const tCierre = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
