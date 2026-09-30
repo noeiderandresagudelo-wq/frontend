@@ -4415,7 +4415,7 @@
                         action += '<button onclick="llegarEstudioTecnico(\''+e.id+'\')" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg py-2 text-[10px] font-black uppercase">📍 Llegué al sitio</button>';
                     } else if (e.estado === 'Llegó al sitio') {
                         action += '<div class="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-[9px] font-bold text-emerald-300 uppercase text-center">📍 En el sitio · realiza la inspección</div>';
-                        action += '<button onclick="abrirOPREstudio(\''+e.id+'\')" class="w-full bg-violet-600 hover:bg-violet-500 text-white rounded-lg py-2 text-[10px] font-black uppercase">📝 Diligenciar OPR</button>';
+                        action += '<button type="button" onclick="abrirOPREstudio(\''+e.id+'\', false); return false;" class="w-full bg-violet-600 hover:bg-violet-500 active:bg-violet-700 text-white rounded-lg py-2.5 text-[10px] font-black uppercase touch-manipulation">📝 Diligenciar OPR</button>';
                     }
                     action += '</div>';
                     card.innerHTML = '<div class="flex justify-between gap-2"><div><p class="text-[9px] text-violet-400 font-black uppercase">Estudio de Seguridad · '+escEstudio(e.id)+'</p><p class="text-xs text-white font-bold mt-1">'+escEstudio(e.cliente)+'</p><p class="text-[9px] text-slate-500 mt-1">'+escEstudio(e.direccion)+'</p></div><span class="text-[9px] font-bold text-violet-300">'+escEstudio(e.estado)+'</span></div><p class="text-[10px] text-slate-400">'+escEstudio(e.necesidad)+'</p>'+action;
@@ -5686,6 +5686,13 @@
             });
             document.getElementById('opr-estudio-guardar').classList.toggle('hidden', !!soloLectura);
             modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+            if (!soloLectura) {
+                setTimeout(function() {
+                    const campo = document.getElementById('opr-estudio-hallazgos');
+                    if (campo) campo.focus({ preventScroll: true });
+                }, 80);
+            }
         }
 
         function cerrarOPREstudio() {
@@ -12329,12 +12336,12 @@ function renderBurbujasChat(containerId, mensajes) {
           <label class="space-y-1"><span class="text-slate-500 uppercase font-bold">Necesidad</span><input id="opr-estudio-necesidad" readonly class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white"></label>
         </div>
         <div class="space-y-3 text-[10px]">
-          <label class="block space-y-1"><span class="text-amber-400 uppercase font-black">Hallazgos de la inspección *</span><textarea id="opr-estudio-hallazgos" required rows="4" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white resize-y" placeholder="Describe lo encontrado en el sitio..."></textarea></label>
-          <label class="block space-y-1"><span class="text-slate-400 uppercase font-bold">Requerimientos para instalación</span><textarea id="opr-estudio-requerimientos" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white resize-y" placeholder="Adecuaciones, canalización, energía, red, alturas, etc."></textarea></label>
-          <label class="block space-y-1"><span class="text-slate-400 uppercase font-bold">Equipos / cantidades recomendadas</span><textarea id="opr-estudio-equipos" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white resize-y" placeholder="Ej.: 6 cámaras, 1 NVR, 2 sensores..."></textarea></label>
-          <label class="block space-y-1"><span class="text-slate-400 uppercase font-bold">Riesgos o condiciones encontradas</span><textarea id="opr-estudio-riesgos" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white resize-y"></textarea></label>
-          <label class="block space-y-1"><span class="text-slate-400 uppercase font-bold">Recomendaciones técnicas</span><textarea id="opr-estudio-recomendaciones" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white resize-y"></textarea></label>
-          <label class="block space-y-1"><span class="text-slate-400 uppercase font-bold">Observaciones adicionales</span><textarea id="opr-estudio-observaciones" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white resize-y"></textarea></label>
+          <label class="block space-y-1"><span class="text-amber-400 uppercase font-black">Hallazgos de la inspección *</span><textarea id="opr-estudio-hallazgos" required rows="4" class="w-full min-h-[110px] bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white resize-y touch-manipulation" placeholder="Describe lo encontrado en el sitio..."></textarea></label>
+          <label class="block space-y-1"><span class="text-slate-400 uppercase font-bold">Requerimientos para instalación</span><textarea id="opr-estudio-requerimientos" rows="3" class="w-full min-h-[90px] bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white resize-y touch-manipulation" placeholder="Adecuaciones, canalización, energía, red, alturas, etc."></textarea></label>
+          <label class="block space-y-1"><span class="text-slate-400 uppercase font-bold">Equipos / cantidades recomendadas</span><textarea id="opr-estudio-equipos" rows="3" class="w-full min-h-[90px] bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white resize-y touch-manipulation" placeholder="Ej.: 6 cámaras, 1 NVR, 2 sensores..."></textarea></label>
+          <label class="block space-y-1"><span class="text-slate-400 uppercase font-bold">Riesgos o condiciones encontradas</span><textarea id="opr-estudio-riesgos" rows="3" class="w-full min-h-[90px] bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white resize-y touch-manipulation"></textarea></label>
+          <label class="block space-y-1"><span class="text-slate-400 uppercase font-bold">Recomendaciones técnicas</span><textarea id="opr-estudio-recomendaciones" rows="3" class="w-full min-h-[90px] bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white resize-y touch-manipulation"></textarea></label>
+          <label class="block space-y-1"><span class="text-slate-400 uppercase font-bold">Observaciones adicionales</span><textarea id="opr-estudio-observaciones" rows="3" class="w-full min-h-[90px] bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white resize-y touch-manipulation"></textarea></label>
         </div>
         <div class="flex gap-2 justify-end pt-2 border-t border-slate-800">
           <button type="button" onclick="cerrarOPREstudio()" class="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 text-xs font-bold">Cerrar</button>
