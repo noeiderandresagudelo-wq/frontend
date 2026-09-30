@@ -4406,14 +4406,18 @@
                 techStudies.forEach(function(e) {
                     const card = document.createElement('div');
                     card.className = 'bg-slate-900 border border-violet-500/20 rounded-xl p-3 space-y-2';
-                    let action = '';
+                    let action = '<div class="grid grid-cols-1 gap-2">';
+                    action += '<button type="button" onclick="abrirRutaEstudioTecnico(\''+e.id+'\')" class="w-full bg-violet-600/20 hover:bg-violet-600 text-violet-200 hover:text-white border border-violet-500/30 rounded-lg py-2 text-[10px] font-black uppercase">🗺️ Ver ruta al cliente</button>';
                     if (e.estado === 'Asignado') {
-                        action = '<button onclick="iniciarEstudioTecnico(\''+e.id+'\')" class="w-full bg-orange-600 hover:bg-orange-500 text-white rounded-lg py-2 text-[10px] font-black uppercase">🚗 Iniciar desplazamiento</button>';
+                        action += '<button onclick="iniciarEstudioTecnico(\''+e.id+'\')" class="w-full bg-orange-600 hover:bg-orange-500 text-white rounded-lg py-2 text-[10px] font-black uppercase">🚗 Iniciar desplazamiento</button>';
                     } else if (e.estado === 'En camino') {
-                        action = '<button onclick="llegarEstudioTecnico(\''+e.id+'\')" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg py-2 text-[10px] font-black uppercase">📍 Llegué al sitio</button>';
+                        action += '<div class="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[9px] font-bold text-amber-300 uppercase text-center">🚗 En camino · sigue la ruta hasta el cliente</div>';
+                        action += '<button onclick="llegarEstudioTecnico(\''+e.id+'\')" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg py-2 text-[10px] font-black uppercase">📍 Llegué al sitio</button>';
                     } else if (e.estado === 'Llegó al sitio') {
-                        action = '<button onclick="cambiarEstadoEstudio(\''+e.id+'\',\'Informe pendiente\')" class="w-full bg-violet-600 hover:bg-violet-500 text-white rounded-lg py-2 text-[10px] font-black uppercase">📝 Terminar visita</button>';
+                        action += '<div class="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-[9px] font-bold text-emerald-300 uppercase text-center">📍 En el sitio · realiza la inspección</div>';
+                        action += '<button onclick="cambiarEstadoEstudio(\''+e.id+'\',\'Informe pendiente\')" class="w-full bg-violet-600 hover:bg-violet-500 text-white rounded-lg py-2 text-[10px] font-black uppercase">📝 Terminar visita</button>';
                     }
+                    action += '</div>';
                     card.innerHTML = '<div class="flex justify-between gap-2"><div><p class="text-[9px] text-violet-400 font-black uppercase">Estudio de Seguridad · '+escEstudio(e.id)+'</p><p class="text-xs text-white font-bold mt-1">'+escEstudio(e.cliente)+'</p><p class="text-[9px] text-slate-500 mt-1">'+escEstudio(e.direccion)+'</p></div><span class="text-[9px] font-bold text-violet-300">'+escEstudio(e.estado)+'</span></div><p class="text-[10px] text-slate-400">'+escEstudio(e.necesidad)+'</p>'+action;
                     studiesContainer.appendChild(card);
                 });
