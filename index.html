@@ -5400,11 +5400,17 @@
 
 
         // ==================== ESTUDIOS DE SEGURIDAD ====================
-        let estudiosSeguridad = JSON.parse(localStorage.getItem('alarvix_estudios_seguridad') || '[]');
+        // Supabase es la única fuente de verdad para Estudios de Seguridad.
+        // No se guardan registros de estudios en localStorage.
+        let estudiosSeguridad = [];
         let estudiosSeguridadRealtimeActiva = false;
+        try { localStorage.removeItem('alarvix_estudios_seguridad'); } catch (_) {}
 
         async function persistirEstudiosSeguridad(estudioActual) {
-            localStorage.setItem('alarvix_estudios_seguridad', JSON.stringify(estudiosSeguridad));
+            if (!supabaseClient || !currentUser) {
+                console.error('[Alarvix/Supabase] No hay conexión o sesión para guardar el estudio.');
+                return false;
+            }
             if (estudioActual) return await syncEstudioSeguridadNube(estudioActual);
             return await syncEstudiosSeguridadNube();
         }
@@ -5490,13 +5496,8 @@
                     return false;
                 }
 
-                if (Array.isArray(data) && data.length > 0) {
-                    estudiosSeguridad = data.map(rowToEstudioSeguridad);
-                    localStorage.setItem('alarvix_estudios_seguridad', JSON.stringify(estudiosSeguridad));
-                } else if (estudiosSeguridad.length > 0) {
-                    // Migración transparente de la primera versión local al nuevo almacenamiento compartido.
-                    for (const estudio of estudiosSeguridad) await syncEstudioSeguridadNube(estudio);
-                }
+                // Supabase manda: si la tabla está vacía, la interfaz también queda vacía.
+                estudiosSeguridad = Array.isArray(data) ? data.map(rowToEstudioSeguridad) : [];
 
                 renderEstudiosSeguridad();
                 if (currentUser.rol === 'TECNICO' && typeof refreshMobileView === 'function') refreshMobileView();
@@ -5573,7 +5574,7 @@
             if (modal) modal.classList.add('hidden');
         }
 
-        function guardarEstudioSeguridad(event) {
+        async function guardarEstudioSeguridad(event) {
             event.preventDefault();
             const editId = document.getElementById('estudio-edit-id').value;
             const tecnicoId = document.getElementById('estudio-tecnico').value;
@@ -5599,13 +5600,22 @@
             if (tecnicoId && (!anterior || anterior.tecnicoId !== tecnicoId)) {
                 estudio.timeline.push({fecha:now.toISOString(),msg:'Estudio asignado al técnico',user:currentUser ? currentUser.nombre : 'Central'});
             }
-            if (editId) {
-                const idx = estudiosSeguridad.findIndex(function(x){return x.id === editId;});
-                if (idx >= 0) estudiosSeguridad[idx] = Object.assign({}, estudiosSeguridad[idx], estudio);
+            const copiaAnterior = editId && anterior ? Object.assign({}, anterior) : null;
+            const indiceAnterior = editId ? estudiosSeguridad.findIndex(function(x){return x.id === editId;}) : -1;
+            if (editId && indiceAnterior >= 0) {
+                estudiosSeguridad[indiceAnterior] = Object.assign({}, estudiosSeguridad[indiceAnterior], estudio);
             } else {
                 estudiosSeguridad.unshift(estudio);
             }
-            persistirEstudiosSeguridad();
+            const guardado = await persistirEstudiosSeguridad(estudio);
+            if (!guardado) {
+                if (indiceAnterior >= 0 && copiaAnterior) estudiosSeguridad[indiceAnterior] = copiaAnterior;
+                else estudiosSeguridad = estudiosSeguridad.filter(function(x){ return x.id !== estudio.id; });
+                renderEstudiosSeguridad();
+                refreshAllKPIs();
+                showToast('No se pudo guardar', 'El estudio no llegó a Supabase.', true);
+                return;
+            }
             closeEstudioModal();
             renderEstudiosSeguridad();
             refreshAllKPIs();
@@ -5772,7 +5782,7 @@
             return true;
         }
 
-        function asignarEstudioTecnico(id) {
+        async function asignarEstudioTecnico(id) {
             const e = estudiosSeguridad.find(function(x){return x.id === id;});
             if (!e) return;
             const opciones = personalTecnicos.filter(function(t){return t.activo !== false;});
@@ -5786,7 +5796,12 @@
             if (e.estado === 'Pendiente') e.estado = 'Asignado';
             e.timeline = Array.isArray(e.timeline) ? e.timeline : [];
             e.timeline.push({fecha:new Date().toISOString(),msg:'Estudio asignado al técnico',user:currentUser ? currentUser.nombre : 'Central'});
-            persistirEstudiosSeguridad();
+            const guardado = await persistirEstudiosSeguridad(e);
+            if (!guardado) {
+                showToast('No se pudo asignar', 'La asignación no llegó a Supabase.', true);
+                await syncEstudiosSeguridadNube();
+                return;
+            }
             renderEstudiosSeguridad();
             refreshAllKPIs();
             showToast('Técnico asignado', e.id + ' quedó asignado a ' + (tecnico.nombre || tecnico.id) + '.');
