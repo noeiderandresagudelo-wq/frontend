@@ -9947,17 +9947,44 @@ function renderBurbujasChat(containerId, mensajes) {
 
             const queryNorm = normalizarHeaderMalla(query || '');
 
-            let lista = incidentesServicios.map(i => {
-                const cl = crmClientes.find(c => c.id === i.abonadoId) || { nombre: "Cliente Desconocido", id: "S/D", puesto: "", clienteNombre: "" };
-                const searchText = normalizarHeaderMalla(`${i.consecutivo} ${cl.nombre} ${cl.puesto || ''} ${cl.clienteNombre || ''} ${cl.id}`);
-                return { servicio: i, cliente: cl, searchText };
-            });
+            // El Cotizador Integral SOLO recibe servicios que realmente requieren cotización.
+            // La fuente de verdad es el estado "Cotización", que se establece cuando el OPR
+            // del técnico marca "Sí, requiere cotización".
+            //
+            // Excepción controlada: si estamos editando una cotización ya existente, permitimos
+            // mostrar únicamente el servicio asociado a ESA cotización aunque su estado haya
+            // pasado a "Esperando aprobación", "Aprobada" o "Rechazada".
+            const editingCodigo = document.getElementById('cot-editing-codigo')?.value || '';
+            const editingCot = editingCodigo
+                ? cotizacionesEmitidas.find(c => c.codigo === editingCodigo)
+                : null;
+            const editingServicioId = editingCot?.servicioId || '';
+
+            let lista = incidentesServicios
+                .filter(i => {
+                    const esPendienteDeCotizar = String(i.estado || '').trim() === 'Cotización';
+                    const esServicioDeLaCotizacionEditada =
+                        !!editingServicioId && String(i.consecutivo || '') === String(editingServicioId);
+                    return esPendienteDeCotizar || esServicioDeLaCotizacionEditada;
+                })
+                .map(i => {
+                    const cl = crmClientes.find(c => c.id === i.abonadoId) || {
+                        nombre: "Cliente Desconocido",
+                        id: "S/D",
+                        puesto: "",
+                        clienteNombre: ""
+                    };
+                    const searchText = normalizarHeaderMalla(
+                        `${i.consecutivo} ${cl.nombre} ${cl.puesto || ''} ${cl.clienteNombre || ''} ${cl.id}`
+                    );
+                    return { servicio: i, cliente: cl, searchText };
+                });
 
             if (queryNorm) {
                 lista = lista.filter(x => x.searchText.includes(queryNorm));
             }
 
-            // Prioriza los servicios que están esperando ser cotizados
+            // Los pendientes de cotización aparecen primero.
             lista.sort((a, b) => {
                 const aPend = a.servicio.estado === "Cotización" ? 0 : 1;
                 const bPend = b.servicio.estado === "Cotización" ? 0 : 1;
@@ -9970,20 +9997,23 @@ function renderBurbujasChat(containerId, mensajes) {
             if (lista.length === 0) {
                 const opt = document.createElement('option');
                 opt.value = '';
-                opt.innerText = 'Sin resultados para esta búsqueda';
+                opt.innerText = 'No hay servicios pendientes de cotización';
                 selectServicio.appendChild(opt);
+                const diagPanel = document.getElementById('cot-diagnostico-tecnico');
+                if (diagPanel) diagPanel.classList.add('hidden');
                 return;
             }
 
             lista.forEach(({ servicio: i, cliente: cl }) => {
                 const opt = document.createElement('option');
                 opt.value = i.consecutivo;
-                const prefijo = i.estado === "Cotización" ? "🔴 " : "";
-                opt.innerText = `${prefijo}${i.consecutivo} · ${cl.nombre} (Abonado ${cl.id}) · ${i.tipo}`;
+                const prefijo = i.estado === "Cotización" ? "🔴 " : "✎ ";
+                const estadoTexto = i.estado === "Cotización" ? "REQUIERE COTIZACIÓN" : "COTIZACIÓN EXISTENTE";
+                opt.innerText = `${prefijo}${i.consecutivo} · ${cl.nombre} (Abonado ${cl.id}) · ${estadoTexto}`;
                 selectServicio.appendChild(opt);
             });
 
-            // Si el servicio previamente seleccionado sigue en la lista filtrada, lo mantenemos
+            // Si el servicio previamente seleccionado sigue en la lista filtrada, lo mantenemos.
             if (lista.some(x => x.servicio.consecutivo === valorPrevio)) {
                 selectServicio.value = valorPrevio;
             }
