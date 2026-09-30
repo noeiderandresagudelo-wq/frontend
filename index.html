@@ -5623,16 +5623,44 @@
             document.getElementById('modal-estudio-seguridad').classList.remove('hidden');
         }
 
+        function estudioPerteneceAlTecnicoActual(e) {
+            if (!e || !currentUser || currentUser.rol !== 'TECNICO') return false;
+            const tecnicoIdActual = String(currentUser.tecnicoId || '').trim();
+            const authIdActual = String(currentUser.id || '').trim();
+            const tecnicoIdEstudio = String(e.tecnicoId || '').trim();
+            const tecnicoAuthEstudio = String(e.tecnicoAuthId || '').trim();
+            return (tecnicoIdActual && tecnicoIdEstudio === tecnicoIdActual) ||
+                (authIdActual && tecnicoAuthEstudio === authIdActual);
+        }
+
         function iniciarEstudioTecnico(id) {
             const e = estudiosSeguridad.find(function(x){return x.id === id;});
-            if (!e || e.tecnicoId !== (currentUser && currentUser.tecnicoId)) return;
+            if (!estudioPerteneceAlTecnicoActual(e)) {
+                showToast('Estudio no disponible','Este estudio no está asignado a tu usuario.',true);
+                return;
+            }
             cambiarEstadoEstudio(id, 'En camino');
         }
 
         function llegarEstudioTecnico(id) {
             const e = estudiosSeguridad.find(function(x){return x.id === id;});
-            if (!e || e.tecnicoId !== (currentUser && currentUser.tecnicoId)) return;
+            if (!estudioPerteneceAlTecnicoActual(e)) {
+                showToast('Estudio no disponible','Este estudio no está asignado a tu usuario.',true);
+                return;
+            }
             cambiarEstadoEstudio(id, 'Llegó al sitio');
+        }
+
+        function abrirRutaEstudioTecnico(id) {
+            const e = estudiosSeguridad.find(function(x){return x.id === id;});
+            if (!estudioPerteneceAlTecnicoActual(e)) return;
+            const destino = [e.direccion, e.ciudad].filter(Boolean).join(', ').trim();
+            if (!destino) {
+                showToast('Dirección no disponible','Este estudio no tiene una dirección registrada.',true);
+                return;
+            }
+            const url = 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(destino);
+            window.open(url, '_blank', 'noopener,noreferrer');
         }
 
         function cambiarEstadoEstudio(id, nuevoEstado) {
@@ -5645,6 +5673,9 @@
             persistirEstudiosSeguridad();
             renderEstudiosSeguridad();
             refreshAllKPIs();
+            if (currentUser && currentUser.rol === 'TECNICO' && typeof refreshMobileView === 'function') {
+                refreshMobileView();
+            }
             showToast('Estado actualizado', e.id + ': ' + anterior + ' → ' + nuevoEstado);
         }
 
