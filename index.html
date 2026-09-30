@@ -5707,6 +5707,15 @@
             if (!e) return;
             const modal = document.getElementById('modal-opr-estudio-seguridad');
             if (!modal) return;
+
+            // En Android el terminal técnico tiene contenedores con overflow/z-index propios.
+            // Sacamos el OPR al body para garantizar que el modal y sus campos reciban los toques.
+            if (modal.parentElement !== document.body) {
+                document.body.appendChild(modal);
+            }
+            modal.style.zIndex = '99999';
+            modal.style.pointerEvents = 'auto';
+
             document.getElementById('opr-estudio-id').value = e.id;
             document.getElementById('opr-estudio-cliente').value = e.cliente || '';
             document.getElementById('opr-estudio-direccion').value = [e.direccion, e.ciudad].filter(Boolean).join(', ');
