@@ -2757,7 +2757,7 @@
                         OPR
                     </div>
                     <div>
-                        <h3 class="text-xs font-black text-white tracking-widest uppercase">ALARVIX SERVICES</h3>
+                        <div class="flex items-center gap-2"><img id="opr-empresa-logo" class="hidden w-8 h-8 rounded-lg object-contain bg-white/5 border border-slate-700" alt="Logo de la empresa"><h3 id="opr-empresa-nombre" class="text-xs font-black text-white tracking-widest uppercase">Empresa</h3></div>
                         <span class="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Reporte Técnico de Operación de Campo</span>
                         <span class="text-[8px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded font-black uppercase mt-1 inline-block"><i class="fa-solid fa-file-signature mr-1"></i> Constancia Oficial para el Cliente</span>
                     </div>
@@ -2984,7 +2984,7 @@
                     <div class="w-6 h-6 rounded bg-emerald-600 flex items-center justify-center text-white text-xs">
                         <i class="fa-solid fa-clipboard-check"></i>
                     </div>
-                    <h3 class="text-xs font-extrabold text-white uppercase tracking-wider">Informe OPR de Cierre</h3>
+                    <div><img id="opr-tech-empresa-logo" class="hidden w-7 h-7 rounded-lg object-contain bg-white/5 border border-slate-700 inline-block mr-2 align-middle" alt="Logo de la empresa"><h3 id="opr-tech-empresa-nombre" class="inline-block text-xs font-extrabold text-white uppercase tracking-wider">Empresa</h3><span class="text-[9px] text-slate-500 uppercase block">Informe OPR de Cierre</span></div>
                 </div>
                 <button onclick="closeTechOprModal()" class="text-slate-400 hover:text-white">✕</button>
             </div>
@@ -5050,6 +5050,7 @@
                     return;
                 }
 
+                cargarIdentidadDocumentalEmpresa().then(aplicarIdentidadOPRModal).catch(() => {});
                 document.getElementById('opr-form-consecutivo').innerText = consecutivo;
                 document.getElementById('opr-form-consecutivo-hidden').value = consecutivo;
                 document.getElementById('opr-form-trabajo-realizado').value = s.evidenciaDano || '';
@@ -5737,6 +5738,7 @@
             modal.style.zIndex = '99999';
             modal.style.pointerEvents = 'auto';
 
+            cargarIdentidadDocumentalEmpresa().then(aplicarIdentidadOPRModal).catch(() => {});
             document.getElementById('opr-estudio-id').value = e.id;
             document.getElementById('opr-estudio-cliente').value = e.cliente || '';
             document.getElementById('opr-estudio-direccion').value = [e.direccion, e.ciudad].filter(Boolean).join(', ');
@@ -9427,6 +9429,7 @@ function renderBurbujasChat(containerId, mensajes) {
 
                 // Poblar especificaciones básicas
                 document.getElementById('opr-consecutivo').innerText = s.consecutivo;
+                cargarIdentidadDocumentalEmpresa().then(aplicarIdentidadOPRModal).catch(() => {});
                 const fechaPrincipalOPR = s.informeTecnico?.fechaVisita || s.informeTecnico?.fechaCierre || s.fechaCreacion;
                 document.getElementById('opr-fecha').innerText = fechaPrincipalOPR ? new Date(fechaPrincipalOPR).toLocaleDateString('es-CO') : "--/--/----";
                 document.getElementById('opr-abonado-id').innerText = s.abonadoId;
@@ -11914,6 +11917,7 @@ function renderBurbujasChat(containerId, mensajes) {
          * Construye de manera dinámica el documento de Auditoría Física u OPR en formato PDF interactivo.
          */
         async function cargarIdentidadDocumentalEmpresa() {
+            // Identidad documental por TENANT: cada empresa usa sus propios datos y logo.
             const fallback = {
                 razonSocial: "ALARVIX SERVICES ENTERPRISE",
                 nombreComercial: "ALARVIX SERVICES ENTERPRISE",
@@ -11926,14 +11930,16 @@ function renderBurbujasChat(containerId, mensajes) {
                 nombreSgi: "Sistema de Gestión Integral",
                 codigoOpr: "OPR-SGI-001",
                 versionOpr: "01",
-                responsableSgi: ""
+                responsableSgi: "",
+                mostrarMarcaAlarvix: false
             };
 
             try {
                 const tenantId = currentUser?.tenant_id || currentUser?.tenantId || null;
                 if (!supabaseClient || !tenantId) return fallback;
 
-                const [{ data: empresa }, { data: identidad }, { data: sgi }, { data: documento }] = await Promise.all([
+                const [{ data: tenant }, { data: empresa }, { data: identidad }, { data: sgi }, { data: documento }] = await Promise.all([
+                    supabaseClient.from("tenants").select("id,name,nombre,slug,city").eq("id", tenantId).maybeSingle(),
                     supabaseClient.from("empresas").select("*").eq("id", tenantId).maybeSingle(),
                     supabaseClient.from("empresas_identidad").select("*").eq("tenant_id", tenantId).maybeSingle(),
                     supabaseClient.from("empresas_sgi").select("*").eq("tenant_id", tenantId).maybeSingle(),
@@ -11942,22 +11948,28 @@ function renderBurbujasChat(containerId, mensajes) {
 
                 let logoUrl = identidad?.logo_url || null;
                 if (!logoUrl && identidad?.logo_storage_path && window.SUPABASE_URL) {
-                    logoUrl = `${window.SUPABASE_URL}/storage/v1/object/public/empresa-logos/${String(identidad.logo_storage_path).replace(/^\/+/, "")}`;
+                    logoUrl = window.SUPABASE_URL + "/storage/v1/object/public/empresa-logos/" +
+                        String(identidad.logo_storage_path).replace(/^\/+/, "");
                 }
 
+                const nombreTenant = tenant?.nombre || tenant?.name || "";
+                const razonSocial = empresa?.razon_social || empresa?.nombre_comercial || nombreTenant || fallback.razonSocial;
+                const nombreComercial = empresa?.nombre_comercial || empresa?.razon_social || nombreTenant || fallback.nombreComercial;
+
                 return {
-                    razonSocial: empresa?.razon_social || empresa?.nombre_comercial || fallback.razonSocial,
-                    nombreComercial: empresa?.nombre_comercial || empresa?.razon_social || fallback.nombreComercial,
+                    razonSocial,
+                    nombreComercial,
                     nit: empresa?.nit || "",
                     direccion: empresa?.direccion || "",
-                    ciudad: empresa?.ciudad || activeCentral || "",
+                    ciudad: empresa?.ciudad || tenant?.city || activeCentral || "",
                     telefono: empresa?.telefono || "",
                     correo: empresa?.correo || "",
                     logoUrl,
                     nombreSgi: sgi?.nombre_sistema || fallback.nombreSgi,
                     codigoOpr: documento?.codigo_documento || fallback.codigoOpr,
                     versionOpr: documento?.version || fallback.versionOpr,
-                    responsableSgi: sgi?.responsable_sgi || ""
+                    responsableSgi: sgi?.responsable_sgi || "",
+                    mostrarMarcaAlarvix: identidad?.mostrar_marca_alarvix === true
                 };
             } catch (error) {
                 console.warn("[Alarvix OPR] No se pudo cargar la identidad documental de la empresa:", error);
@@ -11965,6 +11977,28 @@ function renderBurbujasChat(containerId, mensajes) {
             }
         }
 
+        function aplicarIdentidadOPRModal(identidad) {
+            try {
+                const nombre = identidad?.nombreComercial || identidad?.razonSocial || "Empresa";
+                ['opr-empresa-nombre','opr-estudio-empresa-nombre','opr-tech-empresa-nombre'].forEach(function(id) {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = nombre;
+                });
+                ['opr-empresa-logo','opr-estudio-empresa-logo','opr-tech-empresa-logo'].forEach(function(id) {
+                    const img = document.getElementById(id);
+                    if (!img) return;
+                    if (identidad?.logoUrl) {
+                        img.src = identidad.logoUrl;
+                        img.classList.remove('hidden');
+                    } else {
+                        img.removeAttribute('src');
+                        img.classList.add('hidden');
+                    }
+                });
+            } catch (error) {
+                console.warn("[Alarvix OPR] No se pudo aplicar la identidad al modal:", error);
+            }
+        }
         function cargarImagenPDF(url) {
             return new Promise((resolve) => {
                 if (!url) return resolve(null);
@@ -12642,7 +12676,7 @@ function renderBurbujasChat(containerId, mensajes) {
     <div id="modal-opr-estudio-seguridad" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[9500] hidden flex items-center justify-center p-4 overflow-y-auto">
       <form onsubmit="guardarOPREstudio(event)" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 w-full max-w-2xl shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
         <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div><h3 class="text-sm font-black text-white uppercase">OPR · Estudio de Seguridad</h3><p class="text-[9px] text-slate-500 mt-1">Reporte técnico de visita previa a instalación</p></div>
+          <div><div class="flex items-center gap-2"><img id="opr-estudio-empresa-logo" class="hidden w-7 h-7 rounded-lg object-contain bg-white/5 border border-slate-700" alt="Logo de la empresa"><h3 id="opr-estudio-empresa-nombre" class="text-sm font-black text-white uppercase">Empresa</h3></div><p class="text-[9px] text-slate-500 mt-1">OPR · Estudio de Seguridad</p><p class="text-[9px] text-slate-500 mt-1">Reporte técnico de visita previa a instalación</p></div><p class="text-[9px] text-slate-500 mt-1">Reporte técnico de visita previa a instalación</p></div>
           <button type="button" onclick="cerrarOPREstudio()" class="w-9 h-9 rounded-lg bg-slate-800 text-slate-300">✕</button>
         </div>
         <input id="opr-estudio-id" type="hidden">
