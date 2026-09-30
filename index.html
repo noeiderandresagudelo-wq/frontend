@@ -615,7 +615,7 @@
 
             <!-- Barra de Navegación del Celular -->
             <div class="bg-slate-900 border-t border-slate-800 px-4 py-3.5 flex justify-around items-center shrink-0 rounded-b-[28px]">
-                <button onclick="refreshMobileView(); showToast('Pantalla Actualizada', 'Se refrescó la lista de servicios.');" class="flex flex-col items-center gap-1 text-emerald-400">
+                <button onclick="sincronizarEstudiosTecnico();" class="flex flex-col items-center gap-1 text-emerald-400">
                     <i class="fa-solid fa-arrows-rotate text-sm"></i>
                     <span class="text-[8px] font-black uppercase tracking-wider">Sincronizar</span>
                 </button>
@@ -4367,6 +4367,21 @@
             } catch(e) { console.error("Error al crear solicitud de cliente:", e); }
         }
 
+        async function sincronizarEstudiosTecnico() {
+            if (!currentUser || currentUser.rol !== "TECNICO") return;
+            try {
+                const ok = await syncEstudiosSeguridadNube();
+                refreshMobileView();
+                showToast(ok ? "Estudios sincronizados" : "Sincronización incompleta",
+                    ok ? "Se consultó la nube y se actualizaron tus estudios asignados." : "No se pudieron consultar los estudios en la nube. Revisa tu conexión y la configuración de Supabase.",
+                    !ok);
+            } catch (error) {
+                console.error("[Alarvix/Supabase] Error sincronizando estudios desde el móvil:", error);
+                refreshMobileView();
+                showToast("Error de sincronización", "No se pudieron actualizar los estudios de seguridad.", true);
+            }
+        }
+
         function refreshMobileView() {
             if (!currentUser || currentUser.rol !== "TECNICO") return;
             const container = document.getElementById('tech-tasks-list');
@@ -4376,7 +4391,13 @@
             // Filtrar únicamente los servicios asignados a este técnico que estén pendientes o activos
             // Estudios de seguridad asignados al técnico: se manejan aparte de los servicios operativos.
             const techStudies = estudiosSeguridad.filter(function(e) {
-                return e.tecnicoId === currentUser.tecnicoId &&
+                const tecnicoIdActual = String(currentUser.tecnicoId || '').trim();
+                const authIdActual = String(currentUser.id || '').trim();
+                const tecnicoIdEstudio = String(e.tecnicoId || '').trim();
+                const tecnicoAuthEstudio = String(e.tecnicoAuthId || '').trim();
+                const coincideTecnico = (tecnicoIdActual && tecnicoIdEstudio === tecnicoIdActual) ||
+                    (authIdActual && tecnicoAuthEstudio === authIdActual);
+                return coincideTecnico &&
                     !['Cerrado','Aprobado para instalación','Viable con adecuaciones','No viable'].includes(e.estado);
             });
             const studiesContainer = document.getElementById('tech-security-studies-list');
