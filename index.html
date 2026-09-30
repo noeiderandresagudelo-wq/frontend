@@ -4416,6 +4416,9 @@
                     } else if (e.estado === 'Llegó al sitio') {
                         action += '<div class="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-[9px] font-bold text-emerald-300 uppercase text-center">📍 En el sitio · realiza la inspección</div>';
                         action += '<button type="button" onclick="abrirOPREstudio(\''+e.id+'\', false); return false;" class="w-full bg-violet-600 hover:bg-violet-500 active:bg-violet-700 text-white rounded-lg py-2.5 text-[10px] font-black uppercase touch-manipulation">📝 Diligenciar OPR</button>';
+                    } else if (e.estado === 'Informe pendiente') {
+                        action += '<div class="rounded-lg border border-violet-500/20 bg-violet-500/10 px-3 py-2 text-[9px] font-bold text-violet-300 uppercase text-center">📝 OPR enviado · pendiente de revisión Central</div>';
+                        action += '<button type="button" onclick="abrirOPREstudio(\''+e.id+'\', true); return false;" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg py-2.5 text-[10px] font-black uppercase touch-manipulation">👁️ Ver OPR enviado</button>';
                     }
                     action += '</div>';
                     card.innerHTML = '<div class="flex justify-between gap-2"><div><p class="text-[9px] text-violet-400 font-black uppercase">Estudio de Seguridad · '+escEstudio(e.id)+'</p><p class="text-xs text-white font-bold mt-1">'+escEstudio(e.cliente)+'</p><p class="text-[9px] text-slate-500 mt-1">'+escEstudio(e.direccion)+'</p></div><span class="text-[9px] font-bold text-violet-300">'+escEstudio(e.estado)+'</span></div><p class="text-[10px] text-slate-400">'+escEstudio(e.necesidad)+'</p>'+action;
@@ -5678,7 +5681,11 @@
                 showToast('Estudio no disponible','Este estudio no está asignado a tu usuario.',true);
                 return;
             }
-            await cambiarEstadoEstudio(id, 'En camino');
+            const ahora = new Date().toISOString();
+            e.timeline = Array.isArray(e.timeline) ? e.timeline : [];
+            e.timeline.push({fecha:ahora,msg:'Despacho Ruta · técnico inició desplazamiento',tipo:'despacho',user:currentUser ? currentUser.nombre : 'Técnico'});
+            const ok = await cambiarEstadoEstudio(id, 'En camino');
+            if (!ok) e.timeline = e.timeline.filter(t => !(t && t.tipo === 'despacho' && t.fecha === ahora));
         }
 
         async function llegarEstudioTecnico(id) {
@@ -5687,6 +5694,10 @@
                 showToast('Estudio no disponible','Este estudio no está asignado a tu usuario.',true);
                 return;
             }
+            const ahora = new Date().toISOString();
+            e.fechaLlegada = ahora;
+            e.timeline = Array.isArray(e.timeline) ? e.timeline : [];
+            e.timeline.push({fecha:ahora,msg:'Arribo · técnico llegó al sitio',tipo:'arribo',user:currentUser ? currentUser.nombre : 'Técnico'});
             await cambiarEstadoEstudio(id, 'Llegó al sitio');
         }
 
@@ -5721,6 +5732,17 @@
             document.getElementById('opr-estudio-direccion').value = [e.direccion, e.ciudad].filter(Boolean).join(', ');
             document.getElementById('opr-estudio-tipo').value = e.tipo || '';
             document.getElementById('opr-estudio-necesidad').value = e.necesidad || '';
+            document.getElementById('opr-estudio-fecha-visita').value = e.oprReport?.fechaVisita
+                ? new Date(e.oprReport.fechaVisita).toLocaleDateString('es-CO')
+                : (e.fechaLlegada ? new Date(e.fechaLlegada).toLocaleDateString('es-CO') : new Date().toLocaleDateString('es-CO'));
+            const buscarTiempo = (tipo) => {
+                const item = Array.isArray(e.timeline) ? e.timeline.find(t => t && t.tipo === tipo) : null;
+                return item?.fecha ? new Date(item.fecha).toLocaleString('es-CO') : '--';
+            };
+            document.getElementById('opr-estudio-ingreso').value = buscarTiempo('ingreso');
+            document.getElementById('opr-estudio-despacho').value = buscarTiempo('despacho');
+            document.getElementById('opr-estudio-arribo').value = buscarTiempo('arribo');
+            document.getElementById('opr-estudio-cierre').value = e.oprReport?.fecha ? new Date(e.oprReport.fecha).toLocaleString('es-CO') : '--';
             const opr = e.oprReport || {};
             ['hallazgos','requerimientos','equipos','riesgos','recomendaciones','observaciones'].forEach(function(k){
                 document.getElementById('opr-estudio-'+k).value = opr[k] || '';
@@ -5748,6 +5770,8 @@
             if (!e) return;
             const anterior = e.estado;
             e.oprReport = {
+                fechaVisita: e.fechaLlegada || new Date().toISOString(),
+                fechaEjecucion: e.fechaLlegada || new Date().toISOString(),
                 hallazgos: document.getElementById('opr-estudio-hallazgos').value.trim(),
                 requerimientos: document.getElementById('opr-estudio-requerimientos').value.trim(),
                 equipos: document.getElementById('opr-estudio-equipos').value.trim(),
@@ -12496,6 +12520,13 @@ function renderBurbujasChat(containerId, mensajes) {
           <label class="space-y-1"><span class="text-slate-500 uppercase font-bold">Dirección</span><input id="opr-estudio-direccion" readonly class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white"></label>
           <label class="space-y-1"><span class="text-slate-500 uppercase font-bold">Servicio solicitado</span><input id="opr-estudio-tipo" readonly class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white"></label>
           <label class="space-y-1"><span class="text-slate-500 uppercase font-bold">Necesidad</span><input id="opr-estudio-necesidad" readonly class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white"></label>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[10px]">
+          <label class="space-y-1"><span class="text-amber-400 uppercase font-black">Fecha de ejecución / visita</span><input id="opr-estudio-fecha-visita" readonly class="w-full bg-slate-950 border border-amber-500/20 rounded-lg px-3 py-2 text-white"></label>
+          <label class="space-y-1"><span class="text-slate-500 uppercase font-bold">Ingreso</span><input id="opr-estudio-ingreso" readonly class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white"></label>
+          <label class="space-y-1"><span class="text-slate-500 uppercase font-bold">Despacho Ruta</span><input id="opr-estudio-despacho" readonly class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white"></label>
+          <label class="space-y-1"><span class="text-slate-500 uppercase font-bold">Arribo</span><input id="opr-estudio-arribo" readonly class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white"></label>
+          <label class="space-y-1"><span class="text-slate-500 uppercase font-bold">Cierre OPR</span><input id="opr-estudio-cierre" readonly class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white"></label>
         </div>
         <div class="space-y-3 text-[10px]">
           <label class="block space-y-1"><span class="text-amber-400 uppercase font-black">Hallazgos de la inspección *</span><textarea id="opr-estudio-hallazgos" required rows="4" class="w-full min-h-[110px] bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white resize-y touch-manipulation" placeholder="Describe lo encontrado en el sitio..."></textarea></label>
