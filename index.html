@@ -4415,7 +4415,7 @@
                         action += '<button onclick="llegarEstudioTecnico(\''+e.id+'\')" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg py-2 text-[10px] font-black uppercase">📍 Llegué al sitio</button>';
                     } else if (e.estado === 'Llegó al sitio') {
                         action += '<div class="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-[9px] font-bold text-emerald-300 uppercase text-center">📍 En el sitio · realiza la inspección</div>';
-                        action += '<button onclick="cambiarEstadoEstudio(\''+e.id+'\',\'Informe pendiente\')" class="w-full bg-violet-600 hover:bg-violet-500 text-white rounded-lg py-2 text-[10px] font-black uppercase">📝 Terminar visita</button>';
+                        action += '<button onclick="abrirOPREstudio(\''+e.id+'\')" class="w-full bg-violet-600 hover:bg-violet-500 text-white rounded-lg py-2 text-[10px] font-black uppercase">📝 Diligenciar OPR</button>';
                     }
                     action += '</div>';
                     card.innerHTML = '<div class="flex justify-between gap-2"><div><p class="text-[9px] text-violet-400 font-black uppercase">Estudio de Seguridad · '+escEstudio(e.id)+'</p><p class="text-xs text-white font-bold mt-1">'+escEstudio(e.cliente)+'</p><p class="text-[9px] text-slate-500 mt-1">'+escEstudio(e.direccion)+'</p></div><span class="text-[9px] font-bold text-violet-300">'+escEstudio(e.estado)+'</span></div><p class="text-[10px] text-slate-400">'+escEstudio(e.necesidad)+'</p>'+action;
@@ -5428,6 +5428,7 @@
                 estado: e.estado || 'Pendiente',
                 fecha_creacion: e.fechaCreacion || new Date().toISOString(),
                 timeline: Array.isArray(e.timeline) ? e.timeline : [],
+                opr_report: e.oprReport || null,
                 created_by: e.createdBy || (currentUser ? currentUser.id : null)
             };
         }
@@ -5448,7 +5449,8 @@
                 zonas: row.zonas || '',
                 estado: row.estado || 'Pendiente',
                 fechaCreacion: row.fecha_creacion || row.created_at || new Date().toISOString(),
-                timeline: Array.isArray(row.timeline) ? row.timeline : []
+                timeline: Array.isArray(row.timeline) ? row.timeline : [],
+                oprReport: row.opr_report || null
             };
         }
 
@@ -5668,6 +5670,77 @@
             window.open(url, '_blank', 'noopener,noreferrer');
         }
 
+        function abrirOPREstudio(id, soloLectura) {
+            const e = estudiosSeguridad.find(function(x){ return x.id === id; });
+            if (!e) return;
+            const modal = document.getElementById('modal-opr-estudio-seguridad');
+            if (!modal) return;
+            document.getElementById('opr-estudio-id').value = e.id;
+            document.getElementById('opr-estudio-cliente').value = e.cliente || '';
+            document.getElementById('opr-estudio-direccion').value = [e.direccion, e.ciudad].filter(Boolean).join(', ');
+            document.getElementById('opr-estudio-tipo').value = e.tipo || '';
+            document.getElementById('opr-estudio-necesidad').value = e.necesidad || '';
+            const opr = e.oprReport || {};
+            ['hallazgos','requerimientos','equipos','riesgos','recomendaciones','observaciones'].forEach(function(k){
+                document.getElementById('opr-estudio-'+k).value = opr[k] || '';
+            });
+            document.getElementById('opr-estudio-guardar').classList.toggle('hidden', !!soloLectura);
+            modal.classList.remove('hidden');
+        }
+
+        function cerrarOPREstudio() {
+            const modal = document.getElementById('modal-opr-estudio-seguridad');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        async function guardarOPREstudio(event) {
+            event.preventDefault();
+            const id = document.getElementById('opr-estudio-id').value;
+            const e = estudiosSeguridad.find(function(x){ return x.id === id; });
+            if (!e) return;
+            const anterior = e.estado;
+            e.oprReport = {
+                hallazgos: document.getElementById('opr-estudio-hallazgos').value.trim(),
+                requerimientos: document.getElementById('opr-estudio-requerimientos').value.trim(),
+                equipos: document.getElementById('opr-estudio-equipos').value.trim(),
+                riesgos: document.getElementById('opr-estudio-riesgos').value.trim(),
+                recomendaciones: document.getElementById('opr-estudio-recomendaciones').value.trim(),
+                observaciones: document.getElementById('opr-estudio-observaciones').value.trim(),
+                tecnico: currentUser ? (currentUser.nombre || currentUser.email || '') : '',
+                fecha: new Date().toISOString()
+            };
+            e.estado = 'Informe pendiente';
+            e.timeline = Array.isArray(e.timeline) ? e.timeline : [];
+            e.timeline.push({fecha:new Date().toISOString(),msg:'OPR de estudio diligenciado por el técnico',user:currentUser ? currentUser.nombre : 'Sistema'});
+            const ok = await persistirEstudiosSeguridad(e);
+            if (!ok) {
+                e.estado = anterior;
+                e.oprReport = null;
+                e.timeline.pop();
+                showToast('No se pudo guardar el OPR','El reporte no llegó a Supabase.',true);
+                return;
+            }
+            cerrarOPREstudio();
+            renderEstudiosSeguridad();
+            if (currentUser && currentUser.rol === 'TECNICO') refreshMobileView();
+            refreshAllKPIs();
+            showToast('OPR registrado','El estudio quedó en Informe pendiente para revisión de Central.');
+        }
+
+        async function resolverEstudioSeguridad(id, nuevoEstado) {
+            const e = estudiosSeguridad.find(function(x){ return x.id === id; });
+            if (!e || currentUser?.rol === 'TECNICO') return;
+            const anterior = e.estado;
+            e.estado = nuevoEstado;
+            e.timeline = Array.isArray(e.timeline) ? e.timeline : [];
+            e.timeline.push({fecha:new Date().toISOString(),msg:'Resolución del estudio: ' + nuevoEstado,user:currentUser ? currentUser.nombre : 'Central'});
+            const ok = await persistirEstudiosSeguridad(e);
+            if (!ok) { e.estado = anterior; e.timeline.pop(); showToast('No se pudo actualizar','La resolución no llegó a Supabase.',true); return; }
+            renderEstudiosSeguridad();
+            refreshAllKPIs();
+            showToast('Estudio actualizado', e.id + ' → ' + nuevoEstado);
+        }
+
         async function cambiarEstadoEstudio(id, nuevoEstado) {
             const e = estudiosSeguridad.find(function(x){return x.id === id;});
             if (!e) return false;
@@ -5737,7 +5810,8 @@
                 if(e.estado==='Pendiente') accion='<button onclick="asignarEstudioTecnico(\''+e.id+'\')" class="px-2 py-1 rounded bg-blue-600/15 text-blue-400 border border-blue-500/20 text-[9px] font-bold">Asignar</button>';
                 else if(e.estado==='Asignado') accion='<span class="px-2 py-1 rounded bg-slate-800 text-slate-500 text-[9px] font-bold">Esperando salida del técnico</span>';
                 else if(e.estado==='En camino') accion='<button onclick="cambiarEstadoEstudio(\''+e.id+'\',\'Llegó al sitio\')" class="px-2 py-1 rounded bg-cyan-600/15 text-cyan-400 border border-cyan-500/20 text-[9px] font-bold">Llegó al sitio</button>';
-                else if(e.estado==='Llegó al sitio') accion='<button onclick="cambiarEstadoEstudio(\''+e.id+'\',\'Informe pendiente\')" class="px-2 py-1 rounded bg-violet-600/15 text-violet-400 border border-violet-500/20 text-[9px] font-bold">Cerrar visita</button>';
+                else if(e.estado==='Llegó al sitio') accion='<button onclick="abrirOPREstudio(\''+e.id+'\')" class="px-2 py-1 rounded bg-violet-600/15 text-violet-400 border border-violet-500/20 text-[9px] font-bold">Diligenciar OPR</button>';
+                else if(e.estado==='Informe pendiente') accion='<button onclick="abrirOPREstudio(\''+e.id+'\',true)" class="px-2 py-1 rounded bg-amber-600/15 text-amber-400 border border-amber-500/20 text-[9px] font-bold">Revisar OPR</button> <button onclick="resolverEstudioSeguridad(\''+e.id+'\',\'Aprobado para instalación\')" class="px-2 py-1 rounded bg-emerald-600/15 text-emerald-400 border border-emerald-500/20 text-[9px] font-bold">Aprobar</button>';
                 return '<tr class="hover:bg-slate-950/60"><td class="p-3"><span class="font-mono font-bold text-violet-300">'+escEstudio(e.id)+'</span><div class="text-[9px] text-slate-600">'+new Date(e.fechaCreacion).toLocaleDateString('es-CO')+'</div></td><td class="p-3"><div class="font-bold text-white">'+escEstudio(e.cliente)+'</div><div class="text-[9px] text-slate-500">'+escEstudio(e.ciudad)+' · '+escEstudio(e.direccion)+'</div></td><td class="p-3"><span class="text-violet-300 font-bold">'+escEstudio(e.tipo)+'</span><div class="text-[9px] text-slate-500 max-w-[240px] truncate">'+escEstudio(e.necesidad)+'</div></td><td class="p-3 text-slate-300">'+escEstudio(techName)+'</td><td class="p-3 text-center"><span class="inline-flex px-2 py-1 rounded border text-[9px] font-bold uppercase '+estadoEstudioClass(e.estado)+'">'+escEstudio(e.estado)+'</span></td><td class="p-3"><div class="flex flex-wrap gap-1 justify-center">'+accion+'<button onclick="editarEstudioSeguridad(\''+e.id+'\')" class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-[9px] font-bold">Editar</button></div></td></tr>';
             }).join('');
         }
@@ -12240,5 +12314,33 @@ function renderBurbujasChat(containerId, mensajes) {
         });
     </script>
 
+    <!-- OPR DEL ESTUDIO DE SEGURIDAD -->
+    <div id="modal-opr-estudio-seguridad" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[9500] hidden flex items-center justify-center p-4 overflow-y-auto">
+      <form onsubmit="guardarOPREstudio(event)" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 w-full max-w-2xl shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div><h3 class="text-sm font-black text-white uppercase">OPR · Estudio de Seguridad</h3><p class="text-[9px] text-slate-500 mt-1">Reporte técnico de visita previa a instalación</p></div>
+          <button type="button" onclick="cerrarOPREstudio()" class="w-9 h-9 rounded-lg bg-slate-800 text-slate-300">✕</button>
+        </div>
+        <input id="opr-estudio-id" type="hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[10px]">
+          <label class="space-y-1"><span class="text-slate-500 uppercase font-bold">Cliente</span><input id="opr-estudio-cliente" readonly class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white"></label>
+          <label class="space-y-1"><span class="text-slate-500 uppercase font-bold">Dirección</span><input id="opr-estudio-direccion" readonly class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white"></label>
+          <label class="space-y-1"><span class="text-slate-500 uppercase font-bold">Servicio solicitado</span><input id="opr-estudio-tipo" readonly class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white"></label>
+          <label class="space-y-1"><span class="text-slate-500 uppercase font-bold">Necesidad</span><input id="opr-estudio-necesidad" readonly class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white"></label>
+        </div>
+        <div class="space-y-3 text-[10px]">
+          <label class="block space-y-1"><span class="text-amber-400 uppercase font-black">Hallazgos de la inspección *</span><textarea id="opr-estudio-hallazgos" required rows="4" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white resize-y" placeholder="Describe lo encontrado en el sitio..."></textarea></label>
+          <label class="block space-y-1"><span class="text-slate-400 uppercase font-bold">Requerimientos para instalación</span><textarea id="opr-estudio-requerimientos" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white resize-y" placeholder="Adecuaciones, canalización, energía, red, alturas, etc."></textarea></label>
+          <label class="block space-y-1"><span class="text-slate-400 uppercase font-bold">Equipos / cantidades recomendadas</span><textarea id="opr-estudio-equipos" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white resize-y" placeholder="Ej.: 6 cámaras, 1 NVR, 2 sensores..."></textarea></label>
+          <label class="block space-y-1"><span class="text-slate-400 uppercase font-bold">Riesgos o condiciones encontradas</span><textarea id="opr-estudio-riesgos" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white resize-y"></textarea></label>
+          <label class="block space-y-1"><span class="text-slate-400 uppercase font-bold">Recomendaciones técnicas</span><textarea id="opr-estudio-recomendaciones" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white resize-y"></textarea></label>
+          <label class="block space-y-1"><span class="text-slate-400 uppercase font-bold">Observaciones adicionales</span><textarea id="opr-estudio-observaciones" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white resize-y"></textarea></label>
+        </div>
+        <div class="flex gap-2 justify-end pt-2 border-t border-slate-800">
+          <button type="button" onclick="cerrarOPREstudio()" class="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 text-xs font-bold">Cerrar</button>
+          <button id="opr-estudio-guardar" type="submit" class="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-slate-950 text-xs font-black uppercase">Guardar OPR y enviar a Central</button>
+        </div>
+      </form>
+    </div>
 </body>
 </html>
