@@ -2781,7 +2781,7 @@
                         OPR
                     </div>
                     <div>
-                        <div class="flex items-center gap-2"><img id="opr-empresa-logo" class="hidden w-20 h-20 rounded-lg object-contain bg-white/5 border border-slate-700" alt="Logo de la empresa"><h3 id="opr-empresa-nombre" class="text-xs font-black text-white tracking-widest uppercase">Empresa</h3></div>
+                        <div class="flex items-center gap-2"><img id="opr-empresa-logo" class="hidden w-32 h-24 rounded-lg object-contain bg-white border border-slate-300 p-1.5" alt="Logo de la empresa"><h3 id="opr-empresa-nombre" class="text-xs font-black text-white tracking-widest uppercase">Empresa</h3></div>
                         <span class="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Reporte Técnico de Operación de Campo</span>
                         <span class="text-[8px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded font-black uppercase mt-1 inline-block"><i class="fa-solid fa-file-signature mr-1"></i> Constancia Oficial para el Cliente</span>
                     </div>
@@ -3008,7 +3008,7 @@
                     <div class="w-6 h-6 rounded bg-emerald-600 flex items-center justify-center text-white text-xs">
                         <i class="fa-solid fa-clipboard-check"></i>
                     </div>
-                    <div><img id="opr-tech-empresa-logo" class="hidden w-20 h-20 rounded-lg object-contain bg-white/5 border border-slate-700 inline-block mr-2 align-middle" alt="Logo de la empresa"><h3 id="opr-tech-empresa-nombre" class="inline-block text-xs font-extrabold text-white uppercase tracking-wider">Empresa</h3><span class="text-[9px] text-slate-500 uppercase block">Informe OPR de Cierre</span></div>
+                    <div><img id="opr-tech-empresa-logo" class="hidden w-32 h-24 rounded-lg object-contain bg-white border border-slate-300 p-1.5 inline-block mr-2 align-middle" alt="Logo de la empresa"><h3 id="opr-tech-empresa-nombre" class="inline-block text-xs font-extrabold text-white uppercase tracking-wider">Empresa</h3><span class="text-[9px] text-slate-500 uppercase block">Informe OPR de Cierre</span></div>
                 </div>
                 <button onclick="closeTechOprModal()" class="text-slate-400 hover:text-white">✕</button>
             </div>
@@ -10664,19 +10664,44 @@ function renderBurbujasChat(containerId, mensajes) {
             showToast("Generando PDF", `Compilando propuesta comercial ${cot.codigo}...`);
 
             // --- CABECERA COMERCIAL ---
-            doc.setFillColor(11, 15, 25); // Slate oscuro de Alarvix
+            // La cotización también utiliza la identidad documental del tenant.
+            const identidadCot = await cargarIdentidadDocumentalEmpresa();
+            const logoCot = await cargarImagenPDF(identidadCot.logoUrl);
+            doc.setFillColor(255, 255, 255);
             doc.rect(0, 0, 210, 38, "F");
+            doc.setDrawColor(226, 232, 240);
+            doc.line(15, 37.5, 195, 37.5);
 
-            doc.setTextColor(255, 255, 255);
+            doc.setTextColor(15, 23, 42);
             doc.setFont("helvetica", "bold");
             doc.setFontSize(18);
-            doc.text("ALARVIX ENTERPRISE", 15, 15);
+            const xCabeceraCot = logoCot ? 58 : 15;
+
+            if (logoCot) {
+                try {
+                    const ratio = logoCot.width / logoCot.height || 1;
+                    const logoW = 38;
+                    const logoH = Math.max(16, Math.min(31, logoW / ratio));
+                    const logoY = 19 - (logoH / 2);
+                    doc.addImage(logoCot, "AUTO", 15, logoY, logoW, logoH, undefined, "FAST");
+                } catch (logoError) {
+                    console.warn("[Alarvix OPR] No se pudo insertar el logo en cotización:", logoError);
+                }
+            }
+
+            doc.text((identidadCot.razonSocial || "Empresa").substring(0, 34), xCabeceraCot, 12);
             
             doc.setFontSize(9);
             doc.setFont("helvetica", "normal");
-            doc.text("PROPUESTA ECONÓMICA DE SERVICIOS TÉCNICOS", 15, 22);
-            doc.setTextColor(156, 163, 175);
-            doc.text(`Detalle comercial para la adecuación e insumos de seguridad`, 15, 27);
+            doc.text("PROPUESTA ECONÓMICA DE SERVICIOS TÉCNICOS", xCabeceraCot, 21);
+            doc.setTextColor(100, 116, 139);
+            doc.setFontSize(8);
+            const datosCot = [
+                identidadCot.nit ? `NIT ${identidadCot.nit}` : "",
+                identidadCot.ciudad || "",
+                identidadCot.telefono || ""
+            ].filter(Boolean).join(" | ");
+            doc.text((datosCot || "Documento comercial").substring(0, 62), xCabeceraCot, 27);
 
             // Badge de Cotización Morado
             doc.setFillColor(139, 92, 246); 
@@ -12177,26 +12202,30 @@ function renderBurbujasChat(containerId, mensajes) {
             const logoEmpresa = await cargarImagenPDF(identidad.logoUrl);
 
             // --- CABECERA CORPORATIVA ---
-            doc.setFillColor(11, 15, 25); // Slate oscuro de Alarvix
+            // Identidad por empresa: fondo blanco y logo protagonista.
+            doc.setFillColor(255, 255, 255);
             doc.rect(0, 0, 210, 38, "F");
+            doc.setDrawColor(226, 232, 240);
+            doc.line(15, 37.5, 195, 37.5);
 
-            doc.setTextColor(255, 255, 255);
+            doc.setTextColor(15, 23, 42);
             doc.setFont("helvetica", "bold");
             doc.setFontSize(15);
-            const xCabecera = logoEmpresa ? 45 : 15;
+            const xCabecera = logoEmpresa ? 58 : 15;
 
             if (logoEmpresa) {
                 try {
                     const ratio = logoEmpresa.width / logoEmpresa.height || 1;
-                    const logoW = 24;
-                    const logoH = Math.max(12, Math.min(25, logoW / ratio));
-                    doc.addImage(logoEmpresa, "AUTO", 15, 6, logoW, logoH, undefined, "FAST");
+                    const logoW = 38;
+                    const logoH = Math.max(16, Math.min(31, logoW / ratio));
+                    const logoY = 19 - (logoH / 2);
+                    doc.addImage(logoEmpresa, "AUTO", 15, logoY, logoW, logoH, undefined, "FAST");
                 } catch (logoError) {
                     console.warn("[Alarvix OPR] No se pudo insertar el logo:", logoError);
                 }
             }
 
-            doc.text(identidad.razonSocial.substring(0, 42), xCabecera, 14);
+            doc.text(identidad.razonSocial.substring(0, 38), xCabecera, 12);
             
             doc.setFontSize(8);
             doc.setFont("helvetica", "normal");
@@ -12205,12 +12234,12 @@ function renderBurbujasChat(containerId, mensajes) {
                 identidad.ciudad || "",
                 identidad.telefono || ""
             ].filter(Boolean).join(" | ");
-            if (datosEmpresa) doc.text(datosEmpresa.substring(0, 70), xCabecera, 19);
+            if (datosEmpresa) doc.text(datosEmpresa.substring(0, 62), xCabecera, 17);
 
             doc.setFontSize(9);
             doc.setFont("helvetica", "normal");
             doc.text("ORDEN DE PRESTACIÓN DE SERVICIO TÉCNICO (OPR)", xCabecera, 25);
-            doc.setTextColor(156, 163, 175);
+            doc.setTextColor(100, 116, 139);
             doc.text("Documento controlado por el Sistema de Gestión Integral", xCabecera, 30);
 
             // Código consecutivo en cabecera
