@@ -8987,9 +8987,9 @@ function renderBurbujasChat(containerId, mensajes) {
 
                 s.estado = newState;
                 s.timeline.push({
-                    fecha: "2026-07-11",
+                    fecha: now.toISOString(),
                     hora: `${hh}:${mm}`,
-                    user: "Despachador Central",
+                    user: currentUser?.nombre || "Despachador Central",
                     gps: "10.9639, -74.7964",
                     msg: `Cambio de estado a [${newState}]. Observación: ${comments}`
                 });
