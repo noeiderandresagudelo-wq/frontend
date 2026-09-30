@@ -5376,9 +5376,139 @@
 
         // ==================== ESTUDIOS DE SEGURIDAD ====================
         let estudiosSeguridad = JSON.parse(localStorage.getItem('alarvix_estudios_seguridad') || '[]');
+        let estudiosSeguridadRealtimeActiva = false;
 
         function persistirEstudiosSeguridad() {
             localStorage.setItem('alarvix_estudios_seguridad', JSON.stringify(estudiosSeguridad));
+            syncEstudiosSeguridadNube();
+        }
+
+        function estudioSeguridadToRow(e) {
+            const tenantId = currentUser ? (currentUser.tenant_id || currentUser.tenantId || null) : null;
+            return {
+                id: e.id,
+                tenant_id: tenantId,
+                cliente: e.cliente || '',
+                contacto: e.contacto || '',
+                direccion: e.direccion || '',
+                ciudad: e.ciudad || '',
+                tipo: e.tipo || '',
+                tecnico_id: e.tecnicoId || null,
+                tecnico_auth_id: e.tecnicoAuthId || null,
+                necesidad: e.necesidad || '',
+                area: e.area || '',
+                accesos: e.accesos || '',
+                zonas: e.zonas || '',
+                estado: e.estado || 'Pendiente',
+                fecha_creacion: e.fechaCreacion || new Date().toISOString(),
+                timeline: Array.isArray(e.timeline) ? e.timeline : [],
+                created_by: e.createdBy || (currentUser ? currentUser.id : null)
+            };
+        }
+
+        function rowToEstudioSeguridad(row) {
+            return {
+                id: row.id,
+                cliente: row.cliente || '',
+                contacto: row.contacto || '',
+                direccion: row.direccion || '',
+                ciudad: row.ciudad || '',
+                tipo: row.tipo || '',
+                tecnicoId: row.tecnico_id || '',
+                tecnicoAuthId: row.tecnico_auth_id || '',
+                necesidad: row.necesidad || '',
+                area: row.area || '',
+                accesos: row.accesos || '',
+                zonas: row.zonas || '',
+                estado: row.estado || 'Pendiente',
+                fechaCreacion: row.fecha_creacion || row.created_at || new Date().toISOString(),
+                timeline: Array.isArray(row.timeline) ? row.timeline : []
+            };
+        }
+
+        async function syncEstudioSeguridadNube(e) {
+            if (!supabaseClient || !currentUser || !e) return false;
+            const row = estudioSeguridadToRow(e);
+            if (!row.tenant_id) return false;
+            try {
+                const { error } = await supabaseClient
+                    .from('estudios_seguridad_instalacion')
+                    .upsert(row, { onConflict: 'id' });
+                if (error) {
+                    console.error('[Alarvix/Supabase] Error al guardar estudio de seguridad:', error);
+                    return false;
+                }
+                return true;
+            } catch (error) {
+                console.error('[Alarvix/Supabase] Excepción guardando estudio de seguridad:', error);
+                return false;
+            }
+        }
+
+        async function syncEstudiosSeguridadNube() {
+            if (!supabaseClient || !currentUser) return false;
+            const tenantId = currentUser.tenant_id || currentUser.tenantId || null;
+            if (!tenantId) return false;
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('estudios_seguridad_instalacion')
+                    .select('*')
+                    .eq('tenant_id', tenantId)
+                    .order('updated_at', { ascending: false });
+
+                if (error) {
+                    console.warn('[Alarvix/Supabase] No se pudieron cargar los estudios de seguridad:', error.message);
+                    return false;
+                }
+
+                if (Array.isArray(data) && data.length > 0) {
+                    estudiosSeguridad = data.map(rowToEstudioSeguridad);
+                    localStorage.setItem('alarvix_estudios_seguridad', JSON.stringify(estudiosSeguridad));
+                } else if (estudiosSeguridad.length > 0) {
+                    // Migración transparente de la primera versión local al nuevo almacenamiento compartido.
+                    for (const estudio of estudiosSeguridad) await syncEstudioSeguridadNube(estudio);
+                }
+
+                renderEstudiosSeguridad();
+                if (currentUser.rol === 'TECNICO' && typeof refreshMobileView === 'function') refreshMobileView();
+                return true;
+            } catch (error) {
+                console.warn('[Alarvix/Supabase] Error sincronizando estudios de seguridad:', error);
+                return false;
+            }
+        }
+
+        function initSupabaseRealtimeEstudiosSeguridad() {
+            if (!supabaseClient || estudiosSeguridadRealtimeActiva) return;
+            estudiosSeguridadRealtimeActiva = true;
+
+            supabaseClient.channel('alarvix-estudios-seguridad')
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'estudios_seguridad_instalacion'
+                }, (payload) => {
+                    const row = payload.new || payload.old;
+                    const tenantId = currentUser ? (currentUser.tenant_id || currentUser.tenantId || null) : null;
+                    if (!row || !tenantId || String(row.tenant_id) !== String(tenantId)) return;
+
+                    if (payload.eventType === 'DELETE') {
+                        estudiosSeguridad = estudiosSeguridad.filter(e => String(e.id) !== String(row.id));
+                    } else {
+                        const nuevo = rowToEstudioSeguridad(row);
+                        const idx = estudiosSeguridad.findIndex(e => String(e.id) === String(nuevo.id));
+                        if (idx >= 0) estudiosSeguridad[idx] = Object.assign({}, estudiosSeguridad[idx], nuevo);
+                        else estudiosSeguridad.unshift(nuevo);
+                    }
+
+                    localStorage.setItem('alarvix_estudios_seguridad', JSON.stringify(estudiosSeguridad));
+                    renderEstudiosSeguridad();
+                    if (currentUser.rol === 'TECNICO' && typeof refreshMobileView === 'function') refreshMobileView();
+                })
+                .subscribe((status) => {
+                    if (status === 'SUBSCRIBED') console.log('[Alarvix/Supabase] Estudios de seguridad en tiempo real activos ✔');
+                });
         }
 
         function escEstudio(value) {
@@ -5429,6 +5559,7 @@
                 ciudad: document.getElementById('estudio-ciudad').value.trim().toUpperCase(),
                 tipo: document.getElementById('estudio-tipo').value,
                 tecnicoId: tecnicoId,
+                tecnicoAuthId: tecnicoId ? ((personalTecnicos.find(function(t){ return t.id === tecnicoId; }) || {}).authUserId || null) : null,
                 necesidad: document.getElementById('estudio-necesidad').value.trim(),
                 area: document.getElementById('estudio-area').value.trim(),
                 accesos: document.getElementById('estudio-accesos').value.trim(),
@@ -5506,6 +5637,7 @@
             const tecnico = opciones.find(function(t){return t.id === seleccion.trim();});
             if (!tecnico) { showToast('Técnico no encontrado','Usa exactamente el ID mostrado en la lista.',true); return; }
             e.tecnicoId = tecnico.id;
+            e.tecnicoAuthId = tecnico.authUserId || null;
             if (e.estado === 'Pendiente') e.estado = 'Asignado';
             e.timeline = Array.isArray(e.timeline) ? e.timeline : [];
             e.timeline.push({fecha:new Date().toISOString(),msg:'Estudio asignado al técnico',user:currentUser ? currentUser.nombre : 'Central'});
@@ -7584,6 +7716,11 @@
             try {
                 await cargarTecnicosDesdeSupabase();
             } catch (e) { console.warn("[Alarvix/Supabase] Excepción al sembrar 'tecnicos':", e); }
+
+            try {
+                await syncEstudiosSeguridadNube();
+                initSupabaseRealtimeEstudiosSeguridad();
+            } catch (e) { console.warn("[Alarvix/Supabase] Excepción sincronizando estudios de seguridad:", e); }
 
             refrescarVistasServicios();
             refrescarVistasClientes();
