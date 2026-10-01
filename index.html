@@ -63,6 +63,81 @@
     </script>
 
     <style>
+        /* ALARVIX_THEME_LIGHT_FIX
+           El modo claro debe funcionar aunque la interfaz histórica use
+           clases oscuras como colores base. */
+        html:not(.dark) {
+            color-scheme: light;
+        }
+        html:not(.dark) body {
+            background: #f8fafc !important;
+            color: #0f172a !important;
+        }
+        html:not(.dark) .bg-slate-950 { background-color: #f8fafc !important; }
+        html:not(.dark) .bg-slate-900 { background-color: #ffffff !important; }
+        html:not(.dark) .bg-slate-800 { background-color: #f1f5f9 !important; }
+        html:not(.dark) .bg-slate-700 { background-color: #e2e8f0 !important; }
+        html:not(.dark) .border-slate-900,
+        html:not(.dark) .border-slate-800 { border-color: #e2e8f0 !important; }
+        html:not(.dark) .border-slate-700 { border-color: #cbd5e1 !important; }
+        html:not(.dark) .text-slate-100,
+        html:not(.dark) .text-slate-200 { color: #0f172a !important; }
+        html:not(.dark) .text-slate-300 { color: #334155 !important; }
+        html:not(.dark) .text-slate-400,
+        html:not(.dark) .text-slate-500 { color: #64748b !important; }
+        html:not(.dark) .text-slate-600 { color: #475569 !important; }
+
+        /* Textos blancos que viven sobre superficies claras pasan a oscuro.
+           Los botones/insignias de color conservan texto blanco. */
+        html:not(.dark) .bg-slate-950 .text-white,
+        html:not(.dark) .bg-slate-900 .text-white,
+        html:not(.dark) .bg-slate-800 .text-white,
+        html:not(.dark) .bg-slate-700 .text-white {
+            color: #0f172a !important;
+        }
+        html:not(.dark) .bg-blue-600.text-white,
+        html:not(.dark) .bg-blue-600 .text-white,
+        html:not(.dark) .bg-indigo-600.text-white,
+        html:not(.dark) .bg-indigo-600 .text-white,
+        html:not(.dark) .bg-violet-600.text-white,
+        html:not(.dark) .bg-violet-600 .text-white,
+        html:not(.dark) .bg-emerald-600.text-white,
+        html:not(.dark) .bg-emerald-600 .text-white,
+        html:not(.dark) .bg-rose-600.text-white,
+        html:not(.dark) .bg-rose-600 .text-white,
+        html:not(.dark) .bg-orange-600.text-white,
+        html:not(.dark) .bg-orange-600 .text-white,
+        html:not(.dark) .bg-cyan-600.text-white,
+        html:not(.dark) .bg-cyan-600 .text-white,
+        html:not(.dark) .bg-amber-500.text-white,
+        html:not(.dark) .bg-amber-500 .text-white,
+        html:not(.dark) .bg-red-600.text-white,
+        html:not(.dark) .bg-red-600 .text-white {
+            color: #ffffff !important;
+        }
+
+        html:not(.dark) input,
+        html:not(.dark) select,
+        html:not(.dark) textarea {
+            color-scheme: light;
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border-color: #cbd5e1 !important;
+        }
+        html:not(.dark) input::placeholder,
+        html:not(.dark) textarea::placeholder {
+            color: #94a3b8 !important;
+        }
+        html:not(.dark) .bg-black\/60 { background-color: rgba(15, 23, 42, .35) !important; }
+
+        /* Sombras y separadores más suaves en modo claro. */
+        html:not(.dark) .shadow-2xl,
+        html:not(.dark) .shadow-xl,
+        html:not(.dark) .shadow-lg {
+            --tw-shadow-color: rgba(15, 23, 42, .10) !important;
+        }
+
+    <style>
         /* ALARVIX_RELOAD_TOP_FIX */
         html { scroll-behavior: auto; }
 
@@ -3651,23 +3726,34 @@
             return !error;
         }
 
-        function toggleDarkMode() {
+        function aplicarTemaAlarvix() {
             const html = document.documentElement;
             const icon = document.getElementById('dark-mode-icon');
-            if (html.classList.contains('dark')) {
-                html.classList.remove('dark');
-                if (icon) {
-                    icon.className = "fa-solid fa-sun text-xs text-amber-500";
-                }
-                showToast("Modo Claro", "Se ha activado el tema visual claro.");
-            } else {
-                html.classList.add('dark');
-                if (icon) {
-                    icon.className = "fa-solid fa-moon text-xs text-slate-400";
-                }
-                showToast("Modo Oscuro", "Se ha activado el tema visual oscuro.");
+            const tema = localStorage.getItem('alarvix_theme') || 'dark';
+            const oscuro = tema !== 'light';
+            html.classList.toggle('dark', oscuro);
+            if (icon) {
+                icon.className = oscuro
+                    ? "fa-solid fa-moon text-xs text-slate-400"
+                    : "fa-solid fa-sun text-xs text-amber-500";
             }
         }
+
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const nuevoTema = html.classList.contains('dark') ? 'light' : 'dark';
+            localStorage.setItem('alarvix_theme', nuevoTema);
+            aplicarTemaAlarvix();
+            showToast(
+                nuevoTema === 'dark' ? "Modo Oscuro" : "Modo Claro",
+                nuevoTema === 'dark'
+                    ? "Se ha activado el tema visual oscuro."
+                    : "Se ha activado el tema visual claro."
+            );
+        }
+
+        // El tema queda persistente entre recargas y dispositivos del mismo navegador.
+        aplicarTemaAlarvix();
 
         // Métodos de Autenticación y Seguridad
         function toggleRecoveryInline(show) {
