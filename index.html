@@ -6531,252 +6531,166 @@
 
         function renderReportesSLA() {
             try {
-                if (typeof Chart === 'undefined') return;
-
-                const ctxRend = document.getElementById('chart-rendimiento-tecnico');
-                const ctxSLA = document.getElementById('chart-sla-prioridad');
-                if (!ctxRend && !ctxSLA) return;
-
-                window.alarvixSLACharts = window.alarvixSLACharts || {};
-                if (window.alarvixSLACharts.rendimiento) {
-                    window.alarvixSLACharts.rendimiento.destroy();
-                    window.alarvixSLACharts.rendimiento = null;
-                }
-                if (window.alarvixSLACharts.prioridad) {
-                    window.alarvixSLACharts.prioridad.destroy();
-                    window.alarvixSLACharts.prioridad = null;
-                }
-
                 const servicios = Array.isArray(incidentesServicios) ? incidentesServicios : [];
+                const filtroEl = document.getElementById('sla-filtro-ciudad');
+                const ciudades = [...new Set(servicios.map(s => {
+                    const cl = crmClientes.find(c => String(c.id) === String(s?.abonadoId));
+                    return String(cl?.ciudad || s?.ciudad || '').trim().toUpperCase();
+                }).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'es'));
+
+                if (filtroEl) {
+                    const actual = filtroEl.value || 'TODAS';
+                    filtroEl.innerHTML = '<option value="TODAS">Todas las ciudades</option>' +
+                        ciudades.map(c => '<option value="'+escEstudio(c)+'">'+escEstudio(c)+'</option>').join('');
+                    filtroEl.value = ciudades.includes(actual) ? actual : 'TODAS';
+                }
+
+                const ciudadSeleccionada = filtroEl?.value || 'TODAS';
+                const serviciosFiltrados = servicios.filter(s => {
+                    if (ciudadSeleccionada === 'TODAS') return true;
+                    const cl = crmClientes.find(c => String(c.id) === String(s?.abonadoId));
+                    return String(cl?.ciudad || s?.ciudad || '').trim().toUpperCase() === ciudadSeleccionada;
+                });
+
                 const ahora = Date.now();
-
-                const fechaTimeline = (s, predicate) => {
-                    const timeline = Array.isArray(s?.timeline) ? s.timeline : [];
-                    const item = timeline.find(t => predicate(String(t?.msg || '').toLowerCase(), t));
-                    if (!item) return null;
-                    const raw = item.fecha || (item.hora && s.fechaCreacion ? null : null);
-                    const d = raw ? new Date(raw) : null;
-                    return d && !Number.isNaN(d.getTime()) ? d : null;
-                };
-
-                const obtenerEvento = (s, tipo) => {
-                    const timeline = Array.isArray(s?.timeline) ? s.timeline : [];
-                    const patrones = {
-                        creacion: (msg, t) => /solicitud creada|servicio creado|incidente creado/.test(msg) || t?.tipo === 'creacion',
-                        ruta: (msg, t) => t?.tipo === 'despacho' ||
-                            /despacho ruta|inici[oó] desplazamiento|en camino/.test(msg),
-                        arribo: (msg, t) => t?.tipo === 'arribo' ||
-                            /arribo|lleg[oó] al sitio/.test(msg),
-                        cierre: (msg, t) => t?.tipo === 'cierre' ||
-                            /cambio de estado a \[(cerrado|finalizado)\]|servicio finalizado|servicio cerrado/.test(msg)
-                    };
-                    const pred = patrones[tipo];
-                    if (!pred) return null;
-                    const encontrados = timeline.filter(t => pred(String(t?.msg || '').toLowerCase(), t));
-                    if (!encontrados.length) return null;
-                    const t = tipo === 'creacion' ? encontrados[0] : encontrados[encontrados.length - 1];
-                    const raw = t?.fecha || null;
-                    const d = raw ? new Date(raw) : null;
-                    return d && !Number.isNaN(d.getTime()) ? d : null;
-                };
-
-                const obtenerFechaCreacion = s => {
-                    const evento = obtenerEvento(s, 'creacion');
-                    if (evento) return evento;
-                    const raw = s?.fechaCreacion || s?.fecha_creacion || s?.created_at;
-                    const d = raw ? new Date(raw) : null;
-                    return d && !Number.isNaN(d.getTime()) ? d : null;
-                };
-
-                const obtenerFechaRuta = s => {
-                    const evento = obtenerEvento(s, 'ruta');
-                    if (evento) return evento;
-                    const raw = s?.fechaDespachoRuta || s?.fecha_despacho_ruta || s?.despachoRuta;
-                    const d = raw ? new Date(raw) : null;
-                    return d && !Number.isNaN(d.getTime()) ? d : null;
-                };
-
-                const obtenerFechaArribo = s => {
-                    const evento = obtenerEvento(s, 'arribo');
-                    if (evento) return evento;
-                    const raw = s?.fechaArribo || s?.fecha_arribo || s?.fechaLlegada;
-                    const d = raw ? new Date(raw) : null;
-                    return d && !Number.isNaN(d.getTime()) ? d : null;
-                };
-
-                const obtenerFechaCierre = s => {
-                    const evento = obtenerEvento(s, 'cierre');
-                    if (evento) return evento;
-                    const raw = s?.fechaCierre || s?.fecha_cierre || s?.fechaFinalizacion ||
-                        s?.informeTecnico?.fechaCierre;
-                    const d = raw ? new Date(raw) : null;
-                    return d && !Number.isNaN(d.getTime()) ? d : null;
-                };
-
-                const prioridadObjetivoMin = {
-                    ALTA: 30,
-                    MEDIA: 240,
-                    BAJA: 1440
-                };
-
+                const prioridadObjetivoMin = { ALTA: 30, MEDIA: 240, BAJA: 1440 };
                 const normalizarPrioridad = p => {
                     const v = String(p || 'MEDIA').trim().toUpperCase();
                     return prioridadObjetivoMin[v] ? v : 'MEDIA';
                 };
+                const fechaValida = raw => {
+                    if (!raw) return null;
+                    const d = new Date(raw);
+                    return Number.isNaN(d.getTime()) ? null : d;
+                };
+                const obtenerEvento = (s, tipo) => {
+                    const timeline = Array.isArray(s?.timeline) ? s.timeline : [];
+                    const patrones = {
+                        creacion: (msg,t) => /solicitud creada|servicio creado|incidente creado/.test(msg) || t?.tipo === 'creacion',
+                        ruta: (msg,t) => t?.tipo === 'despacho' || /despacho ruta|inici[oó] desplazamiento|en camino/.test(msg),
+                        arribo: (msg,t) => t?.tipo === 'arribo' || /arribo|lleg[oó] al sitio/.test(msg),
+                        cierre: (msg,t) => t?.tipo === 'cierre' || /cambio de estado a \[(cerrado|finalizado)\]|servicio finalizado|servicio cerrado/.test(msg)
+                    };
+                    const pred = patrones[tipo];
+                    const encontrados = timeline.filter(t => pred && pred(String(t?.msg || '').toLowerCase(), t));
+                    if (!encontrados.length) return null;
+                    const t = tipo === 'creacion' ? encontrados[0] : encontrados[encontrados.length - 1];
+                    return fechaValida(t?.fecha);
+                };
+                const fechaCreacion = s => obtenerEvento(s,'creacion') || fechaValida(s?.fechaCreacion || s?.fecha_creacion || s?.created_at);
+                const fechaRuta = s => obtenerEvento(s,'ruta') || fechaValida(s?.fechaDespachoRuta || s?.fecha_despacho_ruta || s?.despachoRuta);
+                const fechaCierre = s => obtenerEvento(s,'cierre') || fechaValida(s?.fechaCierre || s?.fecha_cierre || s?.fechaFinalizacion || s?.informeTecnico?.fechaCierre);
 
-                const datos = servicios.map(s => {
-                    const creacion = obtenerFechaCreacion(s);
-                    const ruta = obtenerFechaRuta(s);
-                    const arribo = obtenerFechaArribo(s);
-                    const cierre = obtenerFechaCierre(s);
+                const datos = serviciosFiltrados.map(s => {
+                    const creacion = fechaCreacion(s), ruta = fechaRuta(s), cierre = fechaCierre(s);
                     const prioridad = normalizarPrioridad(s?.prioridad);
                     const objetivo = prioridadObjetivoMin[prioridad];
-
-                    let minutosRespuesta = null;
-                    if (creacion && ruta) {
-                        minutosRespuesta = Math.max(0, (ruta.getTime() - creacion.getTime()) / 60000);
-                    }
-
-                    let minutosActuales = null;
-                    if (creacion) {
-                        minutosActuales = Math.max(0, ((cierre || (ruta ? null : new Date(ahora)))?.getTime?.() - creacion.getTime()) / 60000);
-                    }
-
-                    // Un servicio con Ruta se evalúa contra el tiempo real de respuesta.
-                    // Si todavía no tiene Ruta y ya superó el objetivo, se considera vencido.
+                    const minutosRespuesta = creacion && ruta ? Math.max(0,(ruta-creacion)/60000) : null;
                     let cumpleSLA = null;
-                    if (minutosRespuesta !== null) {
-                        cumpleSLA = minutosRespuesta <= objetivo;
-                    } else if (creacion) {
-                        const estadoFinal = ['Cerrado','Finalizado'].includes(String(s?.estado || ''));
-                        if (!estadoFinal) {
-                            cumpleSLA = ((ahora - creacion.getTime()) / 60000) <= objetivo;
-                        }
-                    }
+                    if (minutosRespuesta !== null) cumpleSLA = minutosRespuesta <= objetivo;
+                    else if (creacion && !['Cerrado','Finalizado'].includes(String(s?.estado || ''))) cumpleSLA = ((ahora-creacion.getTime())/60000) <= objetivo;
+                    return { servicio:s, creacion, ruta, cierre, prioridad, objetivo, minutosRespuesta, cumpleSLA };
+                });
 
-                    return {
-                        servicio: s,
-                        creacion,
-                        ruta,
-                        arribo,
-                        cierre,
-                        prioridad,
-                        objetivo,
-                        minutosRespuesta,
-                        minutosActuales,
-                        cumpleSLA
+                const esFinal = s => ['Cerrado','Finalizado'].includes(String(s?.estado || '').trim());
+                const atendidos = serviciosFiltrados.filter(s => esFinal(s)).length;
+                const programados = serviciosFiltrados.filter(s =>
+                    String(s?.estado || '').toLowerCase() === 'programado' ||
+                    !!s?.instalacionInfo?.fecha ||
+                    !!s?.fechaProgramada || !!s?.fecha_programada
+                ).length;
+                const ejecutadosProgramados = serviciosFiltrados.filter(s =>
+                    (String(s?.estado || '').toLowerCase() === 'programado' || !!s?.instalacionInfo?.fecha || !!s?.fechaProgramada || !!s?.fecha_programada) &&
+                    esFinal(s)
+                ).length;
+
+                const tecnicosMapa = {};
+                serviciosFiltrados.forEach(s => {
+                    const t = personalTecnicos.find(x => String(x.id) === String(s?.tecnicoId));
+                    const id = String(s?.tecnicoId || 'SIN-TECNICO');
+                    if (!tecnicosMapa[id]) tecnicosMapa[id] = {
+                        id, nombre: t?.nombre || s?.tecnicoNombre || 'Sin técnico',
+                        ciudad: t?.ciudad || (crmClientes.find(c => String(c.id) === String(s?.abonadoId))?.ciudad || 'Sin ciudad'),
+                        servicios: 0, atendidos: 0, slaEvaluables: 0, slaCumplidos: 0, respuesta: []
                     };
+                    const x = tecnicosMapa[id];
+                    x.servicios++;
+                    if (esFinal(s)) x.atendidos++;
                 });
-
-                // Promedio real de respuesta por técnico: Creación -> Despacho Ruta.
-                const porTecnico = {};
                 datos.forEach(d => {
-                    if (d.minutosRespuesta === null) return;
-                    const tech = personalTecnicos.find(t => t.id === d.servicio?.tecnicoId);
-                    const nombre = tech?.nombre || d.servicio?.tecnicoNombre || 'Sin técnico';
-                    if (!porTecnico[nombre]) porTecnico[nombre] = [];
-                    porTecnico[nombre].push(d.minutosRespuesta);
+                    const id = String(d.servicio?.tecnicoId || 'SIN-TECNICO');
+                    const x = tecnicosMapa[id];
+                    if (!x) return;
+                    if (d.cumpleSLA !== null) {
+                        x.slaEvaluables++;
+                        if (d.cumpleSLA) x.slaCumplidos++;
+                    }
+                    if (d.minutosRespuesta !== null) x.respuesta.push(d.minutosRespuesta);
                 });
 
-                const nombresTecnicos = Object.keys(porTecnico).sort((a,b) => a.localeCompare(b, 'es'));
-                const promedios = nombresTecnicos.map(nombre => {
-                    const valores = porTecnico[nombre];
-                    return Math.round((valores.reduce((a,b) => a+b, 0) / valores.length) * 10) / 10;
-                });
-
-                if (ctxRend) {
-                    window.alarvixSLACharts.rendimiento = new Chart(ctxRend.getContext('2d'), {
-                        type: 'bar',
-                        data: {
-                            labels: nombresTecnicos.length ? nombresTecnicos : ['Sin datos'],
-                            datasets: [{
-                                label: 'Tiempo real de respuesta (minutos)',
-                                data: promedios.length ? promedios : [0],
-                                backgroundColor: 'rgba(59, 130, 246, 0.55)',
-                                borderColor: '#3B82F6',
-                                borderWidth: 1.5,
-                                borderRadius: 4
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: { display: false },
-                                tooltip: {
-                                    callbacks: {
-                                        label: context => `${context.parsed.y} min promedio (Creación → Despacho Ruta)`
-                                    }
-                                }
-                            },
-                            scales: {
-                                x: { grid: { display: false }, ticks: { color: '#64748B', font: { size: 9 } } },
-                                y: { beginAtZero: true, grid: { color: '#1E293B' }, ticks: { color: '#64748B', font: { size: 9 } } }
-                            }
-                        }
-                    });
+                const tecnicos = Object.values(tecnicosMapa).sort((a,b) => a.nombre.localeCompare(b.nombre,'es'));
+                const tecnicosBody = document.getElementById('sla-tecnicos-body');
+                if (tecnicosBody) {
+                    tecnicosBody.innerHTML = tecnicos.length ? tecnicos.map(t => {
+                        const pct = t.slaEvaluables ? Math.round(t.slaCumplidos / t.slaEvaluables * 100) : null;
+                        const pend = Math.max(0,t.servicios-t.atendidos);
+                        return '<tr class="border-t border-slate-800 hover:bg-slate-950/50">' +
+                            '<td class="p-3 text-xs font-bold text-white">'+escEstudio(t.nombre)+'</td>' +
+                            '<td class="p-3 text-[10px] text-slate-400">'+escEstudio(t.ciudad)+'</td>' +
+                            '<td class="p-3 text-center text-xs text-slate-200">'+t.servicios+'</td>' +
+                            '<td class="p-3 text-center text-xs text-emerald-400 font-bold">'+t.atendidos+'</td>' +
+                            '<td class="p-3 text-center text-xs text-amber-400">'+pend+'</td>' +
+                            '<td class="p-3 text-center text-xs font-bold '+(pct === null ? 'text-slate-500' : pct >= 90 ? 'text-emerald-400' : pct >= 70 ? 'text-amber-400' : 'text-rose-400')+'">'+(pct === null ? 'N/D' : pct+'%')+'</td>' +
+                            '</tr>';
+                    }).join('') : '<tr><td colspan="6" class="p-8 text-center text-[10px] text-slate-500">No hay servicios reales para el filtro seleccionado.</td></tr>';
                 }
 
-                // Cumplimiento real por prioridad. Solo se contabilizan servicios con
-                // una evaluación posible; los activos aún dentro del SLA cuentan como cumplidos.
-                const prioridades = ['ALTA', 'MEDIA', 'BAJA'];
-                const cumplimiento = prioridades.map(prioridad => {
-                    const grupo = datos.filter(d => d.prioridad === prioridad && d.cumpleSLA !== null);
-                    if (!grupo.length) return null;
-                    const cumplidos = grupo.filter(d => d.cumpleSLA).length;
-                    return Math.round((cumplidos / grupo.length) * 100);
+                const setText = (id,val) => { const el=document.getElementById(id); if(el) el.innerText=String(val); };
+                setText('sla-kpi-total', serviciosFiltrados.length);
+                setText('sla-kpi-atendidos', atendidos);
+                setText('sla-kpi-tecnicos', tecnicos.filter(t => t.id !== 'SIN-TECNICO').length);
+                setText('sla-kpi-programados', programados);
+                setText('sla-kpi-ejecutados', ejecutadosProgramados);
+                setText('sla-kpi-cumplimiento', programados ? Math.round(ejecutadosProgramados/programados*100)+'%' : 'N/D');
+                setText('sla-programados-bar-label', programados);
+                setText('sla-ejecutados-bar-label', ejecutadosProgramados);
+                const pbar=document.getElementById('sla-programados-bar'), ebar=document.getElementById('sla-ejecutados-bar');
+                if(pbar) pbar.style.width=(programados ? '100%' : '0%');
+                if(ebar) ebar.style.width=(programados ? Math.min(100,Math.round(ejecutadosProgramados/programados*100)) : '0')+'%';
+
+                if (typeof Chart === 'undefined') return;
+                window.alarvixSLACharts = window.alarvixSLACharts || {};
+                ['rendimiento','prioridad'].forEach(k => {
+                    if(window.alarvixSLACharts[k]) { window.alarvixSLACharts[k].destroy(); window.alarvixSLACharts[k]=null; }
                 });
 
-                if (ctxSLA) {
-                    window.alarvixSLACharts.prioridad = new Chart(ctxSLA.getContext('2d'), {
-                        type: 'bar',
-                        data: {
-                            labels: ['Alta · 30 min', 'Media · 4 h', 'Baja · 24 h'],
-                            datasets: [{
-                                label: '% de servicios dentro del SLA',
-                                data: cumplimiento.map(v => v === null ? 0 : v),
-                                backgroundColor: ['rgba(239, 68, 68, .65)', 'rgba(245, 158, 11, .65)', 'rgba(16, 185, 129, .65)'],
-                                borderWidth: 0,
-                                borderRadius: 5
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: { display: false },
-                                tooltip: {
-                                    callbacks: {
-                                        label: context => {
-                                            const value = context.parsed.y;
-                                            return cumplimiento[context.dataIndex] === null
-                                                ? 'Sin servicios evaluables'
-                                                : `${value}% dentro del SLA`;
-                                        }
-                                    }
-                                }
-                            },
-                            scales: {
-                                x: { grid: { display: false }, ticks: { color: '#64748B', font: { size: 9 } } },
-                                y: {
-                                    beginAtZero: true,
-                                    max: 100,
-                                    grid: { color: '#1E293B' },
-                                    ticks: { color: '#64748B', font: { size: 9 }, callback: value => value + '%' }
-                                }
-                            }
-                        }
-                    });
-                }
-
-                console.log('[Alarvix/SLA] Reporte actualizado con datos reales:', {
-                    servicios: datos.length,
-                    conDespachoRuta: datos.filter(d => d.ruta).length,
-                    conArribo: datos.filter(d => d.arribo).length,
-                    cerrados: datos.filter(d => d.cierre).length
+                const ctxRend=document.getElementById('chart-rendimiento-tecnico');
+                const ctxSLA=document.getElementById('chart-sla-prioridad');
+                const conRespuesta=datos.filter(d=>d.minutosRespuesta!==null);
+                const promedios=tecnicos.map(t => {
+                    const vals=t.respuesta; return vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*10)/10 : 0;
                 });
-            } catch (error) {
-                console.error('[Alarvix/SLA] Error generando reporte real:', error);
+                if(ctxRend) window.alarvixSLACharts.rendimiento=new Chart(ctxRend.getContext('2d'),{
+                    type:'bar',
+                    data:{labels:tecnicos.length?tecnicos.map(t=>t.nombre):['Sin datos'],datasets:[{label:'Minutos promedio',data:tecnicos.length?promedios:[0],backgroundColor:'rgba(59,130,246,.55)',borderColor:'#3B82F6',borderWidth:1.5,borderRadius:4}]},
+                    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y+' min promedio (Creación → Despacho Ruta)'}}},scales:{x:{grid:{display:false},ticks:{color:'#64748B',font:{size:9}}},y:{beginAtZero:true,grid:{color:'#1E293B'},ticks:{color:'#64748B',font:{size:9}}}}}
+                });
+
+                const prioridades=['ALTA','MEDIA','BAJA'];
+                const cumplimiento=prioridades.map(p=>{const g=datos.filter(d=>d.prioridad===p&&d.cumpleSLA!==null);return g.length?Math.round(g.filter(d=>d.cumpleSLA).length/g.length*100):null;});
+                if(ctxSLA) window.alarvixSLACharts.prioridad=new Chart(ctxSLA.getContext('2d'),{
+                    type:'bar',
+                    data:{labels:['Alta · 30 min','Media · 4 h','Baja · 24 h'],datasets:[{label:'% dentro SLA',data:cumplimiento.map(v=>v===null?0:v),backgroundColor:['rgba(239,68,68,.65)','rgba(245,158,11,.65)','rgba(16,185,129,.65)'],borderWidth:0,borderRadius:5}]},
+                    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>cumplimiento[c.dataIndex]===null?'Sin servicios evaluables':c.parsed.y+'% dentro del SLA'}}},scales:{x:{grid:{display:false},ticks:{color:'#64748B',font:{size:9}}},y:{beginAtZero:true,max:100,grid:{color:'#1E293B'},ticks:{color:'#64748B',font:{size:9},callback:v=>v+'%'}}}}
+                });
+
+                console.log('[Alarvix/SLA] Reporte real actualizado', {
+                    ciudad: ciudadSeleccionada, total: serviciosFiltrados.length, atendidos,
+                    tecnicos: tecnicos.length, programados, ejecutados: ejecutadosProgramados,
+                    conDespachoRuta: conRespuesta.length
+                });
+            } catch(error) {
+                console.error('[Alarvix/SLA] Error generando reporte real:',error);
             }
         }
 
