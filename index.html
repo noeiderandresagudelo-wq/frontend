@@ -12741,20 +12741,47 @@ function renderBurbujasChat(containerId, mensajes) {
             const fechaEjecucionServicio = s.fechaEjecucion || s.fechaVisita || eventoArriboServicio?.fecha || eventoRutaServicio?.fecha || s.fechaCreacion || new Date().toISOString();
             const fechaEjecucionTexto = new Date(fechaEjecucionServicio).toLocaleDateString("es-CO");
 
-            doc.setFillColor(59, 130, 246);
-            doc.roundedRect(142, 8, 53, 22, 2, 2, "F");
-            doc.setTextColor(255, 255, 255);
+            // Bloque documental del OPR: compacto, corporativo y con contenido centrado.
+            // Mantiene el consecutivo, código/version y fecha sin invadir la identidad de la empresa.
+            const oprBoxX = 145;
+            const oprBoxY = 7;
+            const oprBoxW = 50;
+            const oprBoxH = 24;
+
+            doc.setFillColor(248, 250, 252);
+            doc.setDrawColor(226, 232, 240);
+            doc.setLineWidth(0.4);
+            doc.roundedRect(oprBoxX, oprBoxY, oprBoxW, oprBoxH, 2.5, 2.5, "FD");
+
+            doc.setTextColor(100, 116, 139);
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(9);
-            doc.text("CONSECUTIVO OPR", 145, 14);
-            doc.setFontSize(10.5);
-            doc.text(s.consecutivo, 145, 20);
-            doc.setFontSize(6.5);
+            doc.setFontSize(6.8);
+            doc.text("CONSECUTIVO OPR", oprBoxX + (oprBoxW / 2), 12, { align: "center" });
+
+            doc.setTextColor(15, 23, 42);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9.5);
+            doc.text(String(s.consecutivo || ""), oprBoxX + (oprBoxW / 2), 17, { align: "center" });
+
+            doc.setTextColor(71, 85, 105);
             doc.setFont("helvetica", "normal");
-            doc.text(identidad.codigoOpr + " | V." + identidad.versionOpr, 145, 24);
+            doc.setFontSize(5.8);
+            doc.text(
+                String(identidad.codigoOpr || "OPR-SGI-001") + " | V." + String(identidad.versionOpr || "01"),
+                oprBoxX + (oprBoxW / 2),
+                21,
+                { align: "center" }
+            );
+
+            doc.setTextColor(15, 23, 42);
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(6.5);
-            doc.text("FECHA VISITA: " + fechaEjecucionTexto, 145, 28);
+            doc.setFontSize(5.8);
+            doc.text(
+                "FECHA VISITA: " + String(fechaEjecucionTexto || ""),
+                oprBoxX + (oprBoxW / 2),
+                26.5,
+                { align: "center" }
+            );
 
             // --- SECCIÓN 1: DATOS DEL ABONADO ---
             doc.setTextColor(17, 24, 39);
