@@ -532,6 +532,266 @@
         }
 
     </style>
+
+    <style id="alarvix-professional-theme">
+        /* =========================================================
+           ALARVIX PROFESSIONAL UI
+           Capa visual: no modifica estructura ni lógica funcional.
+           ========================================================= */
+
+        :root {
+            --ax-dark-bg: #0b1220;
+            --ax-dark-surface: #111b2e;
+            --ax-dark-surface-2: #17243a;
+            --ax-dark-surface-3: #1e2d46;
+            --ax-dark-border: #293a55;
+            --ax-light-bg: #f4f7fb;
+            --ax-light-surface: #ffffff;
+            --ax-light-surface-2: #eef3f8;
+            --ax-light-border: #d9e2ec;
+            --ax-primary: #3157d5;
+            --ax-primary-hover: #2748b8;
+            --ax-success: #159570;
+            --ax-warning: #c77a08;
+            --ax-danger: #d14343;
+            --ax-info: #087ea4;
+        }
+
+        body {
+            background: var(--ax-dark-bg);
+            color: #e8eef7;
+            letter-spacing: -0.005em;
+        }
+
+        /* ---------- MODO OSCURO ---------- */
+        html.dark body {
+            background: var(--ax-dark-bg) !important;
+            color: #e8eef7 !important;
+        }
+
+        html.dark .bg-slate-950 {
+            background-color: var(--ax-dark-bg) !important;
+        }
+
+        html.dark .bg-slate-900 {
+            background-color: var(--ax-dark-surface) !important;
+        }
+
+        html.dark .bg-slate-800 {
+            background-color: var(--ax-dark-surface-2) !important;
+        }
+
+        html.dark .bg-slate-700 {
+            background-color: var(--ax-dark-surface-3) !important;
+        }
+
+        html.dark .border-slate-950,
+        html.dark .border-slate-900,
+        html.dark .border-slate-800 {
+            border-color: var(--ax-dark-border) !important;
+        }
+
+        html.dark .border-slate-700 {
+            border-color: #354964 !important;
+        }
+
+        html.dark .text-slate-100,
+        html.dark .text-slate-200 {
+            color: #e8eef7 !important;
+        }
+
+        html.dark .text-slate-300 {
+            color: #c2cede !important;
+        }
+
+        html.dark .text-slate-400 {
+            color: #9aaac0 !important;
+        }
+
+        html.dark .text-slate-500 {
+            color: #7f90a8 !important;
+        }
+
+        html.dark .text-slate-600 {
+            color: #667993 !important;
+        }
+
+        html.dark input,
+        html.dark select,
+        html.dark textarea {
+            background-color: #0e1829 !important;
+            color: #edf3fa !important;
+            border-color: #31435f !important;
+        }
+
+        html.dark input::placeholder,
+        html.dark textarea::placeholder {
+            color: #71829a !important;
+        }
+
+        /* ---------- MODO CLARO ---------- */
+        html:not(.dark) {
+            color-scheme: light;
+        }
+
+        html:not(.dark) body {
+            background: var(--ax-light-bg) !important;
+            color: #172033 !important;
+        }
+
+        html:not(.dark) .bg-slate-950 {
+            background-color: var(--ax-light-bg) !important;
+        }
+
+        html:not(.dark) .bg-slate-900 {
+            background-color: var(--ax-light-surface) !important;
+        }
+
+        html:not(.dark) .bg-slate-800 {
+            background-color: var(--ax-light-surface-2) !important;
+        }
+
+        html:not(.dark) .bg-slate-700 {
+            background-color: #e4ebf3 !important;
+        }
+
+        html:not(.dark) .border-slate-950,
+        html:not(.dark) .border-slate-900,
+        html:not(.dark) .border-slate-800 {
+            border-color: var(--ax-light-border) !important;
+        }
+
+        html:not(.dark) .border-slate-700 {
+            border-color: #c6d2df !important;
+        }
+
+        html:not(.dark) .text-slate-100,
+        html:not(.dark) .text-slate-200 {
+            color: #172033 !important;
+        }
+
+        html:not(.dark) .text-slate-300 {
+            color: #34445a !important;
+        }
+
+        html:not(.dark) .text-slate-400 {
+            color: #5f7087 !important;
+        }
+
+        html:not(.dark) .text-slate-500 {
+            color: #718198 !important;
+        }
+
+        html:not(.dark) .text-slate-600 {
+            color: #52637a !important;
+        }
+
+        html:not(.dark) input,
+        html:not(.dark) select,
+        html:not(.dark) textarea {
+            background-color: #ffffff !important;
+            color: #172033 !important;
+            border-color: #cbd6e2 !important;
+        }
+
+        html:not(.dark) input::placeholder,
+        html:not(.dark) textarea::placeholder {
+            color: #93a1b3 !important;
+        }
+
+        /* ---------- SUPERFICIES Y PROFUNDIDAD ---------- */
+        .rounded-xl,
+        .rounded-2xl {
+            transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+        }
+
+        html.dark .bg-slate-900.border,
+        html.dark .bg-slate-800.border {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .14);
+        }
+
+        html:not(.dark) .bg-slate-900.border,
+        html:not(.dark) .bg-slate-800.border {
+            box-shadow: 0 6px 20px rgba(30, 55, 90, .07);
+        }
+
+        /* ---------- BOTONES PRIMARIOS ---------- */
+        .bg-blue-600 {
+            background-color: var(--ax-primary) !important;
+        }
+
+        .hover\:bg-blue-500:hover {
+            background-color: var(--ax-primary-hover) !important;
+        }
+
+        /* ---------- CAMPOS ---------- */
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none !important;
+            border-color: #5274df !important;
+            box-shadow: 0 0 0 3px rgba(49, 87, 213, .12) !important;
+        }
+
+        /* ---------- SCROLLBARS ---------- */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        html.dark ::-webkit-scrollbar-thumb {
+            background: #30415d;
+            border-radius: 999px;
+        }
+
+        html:not(.dark) ::-webkit-scrollbar-thumb {
+            background: #c4cfdb;
+            border-radius: 999px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6d7f98;
+        }
+
+        /* ---------- BOTÓN DE TEMA ---------- */
+        #dark-mode-icon {
+            transition: transform .2s ease, color .2s ease;
+        }
+
+        button:has(#dark-mode-icon) {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid transparent;
+        }
+
+        html.dark button:has(#dark-mode-icon) {
+            background: #17243a;
+            border-color: #293a55;
+        }
+
+        html:not(.dark) button:has(#dark-mode-icon) {
+            background: #eef3f8;
+            border-color: #d9e2ec;
+        }
+
+        button:has(#dark-mode-icon):hover {
+            transform: translateY(-1px);
+            border-color: #5274df;
+        }
+
+        button:has(#dark-mode-icon):hover #dark-mode-icon {
+            transform: rotate(12deg);
+        }
+    </style>
+
 </head>
 <!-- Librería requerida para generar PDFs de forma nativa en el navegador -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
