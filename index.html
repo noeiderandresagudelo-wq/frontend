@@ -6465,6 +6465,257 @@
             }).join('');
         }
 
+        function renderReportesSLA() {
+            try {
+                if (typeof Chart === 'undefined') return;
+
+                const ctxRend = document.getElementById('chart-rendimiento-tecnico');
+                const ctxSLA = document.getElementById('chart-sla-prioridad');
+                if (!ctxRend && !ctxSLA) return;
+
+                window.alarvixSLACharts = window.alarvixSLACharts || {};
+                if (window.alarvixSLACharts.rendimiento) {
+                    window.alarvixSLACharts.rendimiento.destroy();
+                    window.alarvixSLACharts.rendimiento = null;
+                }
+                if (window.alarvixSLACharts.prioridad) {
+                    window.alarvixSLACharts.prioridad.destroy();
+                    window.alarvixSLACharts.prioridad = null;
+                }
+
+                const servicios = Array.isArray(incidentesServicios) ? incidentesServicios : [];
+                const ahora = Date.now();
+
+                const fechaTimeline = (s, predicate) => {
+                    const timeline = Array.isArray(s?.timeline) ? s.timeline : [];
+                    const item = timeline.find(t => predicate(String(t?.msg || '').toLowerCase(), t));
+                    if (!item) return null;
+                    const raw = item.fecha || (item.hora && s.fechaCreacion ? null : null);
+                    const d = raw ? new Date(raw) : null;
+                    return d && !Number.isNaN(d.getTime()) ? d : null;
+                };
+
+                const obtenerEvento = (s, tipo) => {
+                    const timeline = Array.isArray(s?.timeline) ? s.timeline : [];
+                    const patrones = {
+                        creacion: (msg, t) => /solicitud creada|servicio creado|incidente creado/.test(msg) || t?.tipo === 'creacion',
+                        ruta: (msg, t) => t?.tipo === 'despacho' ||
+                            /despacho ruta|inici[oó] desplazamiento|en camino/.test(msg),
+                        arribo: (msg, t) => t?.tipo === 'arribo' ||
+                            /arribo|lleg[oó] al sitio/.test(msg),
+                        cierre: (msg, t) => t?.tipo === 'cierre' ||
+                            /cambio de estado a \[(cerrado|finalizado)\]|servicio finalizado|servicio cerrado/.test(msg)
+                    };
+                    const pred = patrones[tipo];
+                    if (!pred) return null;
+                    const encontrados = timeline.filter(t => pred(String(t?.msg || '').toLowerCase(), t));
+                    if (!encontrados.length) return null;
+                    const t = tipo === 'creacion' ? encontrados[0] : encontrados[encontrados.length - 1];
+                    const raw = t?.fecha || null;
+                    const d = raw ? new Date(raw) : null;
+                    return d && !Number.isNaN(d.getTime()) ? d : null;
+                };
+
+                const obtenerFechaCreacion = s => {
+                    const evento = obtenerEvento(s, 'creacion');
+                    if (evento) return evento;
+                    const raw = s?.fechaCreacion || s?.fecha_creacion || s?.created_at;
+                    const d = raw ? new Date(raw) : null;
+                    return d && !Number.isNaN(d.getTime()) ? d : null;
+                };
+
+                const obtenerFechaRuta = s => {
+                    const evento = obtenerEvento(s, 'ruta');
+                    if (evento) return evento;
+                    const raw = s?.fechaDespachoRuta || s?.fecha_despacho_ruta || s?.despachoRuta;
+                    const d = raw ? new Date(raw) : null;
+                    return d && !Number.isNaN(d.getTime()) ? d : null;
+                };
+
+                const obtenerFechaArribo = s => {
+                    const evento = obtenerEvento(s, 'arribo');
+                    if (evento) return evento;
+                    const raw = s?.fechaArribo || s?.fecha_arribo || s?.fechaLlegada;
+                    const d = raw ? new Date(raw) : null;
+                    return d && !Number.isNaN(d.getTime()) ? d : null;
+                };
+
+                const obtenerFechaCierre = s => {
+                    const evento = obtenerEvento(s, 'cierre');
+                    if (evento) return evento;
+                    const raw = s?.fechaCierre || s?.fecha_cierre || s?.fechaFinalizacion ||
+                        s?.informeTecnico?.fechaCierre;
+                    const d = raw ? new Date(raw) : null;
+                    return d && !Number.isNaN(d.getTime()) ? d : null;
+                };
+
+                const prioridadObjetivoMin = {
+                    ALTA: 30,
+                    MEDIA: 240,
+                    BAJA: 1440
+                };
+
+                const normalizarPrioridad = p => {
+                    const v = String(p || 'MEDIA').trim().toUpperCase();
+                    return prioridadObjetivoMin[v] ? v : 'MEDIA';
+                };
+
+                const datos = servicios.map(s => {
+                    const creacion = obtenerFechaCreacion(s);
+                    const ruta = obtenerFechaRuta(s);
+                    const arribo = obtenerFechaArribo(s);
+                    const cierre = obtenerFechaCierre(s);
+                    const prioridad = normalizarPrioridad(s?.prioridad);
+                    const objetivo = prioridadObjetivoMin[prioridad];
+
+                    let minutosRespuesta = null;
+                    if (creacion && ruta) {
+                        minutosRespuesta = Math.max(0, (ruta.getTime() - creacion.getTime()) / 60000);
+                    }
+
+                    let minutosActuales = null;
+                    if (creacion) {
+                        minutosActuales = Math.max(0, ((cierre || (ruta ? null : new Date(ahora)))?.getTime?.() - creacion.getTime()) / 60000);
+                    }
+
+                    // Un servicio con Ruta se evalúa contra el tiempo real de respuesta.
+                    // Si todavía no tiene Ruta y ya superó el objetivo, se considera vencido.
+                    let cumpleSLA = null;
+                    if (minutosRespuesta !== null) {
+                        cumpleSLA = minutosRespuesta <= objetivo;
+                    } else if (creacion) {
+                        const estadoFinal = ['Cerrado','Finalizado'].includes(String(s?.estado || ''));
+                        if (!estadoFinal) {
+                            cumpleSLA = ((ahora - creacion.getTime()) / 60000) <= objetivo;
+                        }
+                    }
+
+                    return {
+                        servicio: s,
+                        creacion,
+                        ruta,
+                        arribo,
+                        cierre,
+                        prioridad,
+                        objetivo,
+                        minutosRespuesta,
+                        minutosActuales,
+                        cumpleSLA
+                    };
+                });
+
+                // Promedio real de respuesta por técnico: Creación -> Despacho Ruta.
+                const porTecnico = {};
+                datos.forEach(d => {
+                    if (d.minutosRespuesta === null) return;
+                    const tech = personalTecnicos.find(t => t.id === d.servicio?.tecnicoId);
+                    const nombre = tech?.nombre || d.servicio?.tecnicoNombre || 'Sin técnico';
+                    if (!porTecnico[nombre]) porTecnico[nombre] = [];
+                    porTecnico[nombre].push(d.minutosRespuesta);
+                });
+
+                const nombresTecnicos = Object.keys(porTecnico).sort((a,b) => a.localeCompare(b, 'es'));
+                const promedios = nombresTecnicos.map(nombre => {
+                    const valores = porTecnico[nombre];
+                    return Math.round((valores.reduce((a,b) => a+b, 0) / valores.length) * 10) / 10;
+                });
+
+                if (ctxRend) {
+                    window.alarvixSLACharts.rendimiento = new Chart(ctxRend.getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: nombresTecnicos.length ? nombresTecnicos : ['Sin datos'],
+                            datasets: [{
+                                label: 'Tiempo real de respuesta (minutos)',
+                                data: promedios.length ? promedios : [0],
+                                backgroundColor: 'rgba(59, 130, 246, 0.55)',
+                                borderColor: '#3B82F6',
+                                borderWidth: 1.5,
+                                borderRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: context => `${context.parsed.y} min promedio (Creación → Despacho Ruta)`
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: { grid: { display: false }, ticks: { color: '#64748B', font: { size: 9 } } },
+                                y: { beginAtZero: true, grid: { color: '#1E293B' }, ticks: { color: '#64748B', font: { size: 9 } } }
+                            }
+                        }
+                    });
+                }
+
+                // Cumplimiento real por prioridad. Solo se contabilizan servicios con
+                // una evaluación posible; los activos aún dentro del SLA cuentan como cumplidos.
+                const prioridades = ['ALTA', 'MEDIA', 'BAJA'];
+                const cumplimiento = prioridades.map(prioridad => {
+                    const grupo = datos.filter(d => d.prioridad === prioridad && d.cumpleSLA !== null);
+                    if (!grupo.length) return null;
+                    const cumplidos = grupo.filter(d => d.cumpleSLA).length;
+                    return Math.round((cumplidos / grupo.length) * 100);
+                });
+
+                if (ctxSLA) {
+                    window.alarvixSLACharts.prioridad = new Chart(ctxSLA.getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: ['Alta · 30 min', 'Media · 4 h', 'Baja · 24 h'],
+                            datasets: [{
+                                label: '% de servicios dentro del SLA',
+                                data: cumplimiento.map(v => v === null ? 0 : v),
+                                backgroundColor: ['rgba(239, 68, 68, .65)', 'rgba(245, 158, 11, .65)', 'rgba(16, 185, 129, .65)'],
+                                borderWidth: 0,
+                                borderRadius: 5
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: context => {
+                                            const value = context.parsed.y;
+                                            return cumplimiento[context.dataIndex] === null
+                                                ? 'Sin servicios evaluables'
+                                                : `${value}% dentro del SLA`;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: { grid: { display: false }, ticks: { color: '#64748B', font: { size: 9 } } },
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    grid: { color: '#1E293B' },
+                                    ticks: { color: '#64748B', font: { size: 9 }, callback: value => value + '%' }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                console.log('[Alarvix/SLA] Reporte actualizado con datos reales:', {
+                    servicios: datos.length,
+                    conDespachoRuta: datos.filter(d => d.ruta).length,
+                    conArribo: datos.filter(d => d.arribo).length,
+                    cerrados: datos.filter(d => d.cierre).length
+                });
+            } catch (error) {
+                console.error('[Alarvix/SLA] Error generando reporte real:', error);
+            }
+        }
+
         function switchModule(modId) {
             try {
             const modulosRetirados = ['supervision', 'rrhh'];
@@ -6501,6 +6752,7 @@
                 if (modId === 'config') setTimeout(() => cargarLogoEmpresaTenant(), 0);
 
                 if (modId === 'estudios') renderEstudiosSeguridad();
+                if (modId === 'reportes') setTimeout(() => renderReportesSLA(), 50);
                 // En celular, cerramos el menú lateral automáticamente al elegir una sección
                 if (window.innerWidth < 768) {
                     toggleMobileSidebar(false);
@@ -7801,6 +8053,7 @@
 
                 renderDashboardAlerts(list);
                 renderDashboardRecent(list);
+                if (currentActiveTab === 'reportes') setTimeout(() => renderReportesSLA(), 0);
             } catch(e) { console.error("Error KPIs:", e); }
         }
 
@@ -13125,89 +13378,10 @@ function renderBurbujasChat(containerId, mensajes) {
                 }
             } catch(err) { console.error("Error Leaflet Init:", err); }
 
-            try {
-                if (typeof Chart !== 'undefined') {
-                    const ctxEff = document.getElementById('chart-efectividad-servicios');
-                    if (ctxEff) {
-                        new Chart(ctxEff.getContext('2d'), {
-                            type: 'doughnut',
-                            data: {
-                                labels: ['Dentro de SLA', 'En límite', 'Críticos / Vencidos'],
-                                datasets: [{
-                                    data: [15, 3, 2],
-                                    backgroundColor: ['#10B981', '#F59E0B', '#EF4444'],
-                                    borderWidth: 0
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: {
-                                    legend: {
-                                        position: 'bottom',
-                                        labels: { color: '#94A3B8', font: { size: 9 } }
-                                    }
-                                }
-                            }
-                        });
-                    }
-
-                    const ctxRend = document.getElementById('chart-rendimiento-tecnico');
-                    if (ctxRend) {
-                        new Chart(ctxRend.getContext('2d'), {
-                            type: 'bar',
-                            data: {
-                                labels: ['Gómez', 'Rojas', 'Vargas', 'Oñate'],
-                                datasets: [{
-                                    label: 'Tiempo Respuesta Promedio (Minutos)',
-                                    data: [25, 32, 18, 40],
-                                    backgroundColor: 'rgba(59, 130, 246, 0.5)',
-                                    borderColor: '#3B82F6',
-                                    borderWidth: 1.5,
-                                    borderRadius: 4
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: { legend: { display: false } },
-                                scales: {
-                                    x: { grid: { display: false }, ticks: { color: '#64748B', font: { size: 9 } } },
-                                    y: { grid: { color: '#1E293B' }, ticks: { color: '#64748B', font: { size: 9 } } }
-                                }
-                            }
-                        });
-                    }
-
-                    const ctxSLA = document.getElementById('chart-sla-prioridad');
-                    if (ctxSLA) {
-                        new Chart(ctxSLA.getContext('2d'), {
-                            type: 'line',
-                            data: {
-                                labels: ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'],
-                                datasets: [
-                                    { label: 'Alta (1h)', data: [100, 95, 98, 100, 94, 100, 97], borderColor: '#EF4444', backgroundColor: 'transparent', borderWidth: 2, tension: 0.3 },
-                                    { label: 'Media (4h)', data: [90, 88, 92, 95, 90, 93, 91], borderColor: '#F59E0B', backgroundColor: 'transparent', borderWidth: 2, tension: 0.3 }
-                                ]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: {
-                                    legend: {
-                                        labels: { color: '#94A3B8', font: { size: 9 } }
-                                    }
-                                },
-                                scales: {
-                                    x: { grid: { display: false }, ticks: { color: '#64748B', font: { size: 9 } } },
-                                    y: { max: 100, grid: { color: '#1E293B' }, ticks: { color: '#64748B', font: { size: 9 } } }
-                                }
-                            }
-                        });
-                    }
-                }
-            } catch(err) { console.error("Error Chart Init:", err); }
-
+            // Los gráficos del módulo Reportes/SLAs se alimentan exclusivamente de la
+            // trazabilidad real de incidentesServicios. Los datos de demostración fueron retirados.
+            renderReportesSLA();
+            
             if (supabaseClient) {
                 iniciarCanalLlamadasWeb();
                 supabaseClient.auth.onAuthStateChange((event, session) => {
