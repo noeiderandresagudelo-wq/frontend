@@ -2152,6 +2152,13 @@
                 </div>
 
                 <!-- Alertas de Monitoreo Críticas -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm"><span class="text-[9px] font-black text-slate-500 uppercase">Respuesta promedio</span><h3 id="sla-kpi-respuesta" class="text-2xl font-black text-slate-900 mt-1">N/D</h3><p class="text-[9px] text-slate-500 mt-0.5">Creación → Despacho Ruta</p></div>
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm"><span class="text-[9px] font-black text-slate-500 uppercase">SLA cumplidos</span><h3 id="sla-kpi-cumplidos" class="text-2xl font-black text-emerald-600 mt-1">0</h3><p class="text-[9px] text-slate-500 mt-0.5">Servicios evaluables</p></div>
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm"><span class="text-[9px] font-black text-slate-500 uppercase">SLA incumplidos</span><h3 id="sla-kpi-incumplidos" class="text-2xl font-black text-rose-600 mt-1">0</h3><p class="text-[9px] text-slate-500 mt-0.5">Fuera del objetivo</p></div>
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm"><span class="text-[9px] font-black text-slate-500 uppercase">Servicios activos</span><h3 id="sla-kpi-activos" class="text-2xl font-black text-amber-600 mt-1">0</h3><p class="text-[9px] text-slate-500 mt-0.5">Pendientes o en curso</p></div>
+                </div>
+
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
                         <div class="flex items-center justify-between mb-4">
@@ -2678,11 +2685,11 @@
                             <h2 class="text-sm font-extrabold text-white uppercase tracking-wider">Reporte Operativo y SLAs</h2>
                             <p class="text-[10px] text-slate-400 mt-1">Indicadores calculados con los servicios técnicos reales cargados desde Supabase.</p>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <label for="sla-filtro-ciudad" class="text-[9px] font-black text-slate-500 uppercase">Ciudad</label>
-                            <select id="sla-filtro-ciudad" onchange="renderReportesSLA()" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[10px] text-white font-bold">
-                                <option value="TODAS">Todas las ciudades</option>
-                            </select>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <select id="sla-filtro-periodo" onchange="renderReportesSLA()" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[10px] text-white font-bold"><option value="30">Últimos 30 días</option><option value="7">Últimos 7 días</option><option value="90">Últimos 90 días</option><option value="ALL">Todo el histórico</option></select>
+                            <select id="sla-filtro-ciudad" onchange="renderReportesSLA()" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[10px] text-white font-bold"><option value="TODAS">Todas las ciudades</option></select>
+                            <select id="sla-filtro-prioridad" onchange="renderReportesSLA()" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[10px] text-white font-bold"><option value="TODAS">Todas las prioridades</option><option value="ALTA">Alta</option><option value="MEDIA">Media</option><option value="BAJA">Baja</option></select>
+                            <select id="sla-filtro-estado" onchange="renderReportesSLA()" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[10px] text-white font-bold"><option value="TODOS">Todos los estados</option><option value="ACTIVOS">Activos</option><option value="CERRADOS">Cerrados / Finalizados</option></select>
                         </div>
                     </div>
                 </div>
@@ -2745,6 +2752,11 @@
                             <tbody id="sla-tecnicos-body"></tbody>
                         </table>
                     </div>
+                </div>
+
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden"><div class="p-4 border-b border-slate-800"><h3 class="text-xs font-extrabold text-white uppercase tracking-wider">Cumplimiento por ciudad</h3><p class="text-[9px] text-slate-500 mt-1">Volumen, ejecución y cumplimiento del periodo seleccionado.</p></div><div class="overflow-x-auto"><table class="w-full text-left"><thead class="bg-slate-950/70"><tr class="text-[9px] text-slate-500 uppercase"><th class="p-3">Ciudad</th><th class="p-3 text-center">Servicios</th><th class="p-3 text-center">Atendidos</th><th class="p-3 text-center">Cumplimiento</th></tr></thead><tbody id="sla-ciudades-body"></tbody></table></div></div>
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden"><div class="p-4 border-b border-slate-800"><h3 class="text-xs font-extrabold text-white uppercase tracking-wider">Servicios con riesgo SLA</h3><p class="text-[9px] text-slate-500 mt-1">Activos vencidos o próximos a vencer.</p></div><div id="sla-riesgos-body" class="divide-y divide-slate-800 max-h-72 overflow-y-auto custom-scrollbar"></div></div>
                 </div>
 
                 <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
@@ -6546,10 +6558,22 @@
                 }
 
                 const ciudadSeleccionada = filtroEl?.value || 'TODAS';
+                const periodoEl = document.getElementById('sla-filtro-periodo');
+                const prioridadFiltro = document.getElementById('sla-filtro-prioridad')?.value || 'TODAS';
+                const estadoFiltro = document.getElementById('sla-filtro-estado')?.value || 'TODOS';
+                const periodo = periodoEl?.value || '30';
+                const limitePeriodo = periodo === 'ALL' ? null : new Date(Date.now() - Number(periodo) * 86400000);
                 const serviciosFiltrados = servicios.filter(s => {
-                    if (ciudadSeleccionada === 'TODAS') return true;
                     const cl = crmClientes.find(c => String(c.id) === String(s?.abonadoId));
-                    return String(cl?.ciudad || s?.ciudad || '').trim().toUpperCase() === ciudadSeleccionada;
+                    const ciudadServicio = String(cl?.ciudad || s?.ciudad || '').trim().toUpperCase();
+                    if (ciudadSeleccionada !== 'TODAS' && ciudadServicio !== ciudadSeleccionada) return false;
+                    const prioridad = normalizarPrioridad(s?.prioridad);
+                    if (prioridadFiltro !== 'TODAS' && prioridad !== prioridadFiltro) return false;
+                    const finalizado = ['Cerrado','Finalizado'].includes(String(s?.estado || '').trim());
+                    if (estadoFiltro === 'ACTIVOS' && finalizado) return false;
+                    if (estadoFiltro === 'CERRADOS' && !finalizado) return false;
+                    if (limitePeriodo) { const fc = fechaCreacion(s); if (!fc || fc < limitePeriodo) return false; }
+                    return true;
                 });
 
                 const ahora = Date.now();
@@ -6652,12 +6676,24 @@
                 setText('sla-kpi-programados', programados);
                 setText('sla-kpi-ejecutados', ejecutadosProgramados);
                 setText('sla-kpi-cumplimiento', programados ? Math.round(ejecutadosProgramados/programados*100)+'%' : 'N/D');
+                const respuestas = datos.filter(d => d.minutosRespuesta !== null).map(d => d.minutosRespuesta);
+                const promedioRespuesta = respuestas.length ? respuestas.reduce((a,b)=>a+b,0)/respuestas.length : null;
+                setText('sla-kpi-respuesta', respuestas.length ? (promedioRespuesta < 60 ? Math.round(promedioRespuesta*10)/10+' min' : Math.round(promedioRespuesta/60*10)/10+' h') : 'N/D');
+                setText('sla-kpi-cumplidos', datos.filter(d => d.cumpleSLA === true).length);
+                setText('sla-kpi-incumplidos', datos.filter(d => d.cumpleSLA === false).length);
+                setText('sla-kpi-activos', serviciosFiltrados.filter(s => !['Cerrado','Finalizado'].includes(String(s?.estado || ''))).length);
                 setText('sla-programados-bar-label', programados);
                 setText('sla-ejecutados-bar-label', ejecutadosProgramados);
                 const pbar=document.getElementById('sla-programados-bar'), ebar=document.getElementById('sla-ejecutados-bar');
                 if(pbar) pbar.style.width=(programados ? '100%' : '0%');
                 if(ebar) ebar.style.width=(programados ? Math.min(100,Math.round(ejecutadosProgramados/programados*100)) : '0')+'%';
 
+                const cityMap = {};
+                datos.forEach(d => { const key=d.ciudad||'SIN CIUDAD'; const x=cityMap[key]||(cityMap[key]={n:key,total:0,final:0,eval:0,ok:0}); x.total++; if(['Cerrado','Finalizado'].includes(String(d.servicio?.estado||'')))x.final++; if(d.cumpleSLA!==null){x.eval++;if(d.cumpleSLA)x.ok;} });
+                const cityBody=document.getElementById('sla-ciudades-body');
+                if(cityBody)cityBody.innerHTML=Object.values(cityMap).sort((a,b)=>b.total-a.total).map(x=>{const pct=x.eval?Math.round(x.ok/x.eval*100):null;return '<tr class="border-t border-slate-800"><td class="p-3 text-xs font-bold text-white">'+escEstudio(x.n)+'</td><td class="p-3 text-center text-xs text-slate-200">'+x.total+'</td><td class="p-3 text-center text-xs text-emerald-400">'+x.final+'</td><td class="p-3 text-center text-xs font-bold '+(pct===null?'text-slate-500':pct>=90?'text-emerald-400':pct>=70?'text-amber-400':'text-rose-400')+'">'+(pct===null?'N/D':pct+'%')+'</td></tr>';}).join('')||'<tr><td colspan="4" class="p-8 text-center text-[10px] text-slate-500">Sin datos.</td></tr>';
+                const riskBody=document.getElementById('sla-riesgos-body');
+                if(riskBody){const riesgos=datos.filter(d=>!['Cerrado','Finalizado'].includes(String(d.servicio?.estado||''))&&d.cumpleSLA===false).slice(0,12);riskBody.innerHTML=riesgos.length?riesgos.map(d=>'<div class="p-3 flex items-center justify-between gap-3"><div><p class="text-[10px] font-black text-white">'+escEstudio(d.servicio?.consecutivo||d.servicio?.id||'Servicio')+'</p><p class="text-[9px] text-slate-500">'+escEstudio(d.ciudad)+'</p></div><span class="text-[9px] font-black text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-full px-2 py-1">SLA vencido</span></div>').join(''):'<div class="p-8 text-center text-[10px] text-emerald-400">No hay servicios activos con SLA vencido.</div>';}
                 if (typeof Chart === 'undefined') return;
                 window.alarvixSLACharts = window.alarvixSLACharts || {};
                 ['rendimiento','prioridad'].forEach(k => {
