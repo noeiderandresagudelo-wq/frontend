@@ -2672,41 +2672,105 @@
 
             <!-- VISTA 8: REPORTES Y SLAs -->
             <section id="view-reportes" class="space-y-6 hidden">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- Reporte de cumplimiento de tiempos -->
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                        <div class="border-b border-slate-800 pb-3 mb-4">
-                            <h3 class="text-xs font-extrabold text-white uppercase tracking-wider">Tiempo de Respuesta promedio por Técnico</h3>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                    <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+                        <div>
+                            <h2 class="text-sm font-extrabold text-white uppercase tracking-wider">Reporte Operativo y SLAs</h2>
+                            <p class="text-[10px] text-slate-400 mt-1">Indicadores calculados con los servicios técnicos reales cargados desde Supabase.</p>
                         </div>
-                        <div class="relative w-full h-64">
-                            <canvas id="chart-rendimiento-tecnico"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Cumplimiento de contratos por Prioridad -->
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                        <div class="border-b border-slate-800 pb-3 mb-4">
-                            <h3 class="text-xs font-extrabold text-white uppercase tracking-wider">Cumplimiento de SLA por Nivel de Prioridad</h3>
-                        </div>
-                        <div class="relative w-full h-64">
-                            <canvas id="chart-sla-prioridad"></canvas>
+                        <div class="flex items-center gap-2">
+                            <label for="sla-filtro-ciudad" class="text-[9px] font-black text-slate-500 uppercase">Ciudad</label>
+                            <select id="sla-filtro-ciudad" onchange="renderReportesSLA()" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[10px] text-white font-bold">
+                                <option value="TODAS">Todas las ciudades</option>
+                            </select>
                         </div>
                     </div>
                 </div>
 
-                <!-- Botones de descarga de reportes simulados -->
+                <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <span class="text-[9px] font-black text-slate-500 uppercase">Total servicios</span>
+                        <h3 id="sla-kpi-total" class="text-2xl font-black text-slate-900 mt-1">0</h3>
+                    </div>
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <span class="text-[9px] font-black text-slate-500 uppercase">Atendidos</span>
+                        <h3 id="sla-kpi-atendidos" class="text-2xl font-black text-emerald-600 mt-1">0</h3>
+                    </div>
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <span class="text-[9px] font-black text-slate-500 uppercase">Técnicos</span>
+                        <h3 id="sla-kpi-tecnicos" class="text-2xl font-black text-blue-600 mt-1">0</h3>
+                    </div>
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <span class="text-[9px] font-black text-slate-500 uppercase">Programados</span>
+                        <h3 id="sla-kpi-programados" class="text-2xl font-black text-indigo-600 mt-1">0</h3>
+                    </div>
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <span class="text-[9px] font-black text-slate-500 uppercase">Ejecutados</span>
+                        <h3 id="sla-kpi-ejecutados" class="text-2xl font-black text-violet-600 mt-1">0</h3>
+                    </div>
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                        <span class="text-[9px] font-black text-slate-500 uppercase">Cumplimiento</span>
+                        <h3 id="sla-kpi-cumplimiento" class="text-2xl font-black text-amber-600 mt-1">0%</h3>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                        <div class="border-b border-slate-800 pb-3 mb-4">
+                            <h3 class="text-xs font-extrabold text-white uppercase tracking-wider">Tiempo de Respuesta por Técnico</h3>
+                        </div>
+                        <div class="relative w-full h-64"><canvas id="chart-rendimiento-tecnico"></canvas></div>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                        <div class="border-b border-slate-800 pb-3 mb-4">
+                            <h3 class="text-xs font-extrabold text-white uppercase tracking-wider">Cumplimiento de SLA por Prioridad</h3>
+                        </div>
+                        <div class="relative w-full h-64"><canvas id="chart-sla-prioridad"></canvas></div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                    <div class="p-4 border-b border-slate-800">
+                        <h3 class="text-xs font-extrabold text-white uppercase tracking-wider">Desempeño de Técnicos</h3>
+                        <p class="text-[9px] text-slate-500 mt-1">Servicios asignados, atendidos y cumplimiento de SLA por técnico.</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-950/70">
+                                <tr class="text-[9px] text-slate-500 uppercase">
+                                    <th class="p-3">Técnico</th><th class="p-3">Ciudad</th><th class="p-3 text-center">Servicios</th>
+                                    <th class="p-3 text-center">Atendidos</th><th class="p-3 text-center">Pendientes</th><th class="p-3 text-center">SLA</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sla-tecnicos-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                    <h3 class="text-xs font-extrabold text-white uppercase tracking-wider">Programados vs Ejecutados</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div class="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4">
+                            <span class="text-[9px] font-black text-indigo-300 uppercase">Servicios programados</span>
+                            <div class="flex items-end justify-between gap-3 mt-1"><strong id="sla-programados-bar-label" class="text-xl text-white">0</strong><span class="text-[9px] text-slate-500">con fecha de ejecución</span></div>
+                            <div class="h-2 bg-slate-800 rounded-full overflow-hidden mt-3"><div id="sla-programados-bar" class="h-full bg-indigo-500 rounded-full" style="width:0%"></div></div>
+                        </div>
+                        <div class="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
+                            <span class="text-[9px] font-black text-emerald-300 uppercase">Servicios ejecutados</span>
+                            <div class="flex items-end justify-between gap-3 mt-1"><strong id="sla-ejecutados-bar-label" class="text-xl text-white">0</strong><span class="text-[9px] text-slate-500">cerrados / finalizados</span></div>
+                            <div class="h-2 bg-slate-800 rounded-full overflow-hidden mt-3"><div id="sla-ejecutados-bar" class="h-full bg-emerald-500 rounded-full" style="width:0%"></div></div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center justify-between flex-wrap gap-4">
                     <div>
-                        <h4 class="text-xs font-extrabold text-white uppercase">Generar Auditoría de Monitoreo Completa</h4>
-                        <p class="text-[10px] text-slate-400 mt-1">Exportación de logs transaccionales, firmas de campo y bitácoras para gerencia.</p>
+                        <h4 class="text-xs font-extrabold text-white uppercase">Auditoría de Monitoreo</h4>
+                        <p class="text-[10px] text-slate-400 mt-1">Exportación de la trazabilidad real de servicios, tiempos y cumplimiento.</p>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button onclick="simulateReportDownload('PDF')" class="bg-slate-950 border border-slate-800 hover:border-red-500/40 text-slate-300 px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
-                            <i class="fa-solid fa-file-pdf text-red-500"></i> Descargar PDF Auditoría
-                        </button>
-                        <button onclick="simulateReportDownload('EXCEL')" class="bg-slate-950 border border-slate-800 hover:border-emerald-500/40 text-slate-300 px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
-                            <i class="fa-solid fa-file-excel text-emerald-500"></i> Exportar a Excel (Kardex)
-                        </button>
+                        <button onclick="simulateReportDownload('PDF')" class="bg-slate-950 border border-slate-800 hover:border-red-500/40 text-slate-300 px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5"><i class="fa-solid fa-file-pdf text-red-500"></i> Descargar PDF Auditoría</button>
+                        <button onclick="simulateReportDownload('EXCEL')" class="bg-slate-950 border border-slate-800 hover:border-emerald-500/40 text-slate-300 px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5"><i class="fa-solid fa-file-excel text-emerald-500"></i> Exportar a Excel (Kardex)</button>
                     </div>
                 </div>
             </section>
