@@ -11144,27 +11144,50 @@ function renderBurbujasChat(containerId, mensajes) {
             ].filter(Boolean).join(" | ");
             doc.text((datosCot || "Documento comercial").substring(0, 62), xCabeceraCot, 27);
 
-            // Badge de Cotización Morado
-            doc.setFillColor(139, 92, 246); 
-            doc.rect(145, 10, 50, 18, "F");
-            doc.setTextColor(255, 255, 255);
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(9);
-            doc.text("COTIZACIÓN N°", 148, 15);
-            doc.setFontSize(11);
-            doc.text(cot.codigo, 148, 22);
+            // --- BLOQUE CORPORATIVO DE COTIZACIÓN ---
+            // Se reserva una columna independiente a la derecha para evitar
+            // cualquier solapamiento con el nombre y los datos de la empresa.
+            doc.setFillColor(248, 250, 252);
+            doc.setDrawColor(226, 232, 240);
+            doc.roundedRect(143, 7, 52, 27, 3, 3, "FD");
 
-            // --- ESTADO DE LA COTIZACIÓN (definido por el Cotizador) ---
-            const estadoCotPdf = (cot.estado || "Pendiente").toUpperCase();
-            let estadoColorPdf = [245, 158, 11]; // Pendiente (ámbar)
-            if (estadoCotPdf === "APROBADA") estadoColorPdf = [16, 185, 129];
-            else if (estadoCotPdf === "RECHAZADA") estadoColorPdf = [239, 68, 68];
-            doc.setFillColor(...estadoColorPdf);
-            doc.rect(145, 30, 50, 6, "F");
-            doc.setTextColor(255, 255, 255);
+            doc.setTextColor(100, 116, 139);
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(8);
-            doc.text(`ESTADO: ${estadoCotPdf}`, 148, 34.3);
+            doc.setFontSize(7.5);
+            doc.text("COTIZACIÓN N°", 191, 12.5, { align: "right" });
+
+            doc.setTextColor(15, 23, 42);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(11);
+            doc.text(String(cot.codigo || "N/A"), 191, 18.5, { align: "right" });
+
+            // Estado: píldora compacta, sin barra naranja/morada.
+            const estadoCotPdf = (cot.estado || "Pendiente").toUpperCase();
+            let estadoBgPdf = [255, 251, 235];
+            let estadoTextPdf = [180, 83, 9];
+            let estadoBorderPdf = [253, 230, 138];
+
+            if (estadoCotPdf === "APROBADA") {
+                estadoBgPdf = [236, 253, 245];
+                estadoTextPdf = [4, 120, 87];
+                estadoBorderPdf = [167, 243, 208];
+            } else if (estadoCotPdf === "RECHAZADA") {
+                estadoBgPdf = [254, 242, 242];
+                estadoTextPdf = [185, 28, 28];
+                estadoBorderPdf = [254, 202, 202];
+            }
+
+            doc.setFillColor(...estadoBgPdf);
+            doc.setDrawColor(...estadoBorderPdf);
+            doc.roundedRect(161, 22, 30, 7, 3.5, 3.5, "FD");
+            doc.setTextColor(...estadoTextPdf);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(6.5);
+            doc.text(estadoCotPdf, 176, 26.5, { align: "center" });
+
+            // Línea corporativa completa del encabezado.
+            doc.setDrawColor(226, 232, 240);
+            doc.line(15, 37.5, 195, 37.5);
 
             // --- SECCIÓN 1: DATOS CLIENTE ---
             doc.setTextColor(17, 24, 39);
