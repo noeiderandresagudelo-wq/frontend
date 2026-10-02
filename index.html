@@ -11134,11 +11134,13 @@ function renderBurbujasChat(containerId, mensajes) {
             // Dos columnas reales: identidad de empresa a la izquierda y
             // referencia de cotización a la derecha. El bloque derecho
             // tiene ancho fijo y no puede invadir el espacio de la empresa.
-            const headerRightX = 194;
             const quoteBoxX = 151;
             const quoteBoxW = 44;
             const quoteBoxY = 9;
             const quoteBoxH = 23;
+            // Centro geométrico de la caja: todo su contenido se alinea
+            // respecto a este punto, no respecto al borde derecho.
+            const quoteBoxCenterX = quoteBoxX + (quoteBoxW / 2);
 
             doc.setTextColor(15, 23, 42);
             doc.setFont("helvetica", "bold");
@@ -11174,12 +11176,12 @@ function renderBurbujasChat(containerId, mensajes) {
             doc.setTextColor(100, 116, 139);
             doc.setFont("helvetica", "bold");
             doc.setFontSize(6.8);
-            doc.text("COTIZACIÓN N°", headerRightX, 14, { align: "right" });
+            doc.text("COTIZACIÓN N°", quoteBoxCenterX, 14, { align: "center" });
 
             doc.setTextColor(15, 23, 42);
             doc.setFont("helvetica", "bold");
             doc.setFontSize(10.5);
-            doc.text(String(cot.codigo || "N/A"), headerRightX, 19, { align: "right" });
+            doc.text(String(cot.codigo || "N/A"), quoteBoxCenterX, 19, { align: "center" });
 
             const estadoCotPdf = (cot.estado || "Pendiente").toUpperCase();
             let estadoBgPdf = [255, 251, 235];
@@ -11197,7 +11199,7 @@ function renderBurbujasChat(containerId, mensajes) {
             }
 
             const estadoW = Math.min(28, Math.max(22, estadoCotPdf.length * 1.8 + 8));
-            const estadoX = headerRightX - estadoW;
+            const estadoX = quoteBoxCenterX - (estadoW / 2);
             doc.setFillColor(...estadoBgPdf);
             doc.setDrawColor(...estadoBorderPdf);
             doc.roundedRect(estadoX, 21, estadoW, 5.5, 2.75, 2.75, "FD");
