@@ -12734,18 +12734,27 @@ function renderBurbujasChat(containerId, mensajes) {
             doc.setTextColor(100, 116, 139);
             doc.text("Documento controlado por el Sistema de Gestión Integral", xCabecera, 30);
 
-            // Código consecutivo en cabecera
-            doc.setFillColor(59, 130, 246); // Azul accent
-            doc.rect(145, 10, 50, 18, "F");
+            // Código consecutivo y fecha de ejecución en cabecera
+            const timelineServicio = Array.isArray(s.timeline) ? s.timeline : [];
+            const eventoArriboServicio = timelineServicio.find(t => t && (String(t.msg || "").toLowerCase().includes("llegó") || String(t.msg || "").toLowerCase().includes("arribo")));
+            const eventoRutaServicio = timelineServicio.find(t => t && (String(t.msg || "").toLowerCase().includes("despacho ruta") || String(t.msg || "").toLowerCase().includes("cambio de estado a [en camino]") || String(t.msg || "").toLowerCase().includes("ruta")));
+            const fechaEjecucionServicio = s.fechaEjecucion || s.fechaVisita || eventoArriboServicio?.fecha || eventoRutaServicio?.fecha || s.fechaCreacion || new Date().toISOString();
+            const fechaEjecucionTexto = new Date(fechaEjecucionServicio).toLocaleDateString("es-CO");
+
+            doc.setFillColor(59, 130, 246);
+            doc.roundedRect(142, 8, 53, 22, 2, 2, "F");
             doc.setTextColor(255, 255, 255);
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(10);
-            doc.text("CONSECUTIVO OPR", 148, 16);
-            doc.setFontSize(11);
-            doc.text(s.consecutivo, 148, 23);
+            doc.setFontSize(9);
+            doc.text("CONSECUTIVO OPR", 145, 14);
+            doc.setFontSize(10.5);
+            doc.text(s.consecutivo, 145, 20);
             doc.setFontSize(6.5);
             doc.setFont("helvetica", "normal");
-            doc.text(`${identidad.codigoOpr} | V.${identidad.versionOpr}`, 148, 27);
+            doc.text(identidad.codigoOpr + " | V." + identidad.versionOpr, 145, 24);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(6.5);
+            doc.text("FECHA VISITA: " + fechaEjecucionTexto, 145, 28);
 
             // --- SECCIÓN 1: DATOS DEL ABONADO ---
             doc.setTextColor(17, 24, 39);
@@ -12794,10 +12803,22 @@ function renderBurbujasChat(containerId, mensajes) {
             doc.text("3. AUDITORÍA DE TIEMPOS DE RESPUESTA (SLA)", 15, yOffset);
             doc.line(15, yOffset + 2, 195, yOffset + 2);
 
-            const tCreacion = s.timeline.find(t => t.msg.includes("Creación") || t.msg.includes("Ingreso"))?.hora || s.fechaCreacion.split(' ')[1] || "--:--";
-            const tRuta = s.timeline.find(t => t.msg.includes("recorrido") || t.msg.includes("Ruta"))?.hora || "--:--";
-            const tArribo = s.timeline.find(t => t.msg.includes("Llegó") || t.msg.includes("arribo"))?.hora || "--:--";
-            const tCierre = s.timeline.find(t => t.msg.includes("Cambio de estado a [Finalizado]"))?.hora || "Sincronizado";
+            const horaEvento = (evento) => {
+                if (!evento) return "--:--";
+                if (evento.hora) return evento.hora;
+                if (evento.fecha) {
+                    const d = new Date(evento.fecha);
+                    if (!Number.isNaN(d.getTime())) return d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: false });
+                }
+                return "--:--";
+            };
+            const buscarEvento = (predicado) => timelineServicio.find(t => predicado(String(t?.msg || "").toLowerCase(), t));
+            const eventoIngreso = buscarEvento(msg => msg.includes("creación") || msg.includes("ingreso")) || timelineServicio[0];
+            const eventoCierre = buscarEvento(msg => msg.includes("cambio de estado a [finalizado]") || msg.includes("[finalizado]") || msg.includes("[cerrado]"));
+            const tCreacion = horaEvento(eventoIngreso);
+            const tRuta = horaEvento(eventoRutaServicio);
+            const tArribo = horaEvento(eventoArriboServicio || buscarEvento(msg => msg.includes("llegó") || msg.includes("arribo")));
+            const tCierre = horaEvento(eventoCierre);
 
             doc.setFont("helvetica", "normal");
             doc.text(`Ingreso Reporte: ${tCreacion}`, 15, yOffset + 8);
