@@ -6205,13 +6205,17 @@
 
             cargarIdentidadDocumentalEmpresa().then(aplicarIdentidadOPRModal).catch(() => {});
             document.getElementById('opr-estudio-id').value = e.id;
+            const fechaVisitaOPR = e.oprReport?.fechaVisita || e.fechaLlegada || e.fechaCreacion || new Date().toISOString();
+            const fechaVisitaTextoOPR = new Date(fechaVisitaOPR).toLocaleDateString('es-CO');
+            const idHeaderOPR = document.getElementById('opr-estudio-id-header');
+            const fechaHeaderOPR = document.getElementById('opr-estudio-fecha-header');
+            if (idHeaderOPR) idHeaderOPR.textContent = e.id || 'ES-XXXXXX';
+            if (fechaHeaderOPR) fechaHeaderOPR.textContent = fechaVisitaTextoOPR;
             document.getElementById('opr-estudio-cliente').value = e.cliente || '';
             document.getElementById('opr-estudio-direccion').value = [e.direccion, e.ciudad].filter(Boolean).join(', ');
             document.getElementById('opr-estudio-tipo').value = e.tipo || '';
             document.getElementById('opr-estudio-necesidad').value = e.necesidad || '';
-            document.getElementById('opr-estudio-fecha-visita').value = e.oprReport?.fechaVisita
-                ? new Date(e.oprReport.fechaVisita).toLocaleDateString('es-CO')
-                : (e.fechaLlegada ? new Date(e.fechaLlegada).toLocaleDateString('es-CO') : new Date().toLocaleDateString('es-CO'));
+            document.getElementById('opr-estudio-fecha-visita').value = fechaVisitaTextoOPR;
             const buscarTiempo = (tipo) => {
                 const item = Array.isArray(e.timeline) ? e.timeline.find(t => t && t.tipo === tipo) : null;
                 return item?.fecha ? new Date(item.fecha).toLocaleString('es-CO') : '--';
@@ -13297,9 +13301,22 @@ function renderBurbujasChat(containerId, mensajes) {
     <!-- OPR DEL ESTUDIO DE SEGURIDAD -->
     <div id="modal-opr-estudio-seguridad" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[9500] hidden flex items-center justify-center p-4 overflow-y-auto">
       <form onsubmit="guardarOPREstudio(event)" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 w-full max-w-2xl shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div><div class="flex items-center gap-2"><img id="opr-estudio-empresa-logo" class="hidden w-20 h-20 rounded-lg object-contain bg-white/5 border border-slate-700" alt="Logo de la empresa"><h3 id="opr-estudio-empresa-nombre" class="text-sm font-black text-white uppercase">Empresa</h3></div><p class="text-[9px] text-slate-500 mt-1">OPR · Estudio de Seguridad</p><p class="text-[9px] text-slate-500 mt-1">Reporte técnico de visita previa a instalación</p></div>
-          <button type="button" onclick="cerrarOPREstudio()" class="w-9 h-9 rounded-lg bg-slate-800 text-slate-300">✕</button>
+        <div class="flex justify-between items-start gap-5 border-b border-slate-800 pb-4">
+          <div class="flex items-center gap-3 min-w-0 flex-1 max-w-[60%]">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center font-black text-slate-950 text-lg shrink-0">OPR</div>
+            <div class="min-w-0">
+              <div class="flex items-center gap-2 min-w-0"><img id="opr-estudio-empresa-logo" class="hidden w-32 h-24 rounded-lg object-contain bg-white border border-slate-300 p-1.5 shrink-0" alt="Logo de la empresa"><h3 id="opr-estudio-empresa-nombre" class="text-xs font-black text-white tracking-widest uppercase truncate">Empresa</h3></div>
+              <span class="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Reporte Técnico de Visita de Seguridad</span>
+              <span class="text-[8px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded font-black uppercase mt-1 inline-block"><i class="fa-solid fa-file-signature mr-1"></i> Constancia Oficial para el Cliente</span>
+            </div>
+          </div>
+          <div class="flex flex-col items-center justify-center shrink-0 min-w-[150px] bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-center self-center">
+            <span class="text-[9px] text-slate-500 font-black uppercase tracking-wider">OPR · ESTUDIO DE SEGURIDAD</span>
+            <span id="opr-estudio-id-header" class="text-xs font-mono font-black text-emerald-400">ES-XXXXXX</span>
+            <span class="text-[8px] text-slate-500 font-bold uppercase mt-1">Fecha de visita</span>
+            <span id="opr-estudio-fecha-header" class="text-[10px] text-slate-300 font-bold">--/--/----</span>
+          </div>
+          <button type="button" onclick="cerrarOPREstudio()" class="w-9 h-9 rounded-lg bg-slate-800 text-slate-300 shrink-0">✕</button>
         </div>
         <input id="opr-estudio-id" type="hidden">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[10px]">
