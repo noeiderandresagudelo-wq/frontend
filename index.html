@@ -137,6 +137,61 @@
             --tw-shadow-color: rgba(15, 23, 42, .10) !important;
         }
 
+        /* ALARVIX_PROFESSIONAL_VISUAL_SYSTEM */
+        #alarvix-global-header {
+            background:#fff !important; border-color:#e2e8f0 !important;
+            box-shadow:0 1px 10px rgba(15,23,42,.06);
+        }
+        html.dark #alarvix-global-header {
+            background:#111827 !important; border-color:#243044 !important;
+            box-shadow:0 1px 10px rgba(0,0,0,.18);
+        }
+        html.dark #alarvix-global-header #header-module-title { color:#f1f5f9 !important; }
+        html.dark #alarvix-global-header #header-central-badge {
+            background:rgba(59,130,246,.12) !important; color:#93c5fd !important; border-color:rgba(96,165,250,.22) !important;
+        }
+        html.dark #alarvix-global-header #header-tenant-badge {
+            background:rgba(16,185,129,.12) !important; color:#6ee7b7 !important; border-color:rgba(52,211,153,.22) !important;
+        }
+        html.dark #alarvix-global-header .alarvix-header-icon { background:#182235 !important; border-color:#2b3952 !important; color:#cbd5e1 !important; }
+        html.dark #alarvix-global-header .alarvix-header-copilot { background:#2563eb !important; }
+        html.dark #alarvix-global-header button[onclick="openMiPerfilModal()"] { background:#182235 !important; border-color:#2b3952 !important; }
+        html.dark #alarvix-global-header button[onclick="openMiPerfilModal()"] .text-slate-700 { color:#e2e8f0 !important; }
+        html.dark #alarvix-global-header button[onclick="handleLogout()"] { background:rgba(244,63,94,.12) !important; border-color:rgba(251,113,133,.25) !important; color:#fda4af !important; }
+        html.dark body { background:#0f172a !important; color:#e2e8f0 !important; }
+        html.dark main.bg-slate-950 { background-color:#0f172a !important; }
+        html.dark .bg-slate-950 { background-color:#0f172a !important; }
+        html.dark .bg-slate-900 { background-color:#111827 !important; }
+        html.dark .bg-slate-800 { background-color:#182235 !important; }
+        html.dark .border-slate-900, html.dark .border-slate-800 { border-color:#243044 !important; }
+        html.dark .border-slate-700 { border-color:#334155 !important; }
+        html.dark .text-slate-100 { color:#f1f5f9 !important; }
+        html.dark .text-slate-200 { color:#e2e8f0 !important; }
+        html.dark .text-slate-300 { color:#cbd5e1 !important; }
+        html.dark .text-slate-400 { color:#94a3b8 !important; }
+        html.dark .text-slate-500 { color:#64748b !important; }
+        html.dark .text-white { color:#f8fafc !important; }
+        html:not(.dark) main.bg-slate-950 { background-color:#f8fafc !important; }
+        html:not(.dark) .bg-slate-950 { background-color:#f8fafc !important; }
+        html:not(.dark) .bg-slate-900 { background-color:#fff !important; }
+        html:not(.dark) .bg-slate-800 { background-color:#f1f5f9 !important; }
+        html:not(.dark) .border-slate-900, html:not(.dark) .border-slate-800 { border-color:#e2e8f0 !important; }
+        html:not(.dark) .border-slate-700 { border-color:#cbd5e1 !important; }
+        html:not(.dark) .text-slate-100, html:not(.dark) .text-slate-200 { color:#0f172a !important; }
+        html:not(.dark) .text-slate-300 { color:#334155 !important; }
+        html:not(.dark) .text-slate-400, html:not(.dark) .text-slate-500 { color:#64748b !important; }
+        html:not(.dark) .text-white { color:#0f172a !important; }
+        html:not(.dark) .bg-emerald-500\/10 { background:#ecfdf5 !important; }
+        html:not(.dark) .text-emerald-400 { color:#047857 !important; }
+        html:not(.dark) .text-amber-400 { color:#b45309 !important; }
+        html:not(.dark) .text-rose-400 { color:#be123c !important; }
+        html:not(.dark) .text-blue-400 { color:#1d4ed8 !important; }
+        button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible { outline:2px solid #3b82f6; outline-offset:2px; }
+        @media (max-width:640px) {
+            #alarvix-global-header { height:60px !important; padding-left:.75rem !important; padding-right:.75rem !important; }
+        }
+
+
     <style>
         /* ALARVIX_RELOAD_TOP_FIX */
         html { scroll-behavior: auto; }
@@ -1304,41 +1359,39 @@
     <!-- CONTENEDOR PRINCIPAL DE LA APLICACIÓN -->
     <main class="flex-grow flex flex-col min-w-0 min-h-0 h-screen overflow-hidden bg-slate-950 text-slate-100">
         <!-- HEADER OPERATIVO GLOBAL -->
-        <header class="h-14 border-b border-slate-900 bg-slate-900/40 backdrop-blur-md px-3 sm:px-6 flex items-center justify-between sticky top-0 z-30">
+        <header id="alarvix-global-header" class="h-16 border-b border-slate-200 bg-white px-3 sm:px-6 flex items-center justify-between sticky top-0 z-30">
             <div class="flex items-center gap-2 sm:gap-3 min-w-0">
                 <button onclick="toggleMobileSidebar()" class="md:hidden text-slate-300 hover:text-white p-1.5 -ml-1 shrink-0" aria-label="Abrir menú">
                     <i class="fa-solid fa-bars text-base"></i>
                 </button>
-                <span class="text-sm font-black text-slate-400 font-heading truncate" id="header-module-title">DASHBOARD GENERAL</span>
-                <span class="hidden sm:inline-block text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0" id="header-central-badge">ERP Operativo</span>
-                <span class="hidden sm:inline-block text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0" id="header-tenant-badge">Sin tenant</span>
+                <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <span class="text-sm font-extrabold text-slate-800 font-heading truncate tracking-tight" id="header-module-title">DASHBOARD GENERAL</span>
+                    <span class="hidden sm:inline-flex items-center text-[10px] bg-blue-50 text-blue-700 border border-blue-100 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider shrink-0" id="header-central-badge">ERP Operativo</span>
+                    <span class="hidden sm:inline-flex items-center text-[10px] bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider shrink-0" id="header-tenant-badge">Sin tenant</span>
+                </div>
             </div>
 
             <!-- Barra de Herramientas del Header -->
-            <div class="flex items-center gap-2 sm:gap-4 shrink-0">
-                <!-- Badge de Usuario Activo -->
-                <button onclick="openMiPerfilModal()" class="flex items-center gap-2 bg-slate-900/60 border border-slate-800 rounded-lg px-2 sm:px-3 py-1.5 hover:border-blue-500/40 transition">
-                    <i class="fa-solid fa-user-shield text-blue-400 text-xs"></i>
-                    <span id="session-user-badge" class="hidden sm:inline text-[10px] font-bold text-white uppercase tracking-wider">No Logueado</span>
-                </button>
-                <button onclick="handleLogout()" class="text-[9px] bg-rose-500/20 text-rose-400 border border-rose-500/20 px-2 py-1.5 rounded hover:bg-rose-500 hover:text-white transition font-black uppercase">Salir</button>
-
-                <!-- Reloj en vivo de la Central -->
-                <div class="hidden lg:flex items-center gap-2 bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-1.5">
-                    <span class="live-pulse-green w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Monitoreo Activo</span>
-                    <span class="text-[10px] text-slate-400 font-mono" id="live-clock">21:33:44</span>
+            <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+                <div class="hidden lg:flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1.5" aria-label="Estado del sistema: monitoreo activo">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 live-pulse-green"></span>
+                    <span class="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider">Monitoreo Activo</span>
+                    <span class="text-[10px] text-slate-500 font-mono" id="live-clock">21:33:44</span>
                 </div>
-
-                <!-- Buscador Global -->
-                <button onclick="openGlobalSearch()" class="text-slate-300 hover:text-white p-1.5 bg-slate-900/60 border border-slate-800 rounded-lg" title="Buscar en todo el sistema">
+                <button onclick="openGlobalSearch()" class="alarvix-header-icon text-slate-500 hover:text-blue-700 p-2 bg-slate-50 border border-slate-200 rounded-lg" title="Buscar en todo el sistema" aria-label="Buscar en todo el sistema">
                     <i class="fa-solid fa-magnifying-glass text-sm"></i>
                 </button>
-
-                <!-- Botón Inteligente de Copiloto IA -->
-                <button onclick="openCopilotAI()" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-blue-500/15">
+                <button onclick="openCopilotAI()" class="alarvix-header-copilot bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm" aria-label="Abrir Copiloto IA">
                     <i class="fa-solid fa-wand-magic-sparkles text-xs"></i> <span class="hidden sm:inline">Copiloto IA</span>
                 </button>
+                <div class="h-7 w-px bg-slate-200 hidden sm:block"></div>
+                <button onclick="openMiPerfilModal()" class="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-2 sm:px-3 py-1.5 hover:border-blue-300 hover:bg-blue-50/40 transition shadow-sm" aria-label="Abrir perfil">
+                    <span class="w-7 h-7 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center">
+                        <i class="fa-solid fa-user-shield text-blue-600 text-xs"></i>
+                    </span>
+                    <span id="session-user-badge" class="hidden sm:inline text-[10px] font-bold text-slate-700 uppercase tracking-wider">No Logueado</span>
+                </button>
+                <button onclick="handleLogout()" class="text-[9px] bg-rose-50 text-rose-600 border border-rose-200 px-2.5 py-2 rounded-lg hover:bg-rose-600 hover:text-white transition font-black uppercase">Salir</button>
             </div>
         </header>
 
