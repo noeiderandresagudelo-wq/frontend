@@ -11130,38 +11130,57 @@ function renderBurbujasChat(containerId, mensajes) {
                 }
             }
 
-            doc.text((identidadCot.razonSocial || "Empresa").substring(0, 34), xCabeceraCot, 12);
-            
-            doc.setFontSize(9);
+            // --- CABECERA CORPORATIVA DE COTIZACIÓN ---
+            // Dos columnas reales: identidad de empresa a la izquierda y
+            // referencia de cotización a la derecha. El bloque derecho
+            // tiene ancho fijo y no puede invadir el espacio de la empresa.
+            const headerRightX = 194;
+            const quoteBoxX = 151;
+            const quoteBoxW = 44;
+            const quoteBoxY = 9;
+            const quoteBoxH = 23;
+
+            doc.setTextColor(15, 23, 42);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(12);
+
+            const empresaPdf = String(identidadCot.razonSocial || identidadCot.nombreComercial || "Empresa").trim();
+            const empresaLines = doc.splitTextToSize(empresaPdf, 82).slice(0, 2);
+            doc.text(empresaLines, xCabeceraCot, 12);
+
+            const empresaOffsetY = empresaLines.length > 1 ? 6 : 0;
+
+            doc.setFontSize(8.5);
             doc.setFont("helvetica", "normal");
-            doc.text("PROPUESTA ECONÓMICA DE SERVICIOS TÉCNICOS", xCabeceraCot, 21);
+            doc.setTextColor(51, 65, 85);
+            doc.text("PROPUESTA ECONÓMICA DE SERVICIOS TÉCNICOS", xCabeceraCot, 20 + empresaOffsetY);
+
             doc.setTextColor(100, 116, 139);
-            doc.setFontSize(8);
+            doc.setFontSize(7.5);
             const datosCot = [
                 identidadCot.nit ? `NIT ${identidadCot.nit}` : "",
                 identidadCot.ciudad || "",
                 identidadCot.telefono || ""
             ].filter(Boolean).join(" | ");
-            doc.text((datosCot || "Documento comercial").substring(0, 62), xCabeceraCot, 27);
+            doc.text((datosCot || "Documento comercial").substring(0, 68), xCabeceraCot, 26 + empresaOffsetY);
 
-            // --- BLOQUE CORPORATIVO DE COTIZACIÓN ---
-            // Se reserva una columna independiente a la derecha para evitar
-            // cualquier solapamiento con el nombre y los datos de la empresa.
+            // Caja compacta, independiente y centrada verticalmente respecto
+            // al bloque de identidad. No se usa posicionamiento sobre el texto.
             doc.setFillColor(248, 250, 252);
             doc.setDrawColor(226, 232, 240);
-            doc.roundedRect(143, 7, 52, 27, 3, 3, "FD");
+            doc.setLineWidth(0.35);
+            doc.roundedRect(quoteBoxX, quoteBoxY, quoteBoxW, quoteBoxH, 2.2, 2.2, "FD");
 
             doc.setTextColor(100, 116, 139);
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(7.5);
-            doc.text("COTIZACIÓN N°", 191, 12.5, { align: "right" });
+            doc.setFontSize(6.8);
+            doc.text("COTIZACIÓN N°", headerRightX, 14, { align: "right" });
 
             doc.setTextColor(15, 23, 42);
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(11);
-            doc.text(String(cot.codigo || "N/A"), 191, 18.5, { align: "right" });
+            doc.setFontSize(10.5);
+            doc.text(String(cot.codigo || "N/A"), headerRightX, 19, { align: "right" });
 
-            // Estado: píldora compacta, sin barra naranja/morada.
             const estadoCotPdf = (cot.estado || "Pendiente").toUpperCase();
             let estadoBgPdf = [255, 251, 235];
             let estadoTextPdf = [180, 83, 9];
@@ -11177,17 +11196,20 @@ function renderBurbujasChat(containerId, mensajes) {
                 estadoBorderPdf = [254, 202, 202];
             }
 
+            const estadoW = Math.min(28, Math.max(22, estadoCotPdf.length * 1.8 + 8));
+            const estadoX = headerRightX - estadoW;
             doc.setFillColor(...estadoBgPdf);
             doc.setDrawColor(...estadoBorderPdf);
-            doc.roundedRect(161, 22, 30, 7, 3.5, 3.5, "FD");
+            doc.roundedRect(estadoX, 21, estadoW, 5.5, 2.75, 2.75, "FD");
             doc.setTextColor(...estadoTextPdf);
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(6.5);
-            doc.text(estadoCotPdf, 176, 26.5, { align: "center" });
+            doc.setFontSize(5.8);
+            doc.text(estadoCotPdf, estadoX + (estadoW / 2), 24.7, { align: "center" });
 
-            // Línea corporativa completa del encabezado.
+            // Separador debajo de ambas columnas.
             doc.setDrawColor(226, 232, 240);
-            doc.line(15, 37.5, 195, 37.5);
+            doc.setLineWidth(0.4);
+            doc.line(15, 36.5, 195, 36.5);
 
             // --- SECCIÓN 1: DATOS CLIENTE ---
             doc.setTextColor(17, 24, 39);
