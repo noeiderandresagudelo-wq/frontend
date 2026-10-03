@@ -4975,11 +4975,37 @@
                 });
             }
 
+            // Ordenar los servicios del técnico por cercanía real al cliente.
+            // Se usa la última posición GPS conocida del técnico y la ubicación
+            // (latitud,longitud) registrada en cada cliente. Los servicios sin
+            // coordenadas quedan al final, conservando su orden original.
+            const tecnicoActual = personalTecnicos.find(t => String(t.id) === String(currentUser.tecnicoId));
+            const techLat = Number(tecnicoActual?.gpsLat);
+            const techLng = Number(tecnicoActual?.gpsLng);
+            const tieneGPS = Number.isFinite(techLat) && Number.isFinite(techLng);
+
+            const distanciaServicioTecnico = (servicio) => {
+                if (!tieneGPS) return Number.POSITIVE_INFINITY;
+                const cliente = crmClientes.find(c => String(c.id) === String(servicio.abonadoId));
+                const partes = String(cliente?.ubicacion || '').split(',').map(v => Number(String(v).trim()));
+                if (partes.length !== 2 || !Number.isFinite(partes[0]) || !Number.isFinite(partes[1])) {
+                    return Number.POSITIVE_INFINITY;
+                }
+                return distanciaKm(techLat, techLng, partes[0], partes[1]);
+            };
+
             const techTasks = incidentesServicios.filter(i => 
                 i.tecnicoId === currentUser.tecnicoId && 
                 i.estado !== "Cerrado" && 
                 i.estado !== "Finalizado"
             );
+
+            techTasks.sort((a, b) => {
+                const da = distanciaServicioTecnico(a);
+                const db = distanciaServicioTecnico(b);
+                if (da === db) return 0;
+                return da - db;
+            });
 
             document.getElementById('tech-pending-badge').innerText = techTasks.length + techStudies.length;
 
