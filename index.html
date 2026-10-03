@@ -3583,6 +3583,8 @@
         }
         let mapInstance = null;
         let markersGroup = null;
+        // Conserva el pin/popup seleccionado durante las actualizaciones periódicas del mapa.
+        let mapaPinSeleccionado = null;
 
         // Base de Datos de Usuarios en Caliente (In-Memory)
         let appUsers = [];
@@ -9521,6 +9523,14 @@ function renderBurbujasChat(containerId, mensajes) {
 
         function renderMapPins() {
             if (!mapInstance || !markersGroup) return;
+
+            // Antes de reconstruir los marcadores, recuerda qué popup estaba abierto.
+            // El grupo se refresca por GPS/realtime y clearLayers() destruye el popup.
+            const popupAbierto = mapInstance._popup;
+            if (popupAbierto && popupAbierto._source && popupAbierto._source._alarvixPinId) {
+                mapaPinSeleccionado = popupAbierto._source._alarvixPinId;
+            }
+
             markersGroup.clearLayers();
 
             const buscadorEl = document.getElementById('search-mapa-puesto');
@@ -9586,6 +9596,9 @@ function renderBurbujasChat(containerId, mensajes) {
                 `;
 
                 const marker = L.marker([lat, lng], { icon: icon }).bindPopup(popupHtml);
+                marker._alarvixPinId = `cliente:${cl.id}`;
+                marker.on('popupopen', () => { mapaPinSeleccionado = marker._alarvixPinId; });
+                marker.on('popupclose', () => { if (mapaPinSeleccionado === marker._alarvixPinId) mapaPinSeleccionado = null; });
                 markersGroup.addLayer(marker);
                 visiblePins++;
             });
@@ -9633,8 +9646,22 @@ function renderBurbujasChat(containerId, mensajes) {
                 `;
 
                 const techMarker = L.marker([lat, lng], { icon: techIcon }).bindPopup(techPopupHtml);
+                techMarker._alarvixPinId = `tecnico:${t.id}`;
+                techMarker.on('popupopen', () => { mapaPinSeleccionado = techMarker._alarvixPinId; });
+                techMarker.on('popupclose', () => { if (mapaPinSeleccionado === techMarker._alarvixPinId) mapaPinSeleccionado = null; });
                 markersGroup.addLayer(techMarker);
             });
+
+            // Si el usuario tenía un punto abierto, vuelve a abrir exactamente ese mismo punto.
+            if (mapaPinSeleccionado) {
+                markersGroup.eachLayer(marker => {
+                    if (marker._alarvixPinId === mapaPinSeleccionado) {
+                        requestAnimationFrame(() => {
+                            if (mapInstance && markersGroup.hasLayer(marker)) marker.openPopup();
+                        });
+                    }
+                });
+            }
 
             const badge = document.getElementById('map-visible-pins');
             if (badge) badge.textContent = `${visiblePins} visibles`;
