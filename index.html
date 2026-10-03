@@ -6305,17 +6305,142 @@
             if (!ok) e.timeline = e.timeline.filter(t => !(t && t.tipo === 'despacho' && t.fecha === ahora));
         }
 
+        function obtenerCoordenadasDestinoEstudio(e) {
+            if (!e) return null;
+
+            const candidatos = [
+                e.ubicacion,
+                e.coordenadas,
+                (e.latitud != null && e.longitud != null) ? e.latitud + ',' + e.longitud : null
+            ];
+
+            const cliente = crmClientes.find(function(c) {
+                const nombre = String(c.nombre || c.cliente_nombre || '').trim().toLowerCase();
+                const clienteEstudio = String(e.cliente || '').trim().toLowerCase();
+                const direccion = String(c.direccion || '').trim().toLowerCase();
+                const direccionEstudio = String(e.direccion || '').trim().toLowerCase();
+                return (clienteEstudio && nombre === clienteEstudio) ||
+                    (direccionEstudio && direccion === direccionEstudio);
+            });
+
+            if (cliente?.ubicacion) candidatos.push(cliente.ubicacion);
+
+            for (const valor of candidatos) {
+                if (valor == null) continue;
+                const partes = String(valor).split(',').map(function(v){ return Number(String(v).trim()); });
+                if (partes.length === 2 && Number.isFinite(partes[0]) && Number.isFinite(partes[1]) &&
+                    Math.abs(partes[0]) <= 90 && Math.abs(partes[1]) <= 180) {
+                    return { lat: partes[0], lng: partes[1], fuente: cliente ? 'cliente' : 'estudio' };
+                }
+            }
+
+            return null;
+        }
+
+        function obtenerGPSActualTecnico() {
+            return new Promise(function(resolve, reject) {
+                if (!navigator.geolocation || typeof navigator.geolocation.getCurrentPosition !== 'function') {
+                    reject(new Error('La geolocalización no está disponible en este dispositivo.'));
+                    return;
+                }
+
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const lat = Number(position?.coords?.latitude);
+                        const lng = Number(position?.coords?.longitude);
+                        const accuracy = Number(position?.coords?.accuracy);
+                        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+                            reject(new Error('No se recibió una posición GPS válida.'));
+                            return;
+                        }
+                        resolve({
+                            lat: lat,
+                            lng: lng,
+                            accuracy: Number.isFinite(accuracy) ? accuracy : null,
+                            fecha: new Date().toISOString()
+                        });
+                    },
+                    function(error) {
+                        reject(new Error(
+                            error?.code === 1 ? 'El técnico debe permitir la ubicación para validar el arribo.' :
+                            error?.code === 2 ? 'No se pudo obtener la ubicación actual del técnico.' :
+                            'La lectura GPS tardó demasiado. Intenta nuevamente.'
+                        ));
+                    },
+                    { enableHighAccuracy: true, timeout: 12000, maximumAge: 5000 }
+                );
+            });
+        }
+
+        async function validarArriboEstudioTecnico(e) {
+            const destino = obtenerCoordenadasDestinoEstudio(e);
+            if (!destino) {
+                return {
+                    valido: false,
+                    bloquear: true,
+                    mensaje: 'Este estudio no tiene coordenadas del sitio. Registra la ubicación del cliente para poder validar el arribo.'
+                };
+            }
+
+            const gps = await obtenerGPSActualTecnico();
+            const distanciaKmArribo = distanciaKm(gps.lat, gps.lng, destino.lat, destino.lng);
+            const distanciaMetros = distanciaKmArribo * 1000;
+            const precision = Number.isFinite(gps.accuracy) ? gps.accuracy : 999;
+            const radioPermitido = Math.max(150, Math.min(250, precision * 2.5));
+            const valido = distanciaMetros <= radioPermitido;
+
+            return {
+                valido: valido,
+                bloquear: true,
+                gps: gps,
+                distanciaMetros: distanciaMetros,
+                radioPermitido: radioPermitido,
+                mensaje: valido
+                    ? 'Arribo validado a ' + Math.round(distanciaMetros) + ' m del sitio.'
+                    : 'El GPS indica ' + Math.round(distanciaMetros) + ' m del sitio. Debes estar dentro de aproximadamente ' + Math.round(radioPermitido) + ' m para marcar el arribo.'
+            };
+        }
+
         async function llegarEstudioTecnico(id) {
             const e = estudiosSeguridad.find(function(x){return x.id === id;});
             if (!estudioPerteneceAlTecnicoActual(e)) {
                 showToast('Estudio no disponible','Este estudio no está asignado a tu usuario.',true);
                 return;
             }
-            const ahora = new Date().toISOString();
-            e.fechaLlegada = ahora;
-            e.timeline = Array.isArray(e.timeline) ? e.timeline : [];
-            e.timeline.push({fecha:ahora,msg:'Arribo · técnico llegó al sitio',tipo:'arribo',user:currentUser ? currentUser.nombre : 'Técnico'});
-            await cambiarEstadoEstudio(id, 'Llegó al sitio');
+
+            try {
+                showToast('Validando ubicación', 'Comprobando la posición GPS del técnico frente al sitio del estudio...');
+                const validacion = await validarArriboEstudioTecnico(e);
+
+                if (!validacion.valido) {
+                    showToast('Arribo no validado', validacion.mensaje, true);
+                    return;
+                }
+
+                const ahora = validacion.gps.fecha;
+                e.fechaLlegada = ahora;
+                e.timeline = Array.isArray(e.timeline) ? e.timeline : [];
+                e.timeline.push({
+                    fecha: ahora,
+                    msg: 'Arribo validado por GPS · técnico llegó al sitio',
+                    tipo: 'arribo',
+                    user: currentUser ? currentUser.nombre : 'Técnico',
+                    latitud: validacion.gps.lat,
+                    longitud: validacion.gps.lng,
+                    precision_m: validacion.gps.accuracy,
+                    distancia_m: Math.round(validacion.distanciaMetros),
+                    radio_permitido_m: Math.round(validacion.radioPermitido),
+                    validado: true
+                });
+
+                const ok = await cambiarEstadoEstudio(id, 'Llegó al sitio');
+                if (ok) {
+                    showToast('Arribo validado', 'Llegada confirmada por GPS · ' + Math.round(validacion.distanciaMetros) + ' m del sitio.');
+                }
+            } catch (error) {
+                console.error('[Alarvix GPS] Error validando arribo del estudio:', error);
+                showToast('No se pudo validar', error?.message || 'No fue posible obtener la ubicación actual del técnico.', true);
+            }
         }
 
         function abrirRutaEstudioTecnico(id) {
