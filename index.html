@@ -3585,6 +3585,9 @@
         let markersGroup = null;
         // Conserva el pin/popup seleccionado durante las actualizaciones periódicas del mapa.
         let mapaPinSeleccionado = null;
+        // Evita que una actualización GPS/realtime vuelva a abrir un popup que el usuario cerró.
+        let mapaPopupCierreManual = false;
+        let mapaRenderizandoPins = false;
 
         // Base de Datos de Usuarios en Caliente (In-Memory)
         let appUsers = [];
@@ -9558,14 +9561,17 @@ function renderBurbujasChat(containerId, mensajes) {
         function renderMapPins() {
             if (!mapInstance || !markersGroup) return;
 
-            // Antes de reconstruir los marcadores, recuerda qué popup estaba abierto.
-            // El grupo se refresca por GPS/realtime y clearLayers() destruye el popup.
+            // Solo conserva el popup si estaba abierto al comenzar una actualización automática.
+            // Si el usuario acaba de cerrarlo, no se vuelve a abrir en el siguiente refresco GPS/realtime.
             const popupAbierto = mapInstance._popup;
             if (popupAbierto && popupAbierto._source && popupAbierto._source._alarvixPinId) {
                 mapaPinSeleccionado = popupAbierto._source._alarvixPinId;
+                mapaPopupCierreManual = false;
             }
 
+            mapaRenderizandoPins = true;
             markersGroup.clearLayers();
+            mapaRenderizandoPins = false;
 
             const buscadorEl = document.getElementById('search-mapa-puesto');
             const busqueda = buscadorEl ? normalizarHeaderMalla(buscadorEl.value.trim()) : '';
@@ -9631,8 +9637,16 @@ function renderBurbujasChat(containerId, mensajes) {
 
                 const marker = L.marker([lat, lng], { icon: icon }).bindPopup(popupHtml);
                 marker._alarvixPinId = `cliente:${cl.id}`;
-                marker.on('popupopen', () => { mapaPinSeleccionado = marker._alarvixPinId; });
-                marker.on('popupclose', () => { if (mapaPinSeleccionado === marker._alarvixPinId) mapaPinSeleccionado = null; });
+                marker.on('popupopen', () => {
+                    mapaPinSeleccionado = marker._alarvixPinId;
+                    mapaPopupCierreManual = false;
+                });
+                marker.on('popupclose', () => {
+                    if (!mapaRenderizandoPins && mapaPinSeleccionado === marker._alarvixPinId) {
+                        mapaPinSeleccionado = null;
+                        mapaPopupCierreManual = true;
+                    }
+                });
                 markersGroup.addLayer(marker);
                 visiblePins++;
             });
@@ -9681,13 +9695,21 @@ function renderBurbujasChat(containerId, mensajes) {
 
                 const techMarker = L.marker([lat, lng], { icon: techIcon }).bindPopup(techPopupHtml);
                 techMarker._alarvixPinId = `tecnico:${t.id}`;
-                techMarker.on('popupopen', () => { mapaPinSeleccionado = techMarker._alarvixPinId; });
-                techMarker.on('popupclose', () => { if (mapaPinSeleccionado === techMarker._alarvixPinId) mapaPinSeleccionado = null; });
+                techMarker.on('popupopen', () => {
+                    mapaPinSeleccionado = techMarker._alarvixPinId;
+                    mapaPopupCierreManual = false;
+                });
+                techMarker.on('popupclose', () => {
+                    if (!mapaRenderizandoPins && mapaPinSeleccionado === techMarker._alarvixPinId) {
+                        mapaPinSeleccionado = null;
+                        mapaPopupCierreManual = true;
+                    }
+                });
                 markersGroup.addLayer(techMarker);
             });
 
             // Si el usuario tenía un punto abierto, vuelve a abrir exactamente ese mismo punto.
-            if (mapaPinSeleccionado) {
+            if (mapaPinSeleccionado && !mapaPopupCierreManual) {
                 markersGroup.eachLayer(marker => {
                     if (marker._alarvixPinId === mapaPinSeleccionado) {
                         requestAnimationFrame(() => {
