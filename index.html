@@ -4991,7 +4991,8 @@
                         action += '<button type="button" onclick="abrirOPREstudio(\''+e.id+'\', true); return false;" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg py-2.5 text-[10px] font-black uppercase touch-manipulation">👁️ Ver OPR enviado</button>';
                     }
                     action += '</div>';
-                    card.innerHTML = '<div class="flex justify-between gap-2"><div><p class="text-[9px] text-violet-400 font-black uppercase">Estudio de Seguridad · '+escEstudio(e.id)+'</p><p class="text-xs text-white font-bold mt-1">'+escEstudio(e.cliente)+'</p><p class="text-[9px] text-slate-500 mt-1">'+escEstudio(e.direccion)+'</p></div><span class="text-[9px] font-bold text-violet-300">'+escEstudio(e.estado)+'</span></div><p class="text-[10px] text-slate-400">'+escEstudio(e.necesidad)+'</p>'+action;
+                    const distanciaEstudio = obtenerDistanciaServicioTecnico({ abonadoId: e.clienteId || e.cliente_id }, personalTecnicos.find(t => String(t.id) === String(currentUser.tecnicoId)));
+                    card.innerHTML = '<div class="flex justify-between gap-2"><div><p class="text-[9px] text-violet-400 font-black uppercase">Estudio de Seguridad · '+escEstudio(e.id)+'</p><p class="text-xs text-white font-bold mt-1">'+escEstudio(e.cliente)+'</p><p class="text-[9px] text-slate-500 mt-1">'+escEstudio(e.direccion)+'</p></div><div class="text-right"><span class="text-[9px] font-bold text-violet-300">'+escEstudio(e.estado)+'</span><div class="mt-1">'+formatearDistanciaTecnico(distanciaEstudio)+'</div></div></div><p class="text-[10px] text-slate-400">'+escEstudio(e.necesidad)+'</p>'+action;
                     studiesContainer.appendChild(card);
                 });
             }
