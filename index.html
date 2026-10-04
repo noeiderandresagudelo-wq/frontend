@@ -10786,14 +10786,18 @@ function renderBurbujasChat(containerId, mensajes) {
                 // Tiempos del Flujo
                 const formatoTiempo = (item, fallback) => {
                     const valor = item && (item.fecha || item.timestamp);
-                    return valor ? new Date(valor).toLocaleString('es-CO') : ((item && item.hora) || fallback || "---");
+                    return valor ? formatearFechaHoraDocumental(valor) : ((item && item.hora) || fallback || "---");
                 };
-                const tCreacion = formatoTiempo(s.timeline.find(t => /Creación|Ingreso/i.test(t.msg || '')), s.fechaCreacion);
-                const tRuta = formatoTiempo(s.timeline.find(t => /recorrido|Ruta|Despacho/i.test(t.msg || '')), "---");
-                const tArribo = formatoTiempo(s.timeline.find(t => /Llegó|arribo/i.test(t.msg || '')), "---");
-                
-                const now = new Date();
-                const tCierre = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                const timelineOrdenada = Array.isArray(s.timeline) ? s.timeline : [];
+                const tCreacion = formatoTiempo(timelineOrdenada.find(t => /Creación|Ingreso/i.test(t.msg || '')), s.fechaCreacion);
+                // "Despacho Ruta" corresponde al momento real en que el técnico inició el desplazamiento.
+                const tRuta = formatoTiempo(
+                    timelineOrdenada.find(t => /Despacho Ruta|inici[oó] desplazamiento|ruta al sitio|recorrido/i.test(t.msg || '')),
+                    "---"
+                );
+                const tArribo = formatoTiempo(timelineOrdenada.find(t => /Llegó|arribo/i.test(t.msg || '')), "---");
+                const cierreItem = [...timelineOrdenada].reverse().find(t => /Cierre|cerr[oó]|finaliz/i.test(t.msg || ''));
+                const tCierre = formatoTiempo(cierreItem, "---");
 
                 document.getElementById('opr-time-creacion').innerText = tCreacion;
                 document.getElementById('opr-time-ruta').innerText = tRuta;
