@@ -115,11 +115,20 @@ async function load(){
    ]);
    const errores=[a,b,c,d,e].filter(x=>x.error);
    if(errores.length) console.warn('[Alarvix/Kardex] Consultas con error:',errores.map(x=>x.error));
-   insumos=await migrarCatalogoLegacySiHaceFalta(t,a.error?[]:(a.data||[]));
-   movimientos=b.error?[]:(b.data||[]);
-   stockTecnicos=c.error?[]:(c.data||[]);
-   reabastecimientos=d.error?[]:(d.data||[]);
-   auditoria=e.error?[]:(e.data||[]);
+   const dedupeBy=(rows,keyFn)=>{
+     const seen=new Set(), out=[];
+     for(const row of (Array.isArray(rows)?rows:[])){
+       const key=String(keyFn(row)||'').trim();
+       if(!key || seen.has(key)) continue;
+       seen.add(key); out.push(row);
+     }
+     return out;
+   };
+   insumos=dedupeBy(await migrarCatalogoLegacySiHaceFalta(t,a.error?[]:(a.data||[])),x=>x.id||x.codigo);
+   movimientos=dedupeBy(b.error?[]:(b.data||[]),x=>x.id);
+   stockTecnicos=dedupeBy(c.error?[]:(c.data||[]),x=>[x.tenant_id,x.tecnico_id,x.insumo_id].join('|'));
+   reabastecimientos=dedupeBy(d.error?[]:(d.data||[]),x=>x.id);
+   auditoria=dedupeBy(e.error?[]:(e.data||[]),x=>x.id);
    window.catalogoInventario=insumos.map(x=>({id:x.id,codigo:x.codigo,nombre:x.nombre,categoria:x.categoria,existencia:Number(x.existencia||0),costo:Number(x.costo_unitario||0)}));
    window.inventarioKardex=movimientos.map(x=>({fecha:new Date(x.fecha_hora).toLocaleString('es-CO'),tipo:x.tipo,material:insumos.find(i=>i.id===x.insumo_id)?.codigo,cantidad:x.cantidad,detalle:x.observacion||x.opr_ot_relacionado||''}));
    renderInventario();
