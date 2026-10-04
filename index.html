@@ -7051,67 +7051,6 @@
             try {
                 const servicios = Array.isArray(incidentesServicios) ? incidentesServicios : [];
 
-                const filtroEl = document.getElementById('sla-filtro-ciudad');
-                const ciudades = [...new Set(servicios.map(s => {
-                    const cl = crmClientes.find(c => String(c.id) === String(s?.abonadoId));
-                    return String(cl?.ciudad || s?.ciudad || '').trim().toUpperCase();
-                }).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'es'));
-
-                if (filtroEl) {
-                    const actual = filtroEl.value || 'TODAS';
-                    filtroEl.innerHTML = '<option value="TODAS">Todas las ciudades</option>' +
-                        ciudades.map(c => '<option value="'+escEstudio(c)+'">'+escEstudio(c)+'</option>').join('');
-                    filtroEl.value = ciudades.includes(actual) ? actual : 'TODAS';
-                }
-
-                const ciudadSeleccionada = filtroEl?.value || 'TODAS';
-                const periodoEl = document.getElementById('sla-filtro-periodo');
-                const prioridadFiltro = document.getElementById('sla-filtro-prioridad')?.value || 'TODAS';
-                const estadoFiltro = document.getElementById('sla-filtro-estado')?.value || 'TODOS';
-                const periodo = periodoEl?.value || '30';
-                const limitePeriodo = periodo === 'ALL' ? null : new Date(Date.now() - Number(periodo) * 86400000);
-                const serviciosFiltrados = servicios.filter(s => {
-                    const cl = crmClientes.find(c => String(c.id) === String(s?.abonadoId));
-                    const ciudadServicio = String(cl?.ciudad || s?.ciudad || '').trim().toUpperCase();
-                    if (ciudadSeleccionada !== 'TODAS' && ciudadServicio !== ciudadSeleccionada) return false;
-                    const prioridad = normalizarPrioridad(s?.prioridad);
-                    if (prioridadFiltro !== 'TODAS' && prioridad !== prioridadFiltro) return false;
-                    const finalizado = ['Cerrado','Finalizado'].includes(String(s?.estado || '').trim());
-                    if (estadoFiltro === 'ACTIVOS' && finalizado) return false;
-                    if (estadoFiltro === 'CERRADOS' && !finalizado) return false;
-                    if (limitePeriodo) { const fc = fechaCreacion(s); if (!fc || fc < limitePeriodo) return false; }
-                    return true;
-                });
-
-                const ahora = Date.now();
-                const prioridadObjetivoMin = { ALTA: 30, MEDIA: 240, BAJA: 1440 };
-                const normalizarPrioridad = p => {
-                    const v = String(p || 'MEDIA').trim().toUpperCase();
-                    return prioridadObjetivoMin[v] ? v : 'MEDIA';
-                };
-                const fechaValida = raw => {
-                    if (!raw) return null;
-                    const d = new Date(raw);
-                    return Number.isNaN(d.getTime()) ? null : d;
-                };
-                const obtenerEvento = (s, tipo) => {
-                    const timeline = Array.isArray(s?.timeline) ? s.timeline : [];
-                    const patrones = {
-                        creacion: (msg,t) => /solicitud creada|servicio creado|incidente creado/.test(msg) || t?.tipo === 'creacion',
-                        ruta: (msg,t) => t?.tipo === 'despacho' || /despacho ruta|inici[oó] desplazamiento|en camino/.test(msg),
-                        arribo: (msg,t) => t?.tipo === 'arribo' || /arribo|lleg[oó] al sitio/.test(msg),
-                        cierre: (msg,t) => t?.tipo === 'cierre' || /cambio de estado a \[(cerrado|finalizado)\]|servicio finalizado|servicio cerrado/.test(msg)
-                    };
-                    const pred = patrones[tipo];
-                    const encontrados = timeline.filter(t => pred && pred(String(t?.msg || '').toLowerCase(), t));
-                    if (!encontrados.length) return null;
-                    const t = tipo === 'creacion' ? encontrados[0] : encontrados[encontrados.length - 1];
-                    return fechaValida(t?.fecha);
-                };
-                const fechaCreacion = s => obtenerEvento(s,'creacion') || fechaValida(s?.fechaCreacion || s?.fecha_creacion || s?.created_at);
-                const fechaRuta = s => obtenerEvento(s,'ruta') || fechaValida(s?.fechaDespachoRuta || s?.fecha_despacho_ruta || s?.despachoRuta);
-                const fechaCierre = s => obtenerEvento(s,'cierre') || fechaValida(s?.fechaCierre || s?.fecha_cierre || s?.fechaFinalizacion || s?.informeTecnico?.fechaCierre);
-
                 const datos = serviciosFiltrados.map(s => {
                     const creacion = fechaCreacion(s), ruta = fechaRuta(s), cierre = fechaCierre(s);
                     const prioridad = normalizarPrioridad(s?.prioridad);
@@ -8617,7 +8556,17 @@
                     </div>
                     <div class="text-right">
                         <span class="px-2 py-0.5 rounded text-[9px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">${i.estado}</span>
-                        <p class="text-[9px] text-slate-400 mt-1 font-mono">Quedan 18m de SLA</p>
+                        <p class="text-[9px] text-slate-400 mt-1 font-mono">${(() => {
+                    const prioridad = String(i.prioridad || 'MEDIA').toUpperCase();
+                    const objetivo = ({ALTA:30, MEDIA:240, BAJA:1440})[prioridad] || 240;
+                    const timeline = Array.isArray(i.timeline) ? i.timeline : [];
+                    const creacion = timeline.find(t => t && t.tipo === 'creacion')?.fecha || i.fechaCreacion || i.fecha_creacion || i.created_at;
+                    const base = creacion ? new Date(creacion).getTime() : NaN;
+                    const transcurridos = Number.isFinite(base) ? Math.max(0, (Date.now() - base) / 60000) : null;
+                    if (transcurridos === null) return 'SLA sin fecha de inicio';
+                    const restantes = Math.max(0, Math.round(objetivo - transcurridos));
+                    return restantes > 0 ? 'Quedan ' + restantes + 'm de SLA' : 'SLA vencido';
+                })()}</p>
                     </div>
                 `;
                 container.appendChild(div);
