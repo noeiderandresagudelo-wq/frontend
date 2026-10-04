@@ -156,7 +156,7 @@ window.simUseMaterial=async function(consecutivo){const s=(window.incidentesServ
 
 async function boot(){buildUI();await load();await initInventarioRealtime();}
 const originalLoad=window.cargarDatosNubeAlarvix;
-if(originalLoad){window.cargarDatosNubeAlaravix=async function(){const r=await originalLoad.apply(this,arguments);await load();await initInventarioRealtime();return r;};}
+if(originalLoad){window.cargarDatosNubeAlarvix=async function(){const r=await originalLoad.apply(this,arguments);await load();await initInventarioRealtime();return r;};}
 document.addEventListener('DOMContentLoaded',boot);
 setTimeout(()=>{buildUI();if(appUser())load();},1200);
 setInterval(()=>{if(appUser()&&document.getElementById('view-inventario')&&!document.getElementById('view-inventario').classList.contains('hidden'))load();},30000);
