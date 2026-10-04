@@ -11804,8 +11804,8 @@ function renderBurbujasChat(containerId, mensajes) {
                     <td class="py-4 px-4 font-mono font-bold text-purple-400">${c.codigo}</td>
                     <td class="py-4 px-4 font-mono text-slate-400">${c.servicioId}</td>
                     <td class="py-4 px-4 font-bold text-white">${c.cliente}</td>
-                    <td class="p-3">
-                        <div class="space-y-0.5 min-w-[175px]">
+                    <td class="py-4 px-4">
+                        <div class="space-y-1 min-w-[175px] leading-relaxed text-xs">
                             <span class="text-xs leading-relaxed font-bold text-slate-300 block"><i class="fa-solid fa-user-gear text-blue-400 mr-1"></i>Técnico: ${c.tecnicoNombre || 'No registrado'}</span>
                             <span class="text-xs leading-relaxed text-slate-500 block"><i class="fa-solid fa-calendar-day mr-1"></i>Visita: ${c.fechaVisitaTecnica ? formatearFechaHoraDocumental(c.fechaVisitaTecnica) : 'No registrada'}</span>
                             <span class="text-xs leading-relaxed text-slate-500 block"><i class="fa-solid fa-user-tie mr-1"></i>Cotizó: ${c.cotizadorNombre || 'No registrado'}</span>
