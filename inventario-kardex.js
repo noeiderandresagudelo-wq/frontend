@@ -143,6 +143,9 @@ window.cargarInventarioKardex=load;
 
 function openAddMaterialModal(id){document.getElementById('kdx-insumo-form').reset();document.getElementById('kdx-insumo-id').value='';document.getElementById('kdx-insumo-title').textContent='Crear Insumo';if(id){const m=insumos.find(x=>x.id===id);if(m){document.getElementById('kdx-insumo-id').value=m.id;document.getElementById('kdx-codigo').value=m.codigo;document.getElementById('kdx-nombre').value=m.nombre;document.getElementById('kdx-categoria').value=m.categoria||'';document.getElementById('kdx-costo').value=m.costo_unitario||0;document.getElementById('kdx-min').value=m.stock_min||0;document.getElementById('kdx-max').value=m.stock_max||0;document.getElementById('kdx-proveedor').value=m.proveedor||'';document.getElementById('kdx-ubicacion').value=m.ubicacion||'';document.getElementById('kdx-insumo-title').textContent='Editar ficha · '+m.codigo;}}document.getElementById('modal-kardex-insumo').classList.remove('hidden');document.getElementById('modal-kardex-insumo').classList.add('flex');}
 window.openAddMaterialModal=openAddMaterialModal;
+// Compatibilidad con botones heredados del módulo de Inventario en index.html.
+// El flujo oficial vive en openMovimientoInventarioModal().
+window.openInventarioMovimientoModal=openMovimientoInventarioModal;
 window.openEditMaterialModal=openAddMaterialModal;
 window.closeAddMaterialModal=()=>{document.getElementById('modal-kardex-insumo')?.classList.add('hidden');document.getElementById('modal-kardex-insumo')?.classList.remove('flex');};
 
