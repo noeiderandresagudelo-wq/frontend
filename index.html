@@ -14462,6 +14462,10 @@ function renderBurbujasChat(containerId, mensajes) {
                     const contentType = String(response.headers.get('content-type') || '').toLowerCase();
                     if (!response.ok || !contentType.includes('javascript')) {
                         console.info('[Alarvix PWA] Service Worker omitido: /sw.js no está disponible como JavaScript en este deployment.');
+                        // Retirar cualquier Service Worker antiguo que haya quedado instalado
+                        // en un preview protegido por Vercel SSO.
+                        const registrations = await navigator.serviceWorker.getRegistrations();
+                        await Promise.all(registrations.map(reg => reg.unregister()));
                         return;
                     }
 
