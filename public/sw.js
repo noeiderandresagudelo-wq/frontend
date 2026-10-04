@@ -41,10 +41,15 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
       return fetch(event.request).then((response) => {
-        if (response.ok) {
+        const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+
+        // Nunca cachear una respuesta HTML cuando esperábamos un recurso de la app.
+        // Esto evita guardar páginas de SSO/login de Vercel como si fueran assets.
+        if (response.ok && !contentType.includes('text/html')) {
           const copy = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
         }
+
         return response;
       });
     })
