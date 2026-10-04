@@ -11118,9 +11118,11 @@ function renderBurbujasChat(containerId, mensajes) {
             const fechaTexto = fecha && !isNaN(fecha.getTime()) ? fecha.toLocaleDateString('es-CO') : 'No registrada';
             const horaTexto = fecha && !isNaN(fecha.getTime()) ? fecha.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}) : 'No registrada';
             const diagnostico = info.descripcion || s.evidenciaDano || s.descripcion || 'El técnico no dejó una descripción técnica registrada.';
+            const baseCotizacion = info.requerimientosCotizacion || 'El técnico no dejó requerimientos específicos para cotizar. El Cotizador debe definir materiales y mano de obra con base en el diagnóstico.',
             const requerimientos = [
                 info.hallazgos ? 'Hallazgos: ' + info.hallazgos : '',
                 info.requerimientos ? 'Requerimientos: ' + info.requerimientos : '',
+                info.requerimientosCotizacion ? 'Base para cotización: ' + info.requerimientosCotizacion : '',
                 info.observaciones ? 'Observaciones: ' + info.observaciones : '',
                 Array.isArray(s.insumosUsados) && s.insumosUsados.length ? 'Insumos registrados: ' + s.insumosUsados.map(x => (x.codigo || '') + ' x' + (x.cantidad || 0)).join(', ') : ''
             ].filter(Boolean).join('\n');
@@ -11131,6 +11133,8 @@ function renderBurbujasChat(containerId, mensajes) {
                 document.getElementById('cot-tecnico-nombre').innerText = tecnicoNombre;
                 document.getElementById('cot-tecnico-servicio').innerText = s.consecutivo || consecutivo;
                 document.getElementById('cot-diagnostico-texto').innerText = diagnostico;
+                const baseCotEl = document.getElementById('cot-contexto-tecnico-texto');
+                if (baseCotEl && !requerimientos) baseCotEl.innerText = 'Base para cotización: ' + baseCotizacion;
                 document.getElementById('cot-diagnostico-meta').innerText = (info.tipoAtencion || 'Servicio técnico') + ' · ' + (info.requiereCotizacion ? 'Marcado para cotización' : 'Contexto técnico') + ' · Actualizado ' + fechaTexto + ' ' + horaTexto;
                 const extra = document.getElementById('cot-contexto-tecnico-extra');
                 const extraText = document.getElementById('cot-contexto-tecnico-texto');
