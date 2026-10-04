@@ -14448,16 +14448,28 @@ function renderBurbujasChat(containerId, mensajes) {
                 return null;
             };
 
-            window.addEventListener('load', () => {
+            window.addEventListener('load', async () => {
                 if (!('serviceWorker' in navigator)) return;
 
-                navigator.serviceWorker.register('/sw.js', { scope: '/' })
-                    .then(reg => {
-                        console.log('[Alarvix PWA] Service Worker:', reg.scope);
-                    })
-                    .catch(err => {
-                        console.warn('[Alarvix PWA] Service Worker no registrado:', err);
+                // En previews protegidos por Vercel SSO, /sw.js puede devolver HTML
+                // en lugar de JavaScript. No intentamos registrarlo en ese caso.
+                try {
+                    const response = await fetch('/sw.js', {
+                        method: 'GET',
+                        cache: 'no-store',
+                        credentials: 'same-origin'
                     });
+                    const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+                    if (!response.ok || !contentType.includes('javascript')) {
+                        console.info('[Alarvix PWA] Service Worker omitido: /sw.js no está disponible como JavaScript en este deployment.');
+                        return;
+                    }
+
+                    const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+                    console.log('[Alarvix PWA] Service Worker:', reg.scope);
+                } catch (err) {
+                    console.info('[Alarvix PWA] Service Worker no disponible en este deployment:', err?.message || err);
+                }
             });
         })();
     </script>
