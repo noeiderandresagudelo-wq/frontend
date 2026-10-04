@@ -1420,7 +1420,7 @@
                             <div class="overflow-x-auto custom-scrollbar">
                                 <table class="w-full text-left border-collapse min-w-[700px]">
                                     <thead>
-                                        <tr class="bg-slate-950/50 border-b border-slate-800 text-[10px] text-slate-400 uppercase tracking-wider font-bold">
+                                        <tr class="bg-slate-950/50 border-b border-slate-800/60 text-[10px] text-slate-400 uppercase tracking-wider font-bold">
                                             <th class="p-3">Nombre del Colaborador</th>
                                             <th class="p-3">Usuario Acceso</th>
                                             <th class="p-3">Rol / Permisos</th>
@@ -1466,7 +1466,7 @@
                                     </div>
                                 </div>
 
-                                <div class="grid grid-cols-2 gap-2">
+                                <div class="grid grid-cols-2 gap-4 pt-5 border-t border-slate-800/60">
                                     <div>
                                         <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Rol Operativo</label>
                                         <select id="manage-rol" onchange="toggleVehicleFields()" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none">
@@ -2468,14 +2468,32 @@
 
             <!-- VISTA 6: COTIZACIONES & MANO DE OBRA -->
             <section id="view-cotizaciones" class="space-y-6 hidden">
-                <div class="grid grid-cols-12 gap-6 p-6">
+                <div class="bg-slate-900 border border-slate-800 border-b border-slate-800 px-6 py-4 rounded-xl flex items-center">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400">
+                            <i class="fa-solid fa-file-invoice-dollar"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-sm font-extrabold text-white uppercase tracking-wider">Cotizador Integral</h2>
+                            <p class="text-[10px] text-slate-400 mt-0.5">Presupuestos comerciales con trazabilidad técnica.</p>
+                        </div>
+                    </div>
+                    <div class="ml-auto flex items-center gap-3 text-[10px] text-slate-400">
+                        <span class="hidden sm:inline">Materiales · Mano de obra · IVA</span>
+                        <span class="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 font-bold uppercase">Operativo</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-12 gap-6 p-6 pt-0">
                     <div class="col-span-12 lg:col-span-5">
 
                     <!-- Formulario de Creación de Cotización -->
                     <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col justify-between">
-                        <div class="space-y-4">
-                            <div class="-mx-6 -mt-6 mb-6 px-6 py-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
-                                <div class="flex items-center gap-3">
+                        <div class="space-y-6">
+                            <div class="pb-5 border-b border-slate-800/60 flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400">
+                                    <i class="fa-solid fa-file-circle-plus"></i>
+                                </div>
                                     <div class="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400"><i class="fa-solid fa-file-invoice-dollar"></i></div>
                                     <div>
                                         <h3 class="text-sm font-extrabold text-white uppercase tracking-wider">Generador de Presupuestos Comerciales</h3>
@@ -2484,7 +2502,7 @@
                                 </div>
                             </div>
 
-                            <div class="space-y-5">
+                            <div class="space-y-6">
                                 <div>
                                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Buscar Puesto (Cliente, Puesto o Abonado)</label>
                                     <input type="text" id="cot-search-servicio" oninput="filterCotizacionServicios(this.value)" placeholder="Ej: Baumtic, Santa Selene, ST-2026-000003..." class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500 mb-2">
@@ -2495,7 +2513,7 @@
                                     </select>
                                 </div>
 
-                                <div id="cot-diagnostico-tecnico" class="hidden p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl space-y-2.5">
+                                <div id="cot-diagnostico-tecnico" class="hidden pt-5 border-t border-slate-800/60 space-y-3">
                                     <div class="flex items-center justify-between gap-2"><span class="text-[8px] font-black text-blue-400 uppercase"><i class="fa-solid fa-user-gear"></i> Ficha técnica de origen</span><span id="cot-origen-badge" class="text-[8px] px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 font-bold uppercase">OPR / Servicio</span></div>
                                     <div class="grid grid-cols-2 gap-2">
                                         <div class="bg-slate-950/70 rounded-lg p-2 border border-slate-800"><span class="text-[8px] text-slate-500 uppercase block">Fecha de visita</span><strong id="cot-tecnico-fecha" class="text-[10px] text-white block mt-0.5">--</strong></div>
@@ -2527,7 +2545,7 @@
                                     </div>
                                 </div>
 
-                                <div class="border-t border-slate-800/80 pt-3">
+                                <div class="border-t border-slate-800/60 pt-5">
                                     <span class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Añadir Materiales Utilizados</span>
                                     <div class="flex gap-2 pt-1">
                                         <select id="cot-add-material" class="flex-grow h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none">
@@ -2576,9 +2594,13 @@
                     </div>
                     <div class="col-span-12 lg:col-span-7 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col justify-between">
                         <div>
-                            <div class="px-6 py-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                            <div class="px-6 py-4 bg-slate-900 border-b border-slate-800/60 flex items-center justify-between">
+                                <div class="flex items-center gap-3">
 
-                                <h3 class="text-xs font-extrabold text-white uppercase tracking-wider">Historial de Cotizaciones Emitidas</h3>
+                                <div>
+                                    <h3 class="text-xs font-extrabold text-white uppercase tracking-wider">Historial de Cotizaciones Emitidas</h3>
+                                    <p class="text-[10px] text-slate-500 mt-1">Trazabilidad técnica, responsable y estado comercial.</p>
+                                </div>
                             </div>
                             <div class="overflow-x-auto custom-scrollbar">
                                 <table class="w-full text-left border-collapse min-w-[600px]">
@@ -11116,7 +11138,7 @@ function renderBurbujasChat(containerId, mensajes) {
                 const canEditStock = currentUser && obtenerPermisosRol(currentUser) && obtenerPermisosRol(currentUser).canEdit;
 
                 const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-900/30 border-b border-slate-850/50 transition";
+                tr.className = "hover:bg-slate-800/40 border-b border-slate-800/40 transition";
                 tr.innerHTML = `
                     <td class="p-3">
                         <div class="space-y-0.5">
@@ -11810,7 +11832,7 @@ function renderBurbujasChat(containerId, mensajes) {
                     <td class="py-4 px-4 font-mono text-slate-400">${c.servicioId}</td>
                     <td class="py-4 px-4 font-bold text-white">${c.cliente}</td>
                     <td class="py-4 px-4">
-                        <div class="space-y-1 min-w-[175px] leading-relaxed text-xs">
+                        <div class="flex flex-col gap-1 min-w-[175px] text-xs leading-relaxed">
                             <span class="text-xs leading-relaxed font-bold text-slate-300 block"><i class="fa-solid fa-user-gear text-blue-400 mr-1"></i>Técnico: ${c.tecnicoNombre || 'No registrado'}</span>
                             <span class="text-xs leading-relaxed text-slate-500 block"><i class="fa-solid fa-calendar-day mr-1"></i>Visita: ${c.fechaVisitaTecnica ? formatearFechaHoraDocumental(c.fechaVisitaTecnica) : 'No registrada'}</span>
                             <span class="text-xs leading-relaxed text-slate-500 block"><i class="fa-solid fa-user-tie mr-1"></i>Cotizó: ${c.cotizadorNombre || 'No registrado'}</span>
