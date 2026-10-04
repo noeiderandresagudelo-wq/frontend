@@ -5568,7 +5568,6 @@
         }
 
         async function updateMobileTaskState(consecutivo, newState) {
-            // La ubicación GPS es obligatoria para operar en campo.
             if (!verificarGPSObligatorio()) return;
 
             const servicio = incidentesServicios.find(i => i.consecutivo === consecutivo);
@@ -5577,8 +5576,6 @@
                 return;
             }
 
-            // La llegada al sitio se valida físicamente contra las coordenadas
-            // registradas del cliente. Pulsar el botón por sí solo NO cambia el estado.
             let evidenciaArribo = null;
             if (newState === "Llegó al sitio") {
                 try {
@@ -5587,6 +5584,7 @@
 
                     if (!validacion.valido) {
                         showToast("Llegada no validada", validacion.mensaje, true);
+                        refreshMobileView();
                         return;
                     }
 
@@ -5594,6 +5592,7 @@
                 } catch (error) {
                     console.error("[Alarvix GPS] Error validando llegada del servicio:", error);
                     showToast("No se pudo validar la llegada", error?.message || "No fue posible obtener tu ubicación actual.", true);
+                    refreshMobileView();
                     return;
                 }
             }
@@ -5607,11 +5606,29 @@
                 evidenciaArribo
             );
 
+            // Primero actualizamos la pantalla con el nuevo estado.
+            refreshMobileView();
+
+            // Después esperamos a que el mismo cambio quede confirmado en Supabase.
+            let persistido = true;
+            try {
+                persistido = await syncServicioActual(consecutivo);
+            } catch (error) {
+                persistido = false;
+                console.error("[Alarvix/Supabase] Error persistiendo estado del servicio:", error);
+            }
+
+            if (!persistido) {
+                showToast("Cambio no sincronizado", "El estado cambió en el teléfono, pero no pudo confirmarse en Supabase. Revisa la conexión.", true);
+                refreshMobileView();
+                return;
+            }
+
             showToast(
-                newState === "Llegó al sitio" ? "Llegada confirmada" : "Mobile Sync",
+                newState === "Llegó al sitio" ? "Llegada confirmada" : "Estado sincronizado",
                 newState === "Llegó al sitio"
                     ? "El GPS confirmó que estás dentro del radio permitido del cliente."
-                    : `Estado de ${consecutivo} sincronizado en la central.`
+                    : \`Estado de \${consecutivo} sincronizado en la central.\`
             );
 
             refreshMobileView();
@@ -5620,7 +5637,6 @@
                 showOPRReport(consecutivo);
             }
         }
-
         function obtenerCoordenadasDestinoServicioTecnico(servicio) {
             if (!servicio) return null;
             const cliente = crmClientes.find(c => String(c.id) === String(servicio.abonadoId));
@@ -6432,6 +6448,24 @@
 
         function obtenerGPSActualTecnico() {
             return new Promise(function(resolve, reject) {
+                // Reutilizar una fijación GPS en vivo reciente evita que Android
+                // quede esperando una segunda lectura al confirmar el arribo.
+                const tecnico = personalTecnicos.find(x => String(x.id) === String(currentUser?.tecnicoId));
+                const latVivo = Number(tecnico?.gpsLat);
+                const lngVivo = Number(tecnico?.gpsLng);
+                const edadVivo = gpsLastFixTime ? (Date.now() - gpsLastFixTime) : Infinity;
+
+                if (Number.isFinite(latVivo) && Number.isFinite(lngVivo) && edadVivo <= 60000) {
+                    resolve({
+                        lat: latVivo,
+                        lng: lngVivo,
+                        accuracy: Number.isFinite(Number(tecnico?.gpsAccuracy)) ? Number(tecnico.gpsAccuracy) : null,
+                        fecha: new Date().toISOString(),
+                        fuente: "gps-vivo"
+                    });
+                    return;
+                }
+
                 if (!navigator.geolocation || typeof navigator.geolocation.getCurrentPosition !== 'function') {
                     reject(new Error('La geolocalización no está disponible en este dispositivo.'));
                     return;
@@ -6450,7 +6484,8 @@
                             lat: lat,
                             lng: lng,
                             accuracy: Number.isFinite(accuracy) ? accuracy : null,
-                            fecha: new Date().toISOString()
+                            fecha: new Date().toISOString(),
+                            fuente: "lectura-directa"
                         });
                     },
                     function(error) {
@@ -6464,7 +6499,6 @@
                 );
             });
         }
-
         async function validarArriboEstudioTecnico(e) {
             const destino = obtenerCoordenadasDestinoEstudio(e);
             if (!destino) {
