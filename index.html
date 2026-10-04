@@ -12772,6 +12772,40 @@ function renderBurbujasChat(containerId, mensajes) {
             renderClientesCRM();
         }
 
+        function selectClienteCRM(id) {
+            const cl = crmClientes.find(c => c.id === id);
+            if (!cl) return;
+            const accountName = String(cl.clienteNombre || 'Sin cliente definido').trim() || 'Sin cliente definido';
+            const puestos = crmClientes.filter(c => String(c.clienteNombre || 'Sin cliente definido').trim() === accountName);
+            const ids = new Set(puestos.map(p => String(p.id)));
+            const servicios = incidentesServicios.filter(x => ids.has(String(x.abonadoId)));
+            const cotizaciones = cotizacionesEmitidas.filter(x => String(x.cliente || x.clienteNombre || '').trim() === accountName || ids.has(String(x.abonadoId || x.servicio_id || '')));
+            const c = document.getElementById('ficha-cliente-container');
+            if (!c) return;
+
+            c.innerHTML = '<div class="border-b border-slate-800 pb-4"><span class="text-[9px] font-black uppercase text-blue-400">Cuenta empresarial</span><h3 class="text-lg font-extrabold text-white mt-1">' + escEstudio(accountName) + '</h3><p class="text-[10px] text-slate-500 mt-1">Vista 360° · ' + puestos.length + ' puesto(s)</p></div>' +
+                '<section class="bg-slate-950 p-4 rounded-xl border border-slate-800"><h4 class="text-[10px] font-black text-slate-300 uppercase mb-3">1. Datos de la Cuenta</h4><div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-[10px]">' +
+                '<div><span class="text-slate-500 block">Razón social / Cliente</span><strong class="text-white">' + escEstudio(accountName) + '</strong></div>' +
+                '<div><span class="text-slate-500 block">Ciudad</span><strong class="text-slate-200">' + escEstudio(cl.ciudad || 'S/D') + '</strong></div>' +
+                '<div><span class="text-slate-500 block">Puestos activos</span><strong class="text-blue-400">' + puestos.filter(p => !p.incomunicada).length + '</strong></div>' +
+                '<div><span class="text-slate-500 block">Estado</span><strong class="' + (puestos.every(p => !p.incomunicada) ? 'text-emerald-400' : 'text-rose-400') + '">' + (puestos.every(p => !p.incomunicada) ? 'OPERATIVA' : 'REVISAR') + '</strong></div></div></section>' +
+                '<section class="bg-slate-950 p-4 rounded-xl border border-slate-800"><h4 class="text-[10px] font-black text-slate-300 uppercase mb-3">2. Puestos / Abonados asignados</h4><div id="crm-puestos-detalle" class="grid grid-cols-1 md:grid-cols-2 gap-2"></div></section>' +
+                '<section class="bg-slate-950 p-4 rounded-xl border border-slate-800"><h4 class="text-[10px] font-black text-slate-300 uppercase mb-3">3. Historial Consolidado</h4><div class="space-y-2 max-h-[280px] overflow-y-auto">' +
+                (servicios.length ? servicios.map(x => '<div class="p-2.5 bg-slate-900 border border-slate-800 rounded-lg flex justify-between gap-2"><span class="text-[9px] font-mono text-blue-400">' + escEstudio(x.consecutivo) + '</span><span class="text-[9px] text-slate-400">' + escEstudio(x.tipo || 'Servicio técnico') + '</span><span class="text-[8px] text-slate-500">' + escEstudio(x.estado) + '</span></div>').join('') : '<p class="text-[9px] text-slate-600 italic">Sin servicios técnicos registrados.</p>') +
+                (cotizaciones.length ? cotizaciones.map(x => '<div class="p-2.5 bg-slate-900 border border-slate-800 rounded-lg flex justify-between gap-2"><span class="text-[9px] font-mono text-amber-400">' + escEstudio(x.codigo || x.id || 'Cotización') + '</span><span class="text-[9px] text-slate-400">' + escEstudio(x.estado || '') + '</span><b class="text-[9px] text-white">' + (x.total != null ? '$' + Number(x.total).toLocaleString('es-CO') : '') + '</b></div>').join('') : '<p class="text-[9px] text-slate-600 italic">Sin cotizaciones asociadas.</p>') +
+                '</div></section>';
+
+            const detail = document.getElementById('crm-puestos-detalle');
+            puestos.forEach(p => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'text-left p-3 rounded-lg border border-slate-800 bg-slate-900 hover:border-blue-500/30';
+                b.innerHTML = '<div class="flex justify-between gap-2"><b class="text-[10px] text-white">' + escEstudio(p.puesto || p.nombre) + '</b><span class="text-[8px] font-mono text-blue-400">' + escEstudio(p.id) + '</span></div><p class="text-[9px] text-slate-500 mt-1">' + escEstudio(p.ciudad) + ' · ANS ' + escEstudio(p.ansTime || 'S/D') + '</p><p class="text-[9px] ' + (p.incomunicada ? 'text-rose-400' : 'text-emerald-400') + '">' + (p.incomunicada ? '● Sin comunicación' : '● Comunicación activa') + ' · Supervisor: ' + escEstudio(p.supervisorReaccion || 'Sin asignar') + '</p>';
+                b.onclick = () => selectClienteCRM(p.id);
+                detail.appendChild(b);
+            });
+        }
+
         function renderConfigCentrales() {
             const container = document.getElementById('config-centrales-list');
             if (!container) return;
