@@ -5694,6 +5694,16 @@
                 }
             }
 
+            if (evidenciaArribo) {
+                servicio.arriboValidadoGPS = true;
+                servicio.arriboGpsLatitud = evidenciaArribo.gps.lat;
+                servicio.arriboGpsLongitud = evidenciaArribo.gps.lng;
+                servicio.arriboGpsPrecision = evidenciaArribo.gps.accuracy ?? null;
+                servicio.arriboDistanciaMetros = Math.round(evidenciaArribo.distanciaMetros);
+                servicio.arriboRadioPermitidoMetros = Math.round(evidenciaArribo.radioPermitido);
+                servicio.fechaArriboGPS = evidenciaArribo.gps.fecha || new Date().toISOString();
+            }
+
             updateServiceState(
                 consecutivo,
                 newState,
@@ -6748,6 +6758,12 @@
 
                 const ahora = validacion.gps.fecha;
                 e.fechaLlegada = ahora;
+                e.arriboValidadoGPS = true;
+                e.arriboGpsLatitud = validacion.gps.lat;
+                e.arriboGpsLongitud = validacion.gps.lng;
+                e.arriboGpsPrecision = validacion.gps.accuracy ?? null;
+                e.arriboDistanciaMetros = Math.round(validacion.distanciaMetros);
+                e.arriboRadioPermitidoMetros = Math.round(validacion.radioPermitido);
                 e.timeline = Array.isArray(e.timeline) ? e.timeline : [];
                 e.timeline.push({
                     fecha: ahora,
