@@ -3214,6 +3214,7 @@
                     <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Comunicador</label><input type="text" id="cliente-form-comunicador" class="w-full h-10 bg-slate-950 border border-slate-800 rounded-lg px-3 text-xs text-white"></div>
                 </div>
                 <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Zonas configuradas</label><input type="text" id="cliente-form-zonas" class="w-full h-10 bg-slate-950 border border-slate-800 rounded-lg px-3 text-xs text-white" placeholder="Ej. 1-16 / perimetral / acceso"></div>
+                <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Contactos de emergencia / reacción</label><textarea id="cliente-form-contactos" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white" placeholder="Nombre · cargo · teléfono (uno por línea)"></textarea></div>
                 <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Datos de facturación / observaciones</label><textarea id="cliente-form-facturacion" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white" placeholder="Razón social, NIT, correo de facturación, condiciones..."></textarea>
 
                 <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
@@ -12841,7 +12842,7 @@ function renderBurbujasChat(containerId, mensajes) {
             set('cliente-form-supervisor',cl.supervisorReaccion); set('cliente-form-telefono',cl.telefono);
             set('cliente-form-telefono-supervisor',cl.telefonoSupervisor); set('cliente-form-modelo-panel',cl.modeloPanel);
             set('cliente-form-comunicador',cl.tipoComunicador); set('cliente-form-zonas',cl.zonasConfiguradas);
-            set('cliente-form-facturacion',cl.datosFacturacion?.observaciones||'');
+            set('cliente-form-facturacion',cl.datosFacturacion?.observaciones||''); set('cliente-form-contactos',(cl.contactosEmergencia||[]).map(x=>[x.nombre,x.cargo,x.telefono].filter(Boolean).join(' · ')).join('\n'));
             const z=document.getElementById('cliente-form-zona'); if(z){z.innerHTML='<option value="">Sin zona</option>'+activeZones.map(x=>'<option value="'+escEstudio(x.id)+'">'+escEstudio(x.nombre||x.id)+'</option>').join('');z.value=cl.zonaId||'';}
             const inc=document.getElementById('cliente-form-incomunicada'); if(inc)inc.checked=!!cl.incomunicada;
             form.classList.remove('hidden');
@@ -12867,6 +12868,7 @@ function renderBurbujasChat(containerId, mensajes) {
             const get=id=>String(document.getElementById(id)?.value||'').trim();
             const nombreCliente=get('cliente-form-cliente-nombre')||'Cliente sin razón social';
             const datosFacturacion={observaciones:get('cliente-form-facturacion')};
+            const contactosEmergencia=get('cliente-form-contactos').split(/\n+/).map(line=>{const p=line.split('·').map(x=>x.trim()).filter(Boolean);return {nombre:p[0]||'',cargo:p[1]||'',telefono:p[2]||''};}).filter(x=>x.nombre||x.telefono);
             const values={
                 ciudad:get('cliente-form-ciudad'), puesto:get('cliente-form-puesto'), clienteNombre:nombreCliente,
                 direccion:get('cliente-form-direccion'), departamento:get('cliente-form-departamento'), ubicacion:get('cliente-form-ubicacion'),
@@ -12874,7 +12876,7 @@ function renderBurbujasChat(containerId, mensajes) {
                 telefonoSupervisor:get('cliente-form-telefono-supervisor'), modeloPanel:get('cliente-form-modelo-panel'),
                 tipoComunicador:get('cliente-form-comunicador'), zonasConfiguradas:get('cliente-form-zonas'),
                 zonaId:get('cliente-form-zona'), incomunicada:!!document.getElementById('cliente-form-incomunicada')?.checked,
-                datosFacturacion
+                datosFacturacion, contactosEmergencia
             };
             let afectados=[];
             if(modo==='cliente' && original){
@@ -12976,10 +12978,13 @@ function renderBurbujasChat(containerId, mensajes) {
                         '<h3 class="text-xl font-extrabold text-white mt-1 truncate">' + escEstudio(nombrePuesto) + '</h3>' +
                         '<p class="text-[10px] text-slate-400 mt-1">' + escEstudio(clienteNombre) + ' · ' + escEstudio(cl.ciudad || 'Municipio no registrado') + '</p>' +
                     '</div>' +
-                    '<div class="shrink-0 text-right">' +
-                        '<span class="text-[8px] font-black uppercase text-slate-500 block">Abonado / GPRS</span>' +
-                        '<strong class="font-mono text-sm text-blue-400">' + escEstudio(cl.id) + '</strong>' +
-                        '<span class="inline-flex mt-1 px-2 py-0.5 rounded-full text-[8px] font-black ' + (cl.incomunicada ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20') + '">' + estadoServicio + '</span>' +
+                    '<div class="shrink-0 flex items-start gap-2">' +
+                        '<div class="text-right">' +
+                            '<span class="text-[8px] font-black uppercase text-slate-500 block">Abonado / GPRS</span>' +
+                            '<strong class="font-mono text-sm text-blue-400">' + escEstudio(cl.id) + '</strong>' +
+                            '<span class="inline-flex mt-1 px-2 py-0.5 rounded-full text-[8px] font-black ' + (cl.incomunicada ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20') + '">' + estadoServicio + '</span>' +
+                        '</div>' +
+                        '<button type="button" onclick="openEditarClienteCRM(\''+escEstudio(cl.id)+'\',\'puesto\')" class="permission-edit-only w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-600 hover:text-white transition" title="Editar puesto"><i class="fa-solid fa-pen text-[9px]"></i></button>' +
                     '</div>' +
                 '</div>' +
 
