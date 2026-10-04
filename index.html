@@ -2583,7 +2583,7 @@
                                             <th class="py-4 px-4">Servicio Técnico</th>
                                             <th class="py-4 px-4">Cliente</th>
                                             <th class="py-4 px-4">Trazabilidad</th>
-                                            <th class="p-3 text-center">Estado</th>
+                                            <th class="py-4 px-4 text-center">Estado</th>
                                             <th class="py-4 px-4 text-right">Total Presupuestado</th>
                                             <th class="py-4 px-4 text-center">Instalación</th>
                                             <th class="py-4 px-4 text-center font-heading">Acciones</th>
@@ -3321,19 +3321,19 @@
                     <span class="text-[8px] font-black text-slate-500 uppercase tracking-wider block">3. Auditoría de Tiempos y Compromiso SLA</span>
                     <div class="grid grid-cols-4 gap-2 text-center">
                         <div class="bg-slate-900 p-1.5 rounded border border-slate-800">
-                            <span class="text-[8px] text-slate-500 block font-bold uppercase">Creación</span>
+                            <span class="text-xs leading-relaxed text-slate-500 block font-bold uppercase">Creación</span>
                             <strong id="opr-time-creacion" class="text-[10px] text-slate-300 font-mono">--:--</strong>
                         </div>
                         <div class="bg-slate-900 p-1.5 rounded border border-slate-800">
-                            <span class="text-[8px] text-slate-500 block font-bold uppercase">Ruta</span>
+                            <span class="text-xs leading-relaxed text-slate-500 block font-bold uppercase">Ruta</span>
                             <strong id="opr-time-ruta" class="text-[10px] text-slate-300 font-mono">--:--</strong>
                         </div>
                         <div class="bg-slate-900 p-1.5 rounded border border-slate-800">
-                            <span class="text-[8px] text-slate-500 block font-bold uppercase">Arribo</span>
+                            <span class="text-xs leading-relaxed text-slate-500 block font-bold uppercase">Arribo</span>
                             <strong id="opr-time-arribo" class="text-[10px] text-slate-300 font-mono">--:--</strong>
                         </div>
                         <div class="bg-slate-900 p-1.5 rounded border border-slate-800">
-                            <span class="text-[8px] text-slate-500 block font-bold uppercase">Cierre</span>
+                            <span class="text-xs leading-relaxed text-slate-500 block font-bold uppercase">Cierre</span>
                             <strong id="opr-time-cierre" class="text-[10px] text-slate-300 font-mono">--:--</strong>
                         </div>
                     </div>
@@ -4059,8 +4059,8 @@
                     <td class="p-3">${p.sector}</td>
                     <td class="p-3 text-center font-mono">${p.ultimaVisita}</td>
                     <td class="p-3 text-center font-mono">${vencimientoVisita}</td>
-                    <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[9px] font-bold ${visitaVencida ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}">${estadoVisita}</span></td>
-                    <td class="p-3 text-center"><button onclick="registrarVisitaMensual('${p.id}')" class="text-[10px] text-teal-400 hover:text-white font-bold">Registrar</button></td>
+                    <td class="py-4 px-4 text-center"><span class="px-2 py-0.5 rounded text-[9px] font-bold ${visitaVencida ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}">${estadoVisita}</span></td>
+                    <td class="py-4 px-4 text-center"><button onclick="registrarVisitaMensual('${p.id}')" class="text-[10px] text-teal-400 hover:text-white font-bold">Registrar</button></td>
                 `;
                 bodyVisitas.appendChild(trVisita);
 
@@ -4074,9 +4074,9 @@
                     <td class="p-3">${p.coordinador}</td>
                     <td class="p-3 text-center font-mono">${p.ultimoEstudio}</td>
                     <td class="p-3 text-center font-mono">${vencimientoEstudio}</td>
-                    <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[9px] font-bold ${p.dotacion === 'Completa' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">${p.dotacion}</span></td>
-                    <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[9px] font-bold ${p.equipos === 'OK' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">${p.equipos}</span></td>
-                    <td class="p-3 text-center"><button onclick="registrarEstudioAnual('${p.id}')" class="text-[10px] text-blue-400 hover:text-white font-bold">Registrar</button></td>
+                    <td class="py-4 px-4 text-center"><span class="px-2 py-0.5 rounded text-[9px] font-bold ${p.dotacion === 'Completa' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">${p.dotacion}</span></td>
+                    <td class="py-4 px-4 text-center"><span class="px-2 py-0.5 rounded text-[9px] font-bold ${p.equipos === 'OK' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">${p.equipos}</span></td>
+                    <td class="py-4 px-4 text-center"><button onclick="registrarEstudioAnual('${p.id}')" class="text-[10px] text-blue-400 hover:text-white font-bold">Registrar</button></td>
                 `;
                 bodyEstudios.appendChild(trEstudio);
             });
@@ -7328,8 +7328,8 @@
                         <td class="p-3 text-right font-mono text-white">$${f.total.toLocaleString()}</td>
                         <td class="p-3 text-right font-mono text-emerald-400">$${f.pagado.toLocaleString()}</td>
                         <td class="p-3 text-right font-mono text-amber-300">$${saldo.toLocaleString()}</td>
-                        <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[9px] font-black ${estadoClass}">${f.estado}</span></td>
-                        <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[9px] font-black ${riesgoClass}">${f.riesgo}</span></td>
+                        <td class="py-4 px-4 text-center"><span class="px-2 py-0.5 rounded text-[9px] font-black ${estadoClass}">${f.estado}</span></td>
+                        <td class="py-4 px-4 text-center"><span class="px-2 py-0.5 rounded text-[9px] font-black ${riesgoClass}">${f.riesgo}</span></td>
                     </tr>
                 `;
             }).join('');
@@ -7374,9 +7374,9 @@
                         <td class="p-3 font-mono font-bold text-blue-400">${item.codigo}</td>
                         <td class="p-3 text-white font-bold">${item.area}</td>
                         <td class="p-3 text-slate-300 font-medium">${item.empresa}</td>
-                        <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[9px] font-black ${estadoClass}">${item.estado}</span></td>
-                        <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[9px] font-black ${criticidadClass}">${item.criticidad}</span></td>
-                        <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[9px] font-black bg-slate-800 text-slate-200 border border-slate-700">${item.avance}%</span></td>
+                        <td class="py-4 px-4 text-center"><span class="px-2 py-0.5 rounded text-[9px] font-black ${estadoClass}">${item.estado}</span></td>
+                        <td class="py-4 px-4 text-center"><span class="px-2 py-0.5 rounded text-[9px] font-black ${criticidadClass}">${item.criticidad}</span></td>
+                        <td class="py-4 px-4 text-center"><span class="px-2 py-0.5 rounded text-[9px] font-black bg-slate-800 text-slate-200 border border-slate-700">${item.avance}%</span></td>
                         <td class="p-3 text-center text-slate-400 text-[9px]">${item.ultima}</td>
                     </tr>
                 `;
@@ -7428,8 +7428,8 @@
                         </td>
                         <td class="p-3 text-slate-300 font-medium">${emp.cargo}</td>
                         <td class="p-3 text-slate-300 font-medium">${emp.turno}</td>
-                        <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[9px] font-black bg-blue-500/10 text-blue-300 border border-blue-500/20">${emp.asistencia}%</span></td>
-                        <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[9px] font-black ${estadoClass}">${emp.estado}</span></td>
+                        <td class="py-4 px-4 text-center"><span class="px-2 py-0.5 rounded text-[9px] font-black bg-blue-500/10 text-blue-300 border border-blue-500/20">${emp.asistencia}%</span></td>
+                        <td class="py-4 px-4 text-center"><span class="px-2 py-0.5 rounded text-[9px] font-black ${estadoClass}">${emp.estado}</span></td>
                         <td class="p-3 text-center text-slate-400 text-[9px]">${emp.ultimoCurso}</td>
                     </tr>
                 `;
@@ -7475,7 +7475,7 @@
                         <td class="p-3 text-slate-300 font-medium">${item.item}</td>
                         <td class="p-3 text-slate-300 font-medium">${item.fecha}</td>
                         <td class="p-3 text-right font-mono text-white">$${item.monto.toLocaleString()}</td>
-                        <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[9px] font-black ${estadoClass}">${item.estado}</span></td>
+                        <td class="py-4 px-4 text-center"><span class="px-2 py-0.5 rounded text-[9px] font-black ${estadoClass}">${item.estado}</span></td>
                         <td class="p-3 text-center text-slate-300 font-medium">${item.entrega}</td>
                     </tr>
                 `;
@@ -7535,12 +7535,12 @@
                     </td>
                     <td class="p-3 text-slate-300 font-mono text-xs">${phone}</td>
                     <td class="p-3 text-slate-300 font-bold">${vehicle}</td>
-                    <td class="p-3 text-center">
+                    <td class="py-4 px-4 text-center">
                         <span class="px-2 py-0.5 rounded text-[8px] font-bold ${user.activo ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}">
                             ${user.activo ? 'ACTIVO' : 'INACTIVO'}
                         </span>
                     </td>
-                    <td class="p-3 text-center">
+                    <td class="py-4 px-4 text-center">
                         <div class="flex gap-2 justify-center">
                             <button onclick="editPersonalMember('${user.id}')" class="text-blue-400 hover:text-white transition text-xs font-bold" title="Editar Ficha">
                                 <i class="fa-solid fa-user-pen"></i> Editar
@@ -8069,7 +8069,7 @@
                     <td class="p-3 font-mono font-bold text-blue-400">${item.fecha}</td>
                     <td class="p-3 font-mono font-bold text-teal-400">${item.abonado}</td>
                     <td class="p-3 text-slate-200 font-medium">${item.novedad}</td>
-                    <td class="p-3 text-center">
+                    <td class="py-4 px-4 text-center">
                         <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">${item.estatus}</span>
                     </td>
                     <td class="p-3 text-slate-400 font-medium">${item.supervisor}</td>
@@ -8105,14 +8105,14 @@
                 tr.className = "hover:bg-slate-900/40 border-b border-slate-850/50 transition text-slate-300";
                 tr.innerHTML = `
                     <td class="p-3 font-mono font-bold text-rose-400">${item.abonado}</td>
-                    <td class="p-3 font-bold text-white">${item.puesto}</td>
-                    <td class="p-3 font-mono text-slate-400">${item.horaAlarma}</td>
-                    <td class="p-3 font-mono text-slate-400">${item.horaEnvio}</td>
-                    <td class="p-3 font-mono text-slate-400">${item.horaLlegada}</td>
+                    <td class="py-4 px-4 font-bold text-white">${item.puesto}</td>
+                    <td class="py-4 px-4 font-mono text-slate-400">${item.horaAlarma}</td>
+                    <td class="py-4 px-4 font-mono text-slate-400">${item.horaEnvio}</td>
+                    <td class="py-4 px-4 font-mono text-slate-400">${item.horaLlegada}</td>
                     <td class="p-3 font-mono font-bold text-slate-200 text-center">${item.tiempoTomado}</td>
-                    <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${pBadge}">${item.prioridad}</span></td>
-                    <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${eBadge}">${item.efectividad}</span></td>
-                    <td class="p-3 text-center">
+                    <td class="py-4 px-4 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${pBadge}">${item.prioridad}</span></td>
+                    <td class="py-4 px-4 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${eBadge}">${item.efectividad}</span></td>
+                    <td class="py-4 px-4 text-center">
                         <button onclick="dispatchSTFromAlarm('${item.abonado}', '${item.puesto}')" class="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded text-[10px] font-black transition flex items-center gap-1 mx-auto shadow-sm">
                             🛠️ Despachar ST
                         </button>
@@ -10277,10 +10277,10 @@ function renderBurbujasChat(containerId, mensajes) {
                         </div>
                     </td>
                     <td class="p-3 text-slate-300 font-medium">${i.tipo}</td>
-                    <td class="p-3 text-center">
+                    <td class="py-4 px-4 text-center">
                         <span class="px-2 py-0.5 rounded text-[10px] font-bold ${pBadge}">${i.prioridad}</span>
                     </td>
-                    <td class="p-3 text-center">
+                    <td class="py-4 px-4 text-center">
                         <select onchange="updateServiceState('${i.consecutivo}', this.value)" class="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer w-full font-bold">
                             ${selectOptions}
                         </select>
@@ -10293,7 +10293,7 @@ function renderBurbujasChat(containerId, mensajes) {
                     <td class="p-3 text-center font-mono text-[11px] font-bold ${i.prioridad === "ALTA" ? 'text-rose-400' : 'text-slate-400'}">
                         ${i.estado === "Cerrado" || i.estado === "Finalizado" ? 'Cumplido' : '0h 42m'}
                     </td>
-                    <td class="p-3 text-center whitespace-nowrap">
+                    <td class="py-4 px-4 text-center whitespace-nowrap">
                         <button onclick="viewIncidentAudit('${i.consecutivo}')" class="text-blue-400 hover:text-white p-1 rounded transition" title="Ver Auditoría">
                             <i class="fa-solid fa-clock-rotate-left"></i>
                         </button>
@@ -11122,12 +11122,12 @@ function renderBurbujasChat(containerId, mensajes) {
                     <td class="p-3 text-slate-400 font-medium">${m.categoria}</td>
                     <td class="p-3 text-center font-mono font-bold">${m.existencia} unidades</td>
                     <td class="p-3 text-right font-mono text-slate-300">$${m.costo.toLocaleString()}</td>
-                    <td class="p-3 text-center">
+                    <td class="py-4 px-4 text-center">
                         <span class="px-2 py-0.5 rounded text-[9px] font-bold ${statusBadge}">
                             ${m.existencia <= 10 ? 'CRÍTICO' : (m.existencia <= 25 ? 'MEDIO' : 'ÓPTIMO')}
                         </span>
                     </td>
-                    <td class="p-3 text-center whitespace-nowrap">
+                    <td class="py-4 px-4 text-center whitespace-nowrap">
                         ${canEditStock ? `
                             <button onclick="openEditMaterialModal('${m.codigo}')" class="text-blue-400 hover:text-white p-1 rounded transition" title="Editar Producto">
                                 <i class="fa-solid fa-pen"></i>
@@ -11801,26 +11801,26 @@ function renderBurbujasChat(containerId, mensajes) {
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-900/30 border-b border-slate-850/50 transition";
                 tr.innerHTML = `
-                    <td class="p-3 font-mono font-bold text-purple-400">${c.codigo}</td>
-                    <td class="p-3 font-mono text-slate-400">${c.servicioId}</td>
-                    <td class="p-3 font-bold text-white">${c.cliente}</td>
+                    <td class="py-4 px-4 font-mono font-bold text-purple-400">${c.codigo}</td>
+                    <td class="py-4 px-4 font-mono text-slate-400">${c.servicioId}</td>
+                    <td class="py-4 px-4 font-bold text-white">${c.cliente}</td>
                     <td class="p-3">
                         <div class="space-y-0.5 min-w-[175px]">
-                            <span class="text-[9px] font-bold text-slate-300 block"><i class="fa-solid fa-user-gear text-blue-400 mr-1"></i>Técnico: ${c.tecnicoNombre || 'No registrado'}</span>
-                            <span class="text-[8px] text-slate-500 block"><i class="fa-solid fa-calendar-day mr-1"></i>Visita: ${c.fechaVisitaTecnica ? formatearFechaHoraDocumental(c.fechaVisitaTecnica) : 'No registrada'}</span>
-                            <span class="text-[8px] text-slate-500 block"><i class="fa-solid fa-user-tie mr-1"></i>Cotizó: ${c.cotizadorNombre || 'No registrado'}</span>
-                            <span class="text-[8px] text-slate-500 block"><i class="fa-solid fa-clock mr-1"></i>Emitida: ${c.fechaCreacion ? formatearFechaHoraDocumental(c.fechaCreacion) : 'No registrada'}</span>
+                            <span class="text-xs leading-relaxed font-bold text-slate-300 block"><i class="fa-solid fa-user-gear text-blue-400 mr-1"></i>Técnico: ${c.tecnicoNombre || 'No registrado'}</span>
+                            <span class="text-xs leading-relaxed text-slate-500 block"><i class="fa-solid fa-calendar-day mr-1"></i>Visita: ${c.fechaVisitaTecnica ? formatearFechaHoraDocumental(c.fechaVisitaTecnica) : 'No registrada'}</span>
+                            <span class="text-xs leading-relaxed text-slate-500 block"><i class="fa-solid fa-user-tie mr-1"></i>Cotizó: ${c.cotizadorNombre || 'No registrado'}</span>
+                            <span class="text-xs leading-relaxed text-slate-500 block"><i class="fa-solid fa-clock mr-1"></i>Emitida: ${c.fechaCreacion ? formatearFechaHoraDocumental(c.fechaCreacion) : 'No registrada'}</span>
                         </div>
                     </td>
-                    <td class="p-3 text-center">
+                    <td class="py-4 px-4 text-center">
                         ${puedeDecidir
                             ? `<select onchange="updateCotizacionEstado('${c.codigo}', this.value)" class="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[9px] font-bold uppercase tracking-wider ${badgeClass} focus:outline-none cursor-pointer">${estadoOptions}</select>`
                             : `<span class="px-2.5 py-0.5 rounded text-[9px] font-bold ${badgeClass} uppercase tracking-wider">${estadoActual}</span>`
                         }
                     </td>
-                    <td class="p-3 text-right font-mono font-bold text-emerald-400">$${c.total.toLocaleString()}</td>
-                    <td class="p-3 text-center">${instalacionCell}</td>
-                    <td class="p-3 text-center whitespace-nowrap">
+                    <td class="py-4 px-4 text-right font-mono font-bold text-emerald-400">$${c.total.toLocaleString()}</td>
+                    <td class="py-4 px-4 text-center">${instalacionCell}</td>
+                    <td class="py-4 px-4 text-center whitespace-nowrap">
                         ${puedeDecidir && !(instalacion && instalacion.estado === "Completada") ? `
                             <button onclick="editCotizacion('${c.codigo}')" class="text-amber-400 hover:text-white p-1" title="Editar Cotización">
                                 <i class="fa-solid fa-pen"></i>
