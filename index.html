@@ -2498,6 +2498,14 @@
                                     </div>
                                     <div><span class="text-[8px] text-slate-500 uppercase block mb-1">Diagnóstico / motivo para cotizar</span><p id="cot-diagnostico-texto" class="text-[10px] text-slate-200 leading-snug bg-slate-950/60 rounded-lg p-2.5 border border-slate-800"></p></div>
                                     <div id="cot-contexto-tecnico-extra" class="hidden"><span class="text-[8px] text-slate-500 uppercase block mb-1">Hallazgos y requerimientos técnicos</span><p id="cot-contexto-tecnico-texto" class="text-[10px] text-slate-300 leading-snug bg-slate-950/60 rounded-lg p-2.5 border border-slate-800 whitespace-pre-line"></p></div>
+                                    <div id="cot-solicitud-cotizacion" class="hidden bg-amber-500/5 border border-amber-500/20 rounded-lg p-2.5 space-y-2">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span class="text-[8px] font-black text-amber-400 uppercase"><i class="fa-solid fa-file-circle-plus mr-1"></i>Solicitud de cotización del técnico</span>
+                                            <span id="cot-solicitud-cotizacion-badge" class="text-[8px] px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 font-bold uppercase">REQUERIDA</span>
+                                        </div>
+                                        <p id="cot-solicitud-cotizacion-texto" class="text-[10px] text-slate-200 leading-snug bg-slate-950/60 rounded-lg p-2 border border-slate-800 whitespace-pre-line"></p>
+                                        <div id="cot-solicitud-cotizacion-items" class="space-y-1"></div>
+                                    </div>
                                     <p id="cot-diagnostico-meta" class="text-[9px] text-slate-500 italic"></p>
                                 </div>
 
@@ -11342,13 +11350,18 @@ function renderBurbujasChat(containerId, mensajes) {
             const horaTexto = fecha && !isNaN(fecha.getTime()) ? fecha.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}) : 'No registrada';
             const diagnostico = info.descripcion || s.evidenciaDano || s.descripcion || 'El técnico no dejó una descripción técnica registrada.';
             const baseCotizacion = info.requerimientosCotizacion || 'El técnico no dejó requerimientos específicos para cotizar. El Cotizador debe definir materiales y mano de obra con base en el diagnóstico.';
+            const requerimientosItems = Array.isArray(info.requerimientosCotizacionItems)
+                ? info.requerimientosCotizacionItems
+                : [];
+            const insumosTecnicos = Array.isArray(s.insumosUsados) ? s.insumosUsados : [];
             const requerimientos = [
                 info.hallazgos ? 'Hallazgos: ' + info.hallazgos : '',
                 info.requerimientos ? 'Requerimientos: ' + info.requerimientos : '',
                 info.requerimientosCotizacion ? 'Base para cotización: ' + info.requerimientosCotizacion : '',
                 info.observaciones ? 'Observaciones: ' + info.observaciones : '',
-                Array.isArray(s.insumosUsados) && s.insumosUsados.length ? 'Insumos registrados: ' + s.insumosUsados.map(x => (x.codigo || '') + ' x' + (x.cantidad || 0)).join(', ') : ''
+                insumosTecnicos.length ? 'Insumos registrados: ' + insumosTecnicos.map(x => (x.codigo || '') + ' x' + (x.cantidad || 0)).join(', ') : ''
             ].filter(Boolean).join('\n');
+            const requiereCotizacion = info.requiereCotizacion === true || String(s.estado || '').trim() === 'Cotización';
 
             if (diagPanel) {
                 document.getElementById('cot-tecnico-fecha').innerText = fechaTexto;
@@ -11361,9 +11374,65 @@ function renderBurbujasChat(containerId, mensajes) {
                 document.getElementById('cot-diagnostico-meta').innerText = (info.tipoAtencion || 'Servicio técnico') + ' · ' + (info.requiereCotizacion ? 'Marcado para cotización' : 'Contexto técnico') + ' · Actualizado ' + fechaTexto + ' ' + horaTexto;
                 const extra = document.getElementById('cot-contexto-tecnico-extra');
                 const extraText = document.getElementById('cot-contexto-tecnico-texto');
-                if (extra && extraText) { extraText.innerText = requerimientos || 'No se registraron hallazgos adicionales en el OPR.'; extra.classList.toggle('hidden', !requerimientos); }
+                if (extra && extraText) {
+                    extraText.innerText = requerimientos || 'No se registraron hallazgos adicionales en el OPR.';
+                    extra.classList.toggle('hidden', !requerimientos);
+                }
+
+                // Solicitud formal de cotización: muestra exactamente lo que el técnico
+                // marcó/solicitó en el OPR, incluidos los ítems estructurados.
+                const solicitudPanel = document.getElementById('cot-solicitud-cotizacion');
+                const solicitudTexto = document.getElementById('cot-solicitud-cotizacion-texto');
+                const solicitudItems = document.getElementById('cot-solicitud-cotizacion-items');
+                const solicitudBadge = document.getElementById('cot-solicitud-cotizacion-badge');
+
+                if (solicitudPanel && solicitudTexto && solicitudItems) {
+                    solicitudPanel.classList.toggle('hidden', !requiereCotizacion);
+                    if (requiereCotizacion) {
+                        solicitudTexto.innerText = info.requerimientosCotizacion ||
+                            'El técnico marcó que este servicio requiere cotización. No se dejó una especificación textual adicional.';
+                        solicitudItems.innerHTML = '';
+
+                        const items = requerimientosItems.length
+                            ? requerimientosItems
+                            : insumosTecnicos;
+
+                        if (items.length) {
+                            const titulo = document.createElement('div');
+                            titulo.className = 'text-[8px] font-black text-slate-500 uppercase tracking-wider';
+                            titulo.innerText = 'Elementos solicitados por el técnico';
+                            solicitudItems.appendChild(titulo);
+
+                            items.forEach(item => {
+                                const row = document.createElement('div');
+                                row.className = 'flex items-start justify-between gap-2 bg-slate-950/70 border border-slate-800 rounded-md px-2 py-1.5';
+                                const tipo = item.tipo || 'Material';
+                                const codigo = item.codigo ? ' · ' + item.codigo : '';
+                                const cantidad = item.cantidad ?? item.qty ?? 1;
+                                const unidad = item.unidad || 'unidad';
+                                const observaciones = item.observaciones ? ' — ' + item.observaciones : '';
+                                row.innerHTML =
+                                    '<div class="min-w-0"><p class="text-[9px] font-bold text-white">' +
+                                    escaparHtmlCotTecnico(String(item.descripcion || item.nombre || 'Elemento solicitado')) +
+                                    '</p><p class="text-[8px] text-slate-500">' +
+                                    escaparHtmlCotTecnico(String(tipo + codigo + observaciones)) +
+                                    '</p></div><span class="shrink-0 text-[9px] font-black text-amber-300">' +
+                                    escaparHtmlCotTecnico(String(cantidad + ' ' + unidad)) +
+                                    '</span>';
+                                solicitudItems.appendChild(row);
+                            });
+                        } else {
+                            solicitudItems.innerHTML = '<p class="text-[9px] text-slate-500 italic">No se registraron materiales o cantidades específicas. El Cotizador debe definirlos a partir del diagnóstico técnico.</p>';
+                        }
+
+                        if (solicitudBadge) {
+                            solicitudBadge.innerText = info.requiereCotizacion === true ? 'REQUERIDA' : 'ESTADO: COTIZACIÓN';
+                        }
+                    }
+                }
+
                 const badge = document.getElementById('cot-origen-badge');
-                if (badge) badge.innerText = info.requiereCotizacion ? 'OPR / Requiere cotización' : 'OPR / Diagnóstico';
+                if (badge) badge.innerText = requiereCotizacion ? 'OPR / Requiere cotización' : 'OPR / Diagnóstico';
                 diagPanel.classList.remove('hidden');
             }
 
