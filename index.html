@@ -2708,40 +2708,44 @@
 
             <!-- VISTA 7: CLIENTES & CRM INTEGRADO -->
             <section id="view-clientes" class="space-y-6 hidden">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <!-- Directorio de clientes -->
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
-                        <div class="border-b border-slate-800 pb-3 flex items-center justify-between gap-2">
-                            <div>
-                                <h3 class="text-xs font-extrabold text-white uppercase tracking-wider">Directorio de Cuentas y Abonados</h3>
-                                <p class="text-[10px] text-slate-400 mt-1">Hojas de vida de seguridad física y electrónica.</p>
-                            </div>
-                            <div class="flex items-center gap-2 shrink-0">
-                                <button onclick="descargarClientesExcel()" class="text-slate-400 hover:text-emerald-400 transition px-1" title="Descargar Excel"><i class="fa-solid fa-file-excel"></i></button>
-                                <button onclick="descargarClientesPDF()" class="text-slate-400 hover:text-rose-400 transition px-1" title="Descargar PDF"><i class="fa-solid fa-file-pdf"></i></button>
-                                <button onclick="openClienteFormModal()" class="permission-edit-only bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition flex items-center gap-1" title="Crear un nuevo cliente/puesto manualmente">
-                                    <i class="fa-solid fa-plus"></i> Nuevo Cliente
-                                </button>
-                                <button onclick="document.getElementById('input-malla-csv').click()" class="permission-edit-only bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition flex items-center gap-1" title="Importar malla de puestos desde CSV">
-                                    <i class="fa-solid fa-file-import"></i> Importar Malla
-                                </button>
-                            </div>
-                            <input type="file" id="input-malla-csv" accept=".csv" class="hidden" onchange="handleImportMalla(event)">
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+                    <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+                        <div>
+                            <h2 class="text-sm font-extrabold text-white uppercase tracking-wider">Clientes / CRM</h2>
+                            <p class="text-[10px] text-slate-400 mt-1">Cuenta empresarial arriba; puestos y abonados debajo.</p>
                         </div>
-                        <div class="space-y-2 max-h-[460px] overflow-y-auto custom-scrollbar" id="directorio-clientes-crm">
-                            <!-- Inyectado dinámicamente -->
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <div class="flex bg-slate-950 border border-slate-800 rounded-lg p-1">
+                                <button id="crm-tab-cuentas" onclick="setCRMView('cuentas')" class="px-3 py-1.5 rounded-md text-[9px] font-black uppercase bg-blue-600 text-white">Clientes / Cuentas</button>
+                                <button id="crm-tab-puestos" onclick="setCRMView('puestos')" class="px-3 py-1.5 rounded-md text-[9px] font-black uppercase text-slate-400">Puestos / Abonados</button>
+                            </div>
+                            <div class="relative">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[10px]"></i>
+                                <input id="crm-busqueda" oninput="renderClientesCRM()" placeholder="Buscar cliente, puesto o abonado..." class="w-64 max-w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-2 text-[10px] text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500">
+                            </div>
+                            <button onclick="descargarClientesExcel()" class="text-slate-400 hover:text-emerald-400 px-2" title="Exportar Excel"><i class="fa-solid fa-file-excel"></i></button>
+                            <button onclick="descargarClientesPDF()" class="text-slate-400 hover:text-rose-400 px-2" title="Exportar PDF"><i class="fa-solid fa-file-pdf"></i></button>
+                            <button onclick="openClienteFormModal()" class="permission-edit-only bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-2 rounded-lg text-[10px] font-bold"><i class="fa-solid fa-plus"></i> Nuevo</button>
                         </div>
                     </div>
-
-                    <!-- Ficha del Cliente Seleccionado -->
-                    <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4" id="ficha-cliente-container">
-                        <!-- Inyectado dinámicamente al seleccionar un cliente -->
-                        <p class="text-slate-500 text-xs italic text-center py-12">Selecciona un cliente del directorio para visualizar su expediente táctico.</p>
+                    <input type="file" id="input-malla-csv" accept=".csv" class="hidden" onchange="handleImportMalla(event)">
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 id="crm-directorio-title" class="text-xs font-extrabold text-white uppercase tracking-wider">Clientes / Cuentas</h3>
+                                <p id="crm-directorio-subtitle" class="text-[10px] text-slate-500 mt-1">Empresas y número de puestos.</p>
+                            </div>
+                            <span id="crm-directorio-count" class="text-[9px] font-black text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded-full">0</span>
+                        </div>
+                        <div class="space-y-2 max-h-[620px] overflow-y-auto custom-scrollbar" id="directorio-clientes-crm"></div>
+                    </div>
+                    <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4 min-h-[500px]" id="ficha-cliente-container">
+                        <p class="text-slate-500 text-xs italic text-center py-20">Selecciona una cuenta o puesto para visualizar su expediente 360°.</p>
                     </div>
                 </div>
-            </section>
-
-            <!-- VISTA 8: REPORTES Y SLAs -->
+            </section>            <!-- VISTA 8: REPORTES Y SLAs -->
             <section id="view-reportes" class="space-y-6 hidden">
                 <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
                     <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
@@ -12707,208 +12711,65 @@ function renderBurbujasChat(containerId, mensajes) {
         function renderClientesCRM() {
             const container = document.getElementById('directorio-clientes-crm');
             if (!container) return;
+            const q = String(document.getElementById('crm-busqueda')?.value || '').trim().toLowerCase();
+            const data = !q ? crmClientes : crmClientes.filter(c => [c.id,c.nombre,c.puesto,c.clienteNombre,c.ciudad,c.direccion].some(v => String(v || '').toLowerCase().includes(q)));
             container.innerHTML = '';
 
-            crmClientes.forEach(cl => {
-                const div = document.createElement('div');
-                div.className = "p-3 bg-slate-950 border border-slate-850 hover:border-teal-500/20 rounded-xl cursor-pointer transition flex justify-between items-center";
-                div.onclick = () => selectClienteCRM(cl.id);
-                div.innerHTML = `
-                    <div class="space-y-0.5">
-                        <span class="text-[9px] font-mono font-bold text-teal-400 bg-teal-500/10 border border-teal-500/20 px-1.5 py-0.5 rounded">Abonado: ${cl.id}</span>
-                        ${cl.incomunicada ? `<span class="text-[9px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 rounded ml-1">⚠ Incomunicado</span>` : ''}
-                        <h4 class="text-xs font-bold text-white truncate max-w-[180px]">${cl.nombre}</h4>
-                        <p class="text-[10px] text-slate-500">${cl.ciudad}</p>
-                    </div>
-                    <i class="fa-solid fa-chevron-right text-slate-700 text-xs"></i>
-                `;
-                container.appendChild(div);
+            if (window.crmVistaActual === 'puestos') {
+                document.getElementById('crm-directorio-title').innerText = 'Puestos / Abonados';
+                document.getElementById('crm-directorio-subtitle').innerText = 'Sedes, puntos monitoreados y códigos GPRS.';
+                document.getElementById('crm-directorio-count').innerText = data.length;
+                data.forEach(cl => {
+                    const d = document.createElement('div');
+                    d.className = 'p-3 bg-slate-950 border border-slate-800 hover:border-blue-500/30 rounded-xl cursor-pointer';
+                    d.onclick = () => selectClienteCRM(cl.id);
+                    d.innerHTML = '<span class="text-[9px] font-mono font-bold text-blue-400">GPRS / Abonado ' + escEstudio(cl.id) + '</span><h4 class="text-xs font-bold text-white mt-1">' + escEstudio(cl.puesto || cl.nombre) + '</h4><p class="text-[10px] text-slate-500">' + escEstudio(cl.clienteNombre || 'Sin cliente definido') + ' · ' + escEstudio(cl.ciudad) + '</p>';
+                    container.appendChild(d);
+                });
+                return;
+            }
+
+            document.getElementById('crm-directorio-title').innerText = 'Clientes / Cuentas';
+            document.getElementById('crm-directorio-subtitle').innerText = 'Empresas agrupadas con sus puestos y abonados.';
+            const groups = {};
+            data.forEach(cl => {
+                const key = String(cl.clienteNombre || 'Sin cliente definido').trim() || 'Sin cliente definido';
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(cl);
+            });
+            const keys = Object.keys(groups);
+            document.getElementById('crm-directorio-count').innerText = keys.length;
+            keys.forEach(name => {
+                const box = document.createElement('div');
+                box.className = 'bg-slate-950 border border-slate-800 rounded-xl overflow-hidden';
+                const head = document.createElement('button');
+                head.type = 'button';
+                head.className = 'w-full p-3 text-left hover:bg-slate-900';
+                head.innerHTML = '<span class="text-[8px] font-black uppercase text-blue-400">Cuenta empresarial</span><h4 class="text-xs font-extrabold text-white mt-0.5">' + escEstudio(name) + '</h4><p class="text-[9px] text-slate-500 mt-1">' + groups[name].length + ' puestos · ' + groups[name].filter(p => !p.incomunicada).length + ' comunicados</p>';
+                const list = document.createElement('div');
+                list.className = 'hidden border-t border-slate-800';
+                head.onclick = () => list.classList.toggle('hidden');
+                groups[name].forEach(cl => {
+                    const row = document.createElement('button');
+                    row.type = 'button';
+                    row.className = 'w-full text-left px-3 py-2.5 hover:bg-slate-900 border-b border-slate-900';
+                    row.onclick = () => selectClienteCRM(cl.id);
+                    row.innerHTML = '<p class="text-[10px] font-bold text-slate-200">' + escEstudio(cl.puesto || cl.nombre) + '</p><p class="text-[8px] text-slate-500">Abonado/GPRS: ' + escEstudio(cl.id) + ' · ' + escEstudio(cl.ciudad) + '</p>';
+                    list.appendChild(row);
+                });
+                box.appendChild(head); box.appendChild(list); container.appendChild(box);
             });
         }
 
-        /**
-         * Abre el modal de cliente. Sin argumento = crear nuevo; con un id = editar ese cliente.
-         */
-        function openClienteFormModal(id) {
-            if (currentUser && obtenerPermisosRol(currentUser) && !obtenerPermisosRol(currentUser).canEdit) {
-                showToast("Sin Permisos", "No tenés permisos de edición para clientes.", true);
-                return;
+        function setCRMView(view) {
+            window.crmVistaActual = view === 'puestos' ? 'puestos' : 'cuentas';
+            const a = document.getElementById('crm-tab-cuentas');
+            const b = document.getElementById('crm-tab-puestos');
+            if (a && b) {
+                a.className = window.crmVistaActual === 'cuentas' ? 'px-3 py-1.5 rounded-md text-[9px] font-black uppercase bg-blue-600 text-white' : 'px-3 py-1.5 rounded-md text-[9px] font-black uppercase text-slate-400';
+                b.className = window.crmVistaActual === 'puestos' ? 'px-3 py-1.5 rounded-md text-[9px] font-black uppercase bg-blue-600 text-white' : 'px-3 py-1.5 rounded-md text-[9px] font-black uppercase text-slate-400';
             }
-
-            // Poblar el select de zonas
-            const zonaSelect = document.getElementById('cliente-form-zona');
-            zonaSelect.innerHTML = `<option value="">Sin Zona</option>` + activeZones.map(z => `<option value="${z.id}">${z.nombre}</option>`).join('');
-
-            document.getElementById('form-cliente').reset();
-            document.getElementById('cliente-form-id-original').value = '';
-
-            if (id) {
-                const cl = crmClientes.find(c => c.id === id);
-                if (!cl) return;
-
-                document.getElementById('cliente-form-title').innerText = `Editar Cliente · ${cl.id}`;
-                document.getElementById('cliente-form-id-original').value = cl.id;
-                document.getElementById('cliente-form-abonado').value = cl.id;
-                document.getElementById('cliente-form-abonado').disabled = true; // El abonado no se cambia al editar
-                document.getElementById('cliente-form-puesto').value = cl.puesto || cl.nombre;
-                document.getElementById('cliente-form-cliente-nombre').value = cl.clienteNombre || '';
-                document.getElementById('cliente-form-direccion').value = cl.direccion;
-                document.getElementById('cliente-form-ciudad').value = cl.ciudad;
-                document.getElementById('cliente-form-departamento').value = cl.departamento || '';
-                document.getElementById('cliente-form-zona').value = cl.zonaId || '';
-                document.getElementById('cliente-form-ubicacion').value = cl.ubicacion || '';
-                document.getElementById('cliente-form-supervisor').value = cl.supervisorReaccion || '';
-                document.getElementById('cliente-form-incomunicada').checked = !!cl.incomunicada;
-            } else {
-                document.getElementById('cliente-form-title').innerText = 'Nuevo Cliente / Puesto';
-                document.getElementById('cliente-form-abonado').disabled = false;
-            }
-
-            document.getElementById('modal-cliente-form').classList.remove('hidden');
-        }
-
-        function closeClienteFormModal() {
-            document.getElementById('modal-cliente-form').classList.add('hidden');
-        }
-
-        function handleSaveCliente(event) {
-            event.preventDefault();
-            try {
-                const idOriginal = document.getElementById('cliente-form-id-original').value;
-                const abonadoId = document.getElementById('cliente-form-abonado').value.trim();
-                const puesto = document.getElementById('cliente-form-puesto').value.trim();
-                const clienteNombre = document.getElementById('cliente-form-cliente-nombre').value.trim();
-                const direccion = document.getElementById('cliente-form-direccion').value.trim();
-                const ciudad = document.getElementById('cliente-form-ciudad').value.trim().toUpperCase();
-                const departamento = document.getElementById('cliente-form-departamento').value.trim();
-                const zonaId = document.getElementById('cliente-form-zona').value;
-                const ubicacion = document.getElementById('cliente-form-ubicacion').value.trim();
-                const supervisor = document.getElementById('cliente-form-supervisor').value.trim();
-                const incomunicada = document.getElementById('cliente-form-incomunicada').checked;
-
-                if (!idOriginal) {
-                    // --- CREACIÓN ---
-                    if (crmClientes.find(c => c.id === abonadoId)) {
-                        showToast("Abonado Duplicado", `Ya existe un cliente con el código ${abonadoId}.`, true);
-                        return;
-                    }
-                    crmClientes.push({
-                        id: abonadoId, nombre: puesto, puesto, clienteNombre,
-                        ciudad: ciudad || "BARRANQUILLA", direccion, departamento: departamento || "S/D",
-                        sector: "General", ansTime: "0:30:00", ubicacion: ubicacion || "0,0",
-                        zonaId, supervisorReaccion: supervisor, incomunicada
-                    });
-                    showToast("Cliente Creado", `${puesto} fue agregado al directorio.`);
-                } else {
-                    // --- EDICIÓN ---
-                    const cl = crmClientes.find(c => c.id === idOriginal);
-                    if (!cl) return;
-                    cl.nombre = puesto;
-                    cl.puesto = puesto;
-                    cl.clienteNombre = clienteNombre;
-                    cl.direccion = direccion;
-                    cl.ciudad = ciudad || cl.ciudad;
-                    cl.departamento = departamento;
-                    cl.zonaId = zonaId;
-                    cl.ubicacion = ubicacion;
-                    cl.supervisorReaccion = supervisor;
-                    cl.incomunicada = incomunicada;
-                    showToast("Cliente Actualizado", `Se guardaron los cambios de ${puesto}.`);
-                }
-
-                syncClienteActual(abonadoId);
-                closeClienteFormModal();
-                renderClientesCRM();
-                selectClienteCRM(abonadoId);
-                if (typeof renderMapPins === "function") renderMapPins();
-            } catch(e) { console.error("Error al guardar cliente:", e); }
-        }
-
-        function deleteCliente(id) {
-            if (currentUser && obtenerPermisosRol(currentUser) && !obtenerPermisosRol(currentUser).canEdit) {
-                showToast("Sin Permisos", "No tenés permisos de edición para clientes.", true);
-                return;
-            }
-            const cl = crmClientes.find(c => c.id === id);
-            if (!cl) return;
-
-            const tieneServicios = incidentesServicios.some(s => s.abonadoId === id);
-            if (tieneServicios && !confirm(`"${cl.nombre}" tiene servicios técnicos asociados en el historial. ¿Seguro que querés eliminarlo igual? El cliente desaparecerá del directorio, pero su historial de servicios queda intacto.`)) return;
-            if (!tieneServicios && !confirm(`¿Seguro que querés eliminar a "${cl.nombre}" (Abonado ${cl.id}) del directorio? Esta acción no se puede deshacer.`)) return;
-
-            crmClientes = crmClientes.filter(c => c.id !== id);
-            syncDelete("clientes", "id", id);
-
-            showToast("Cliente Eliminado", `${cl.nombre} fue eliminado del directorio.`);
             renderClientesCRM();
-            document.getElementById('ficha-cliente-container').innerHTML = `<p class="text-slate-500 text-xs italic text-center py-12">Selecciona un cliente del directorio para visualizar su expediente táctico.</p>`;
-            if (typeof renderMapPins === "function") renderMapPins();
-        }
-
-        function selectClienteCRM(id) {
-            const cl = crmClientes.find(c => c.id === id);
-            if (!cl) return;
-
-            const container = document.getElementById('ficha-cliente-container');
-            const zoneObj = activeZones.find(z => z.id === cl.zonaId) || { nombre: "Sin Zona" };
-
-            container.innerHTML = `
-                <div class="border-b border-slate-800 pb-3 flex items-center justify-between">
-                    <div>
-                        <span class="text-[10px] font-mono font-bold text-teal-400">Abonado #${cl.id}</span>
-                        <h3 class="text-sm font-extrabold text-white uppercase tracking-wider">${cl.nombre}</h3>
-                    </div>
-                    <span class="text-[9px] bg-slate-950 border border-slate-850 px-2.5 py-1 rounded text-slate-400 font-bold">${cl.sector}</span>
-                    <div class="flex items-center gap-2 shrink-0">
-                        <button onclick="openClienteFormModal('${cl.id}')" class="permission-edit-only text-blue-400 hover:text-white transition p-1" title="Editar Cliente"><i class="fa-solid fa-pen"></i></button>
-                        <button onclick="deleteCliente('${cl.id}')" class="permission-edit-only text-rose-400 hover:text-white transition p-1" title="Eliminar Cliente"><i class="fa-solid fa-trash"></i></button>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4 text-xs">
-                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-850 space-y-1.5">
-                        <span class="text-[9px] text-slate-500 font-bold uppercase">Datos de Ubicación</span>
-                        <p class="text-slate-200"><strong class="text-slate-400">Dirección:</strong> ${cl.direccion}</p>
-                        <p class="text-slate-200"><strong class="text-slate-400">Municipio:</strong> ${cl.ciudad}</p>
-                        <p class="text-slate-200"><strong class="text-slate-400">Zona Táctica:</strong> <span class="text-teal-400 font-bold">${zoneObj.nombre}</span></p>
-                        ${cl.clienteNombre ? `<p class="text-slate-200"><strong class="text-slate-400">Cliente:</strong> ${cl.clienteNombre}</p>` : ''}
-                    </div>
-
-                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-850 space-y-1.5">
-                        <span class="text-[9px] text-slate-500 font-bold uppercase">Acuerdo de Nivel de Servicio</span>
-                        <p class="text-slate-200"><strong class="text-slate-400">Tiempo ANS:</strong> ${cl.ansTime}</p>
-                        <p class="text-slate-200"><strong class="text-slate-400">Coordenadas:</strong> <span class="font-mono text-slate-400">${cl.ubicacion}</span></p>
-                        <p class="text-slate-200"><strong class="text-slate-400">Supervisor que Reacciona:</strong> ${cl.supervisorReaccion || zoneObj.supervisor || 'Sin Asignar'}</p>
-                        <p class="text-slate-200"><strong class="text-slate-400">Comunicación:</strong> ${cl.incomunicada ? '<span class="text-rose-400 font-bold">⚠ INCOMUNICADO</span>' : '<span class="text-emerald-400 font-bold">Comunicado ✔</span>'}</p>
-                    </div>
-                </div>
-
-                <div class="bg-slate-950 p-4 rounded-xl border border-slate-850 space-y-3">
-                    <h4 class="text-xs font-bold text-white uppercase tracking-wider">Historial de Incidentes Electrónicos</h4>
-                    <div class="space-y-2 max-h-[160px] overflow-y-auto custom-scrollbar" id="crm-cliente-servicios-list">
-                        <!-- Inyectado dinámicamente -->
-                    </div>
-                </div>
-            `;
-
-            const listContainer = document.getElementById('crm-cliente-servicios-list');
-            const services = incidentesServicios.filter(i => i.abonadoId === id);
-
-            if (services.length === 0) {
-                listContainer.innerHTML = `<span class="text-slate-500 text-xs italic">Cero incidentes registrados en el historial.</span>`;
-                return;
-            }
-
-            services.forEach(s => {
-                const item = document.createElement('div');
-                item.className = "p-2 bg-slate-900 border border-slate-800 rounded flex justify-between items-center text-xs";
-                item.innerHTML = `
-                    <span class="font-mono font-bold text-blue-400">${s.consecutivo}</span>
-                    <span class="text-slate-300 font-medium">${s.tipo}</span>
-                    <span class="px-1.5 py-0.5 rounded text-[8px] font-bold bg-slate-950 border border-slate-850 text-slate-400 uppercase font-mono">${s.estado}</span>
-                `;
-                listContainer.appendChild(item);
-            });
         }
 
         function renderConfigCentrales() {
