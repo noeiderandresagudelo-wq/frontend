@@ -55,43 +55,40 @@ window.switchInventarioTab=setTab;
 
 async function load(){
  const t=tenant(); if(!appSupabase()||!t)return false;
- try{
-   const [a,b,c,d,e]=await Promise.all([
-    supabaseClient.from('inventario_insumos').select('id,codigo,tenant_id,nombre,categoria,existencia,costo_unitario,proveedor,ubicacion,stock_min,stock_max').eq('tenant_id',t).order('nombre'),
-    supabaseClient.from('inventario_movimientos').select('*').eq('tenant_id',t).order('fecha_hora',{ascending:false}).limit(500),
-    supabaseClient.from('inventario_stock_tecnicos').select('*').eq('tenant_id',t).order('updated_at',{ascending:false}),
-    supabaseClient.from('inventario_reabastecimientos').select('*').eq('tenant_id',t).order('fecha_solicitud',{ascending:false}),
-    supabaseClient.from('inventario_log_auditoria').select('*').eq('tenant_id',t).order('fecha_hora',{ascending:false}).limit(500)
-   ]);
-   const errores=[a,b,c,d,e].filter(x=>x.error);
-   if(errores.length) console.warn('[Alarvix/Kardex] Consultas con error:',errores.map(x=>x.error));
-   const dedupeBy=(rows,keyFn)=>{
-     const seen=new Set(), out=[];
-     for(const row of (Array.isArray(rows)?rows:[])){
-       const key=String(keyFn(row)||'').trim();
-       if(!key || seen.has(key)) continue;
-       seen.add(key); out.push(row);
-     }
-     return out;
-   };
-   insumos=dedupeBy(a.error?[]:(a.data||[]),x=>x.codigo);
-   movimientos=dedupeBy(b.error?[]:(b.data||[]),x=>x.id);
-   stockTecnicos=dedupeBy(c.error?[]:(c.data||[]),x=>[x.tenant_id,x.tecnico_id,x.insumo_id].join('|'));
-   reabastecimientos=dedupeBy(d.error?[]:(d.data||[]),x=>x.id);
-   auditoria=dedupeBy(e.error?[]:(e.data||[]),x=>x.id);
-   window.catalogoInventario=insumos.map(x=>({id:x.id,codigo:x.codigo,nombre:x.nombre,categoria:x.categoria,existencia:Number(x.existencia||0),costo:Number(x.costo_unitario||0)}));
-   window.inventarioKardex=movimientos.map(x=>({fecha:new Date(x.fecha_hora).toLocaleString('es-CO'),tipo:x.tipo,material:insumos.find(i=>i.codigo===x.insumo_id)?.codigo,cantidad:x.cantidad,detalle:x.observacion||x.opr_ot_relacionado||''}));
-   renderInventario();
-   if(errores.length) toast('Inventario cargado con advertencias','La Bodega Central está disponible; revisa la consola para la consulta que requiere atención.',true);
-   return true;
- }catch(err){
-   console.error('[Alarvix/Kardex] Error cargando inventario',err);
-   toast('Error de inventario',err?.message||'No se pudo cargar la información.',true);
-   renderInventario();
-   return false;
- }
+ const consultas=[
+   ['insumos',supabaseClient.from('inventario_insumos').select('id,codigo,tenant_id,nombre,categoria,existencia,costo_unitario,proveedor,ubicacion,stock_min,stock_max').eq('tenant_id',t).order('nombre')],
+   ['movimientos',supabaseClient.from('inventario_movimientos').select('*').eq('tenant_id',t).order('fecha_hora',{ascending:false}).limit(500)],
+   ['stock_tecnicos',supabaseClient.from('inventario_stock_tecnicos').select('*').eq('tenant_id',t).order('updated_at',{ascending:false})],
+   ['reabastecimientos',supabaseClient.from('inventario_reabastecimientos').select('*').eq('tenant_id',t).order('fecha_solicitud',{ascending:false})],
+   ['auditoria',supabaseClient.from('inventario_log_auditoria').select('*').eq('tenant_id',t).order('fecha_hora',{ascending:false}).limit(500)]
+ ];
+ const resultados=await Promise.allSettled(consultas.map(x=>x[1]));
+ const datos=resultados.map((r,i)=>{
+   if(r.status==='fulfilled') return {nombre:consultas[i][0],data:r.value?.data||[],error:r.value?.error||null};
+   return {nombre:consultas[i][0],data:[],error:r.reason||new Error('Consulta rechazada')};
+ });
+ const errores=datos.filter(x=>x.error);
+ errores.forEach(x=>console.warn('[Alarvix/Kardex] Consulta secundaria no disponible:',x.nombre,x.error?.message||x.error));
+ const dedupeBy=(rows,keyFn)=>{
+   const seen=new Set(), out=[];
+   for(const row of (Array.isArray(rows)?rows:[])){
+     const key=String(keyFn(row)||'').trim();
+     if(!key || seen.has(key)) continue;
+     seen.add(key); out.push(row);
+   }
+   return out;
+ };
+ const [a,b,c,d,e]=datos;
+ insumos=dedupeBy(a.data,x=>x.codigo);
+ movimientos=dedupeBy(b.data,x=>x.id);
+ stockTecnicos=dedupeBy(c.data,x=>[x.tenant_id,x.tecnico_id,x.insumo_id].join('|'));
+ reabastecimientos=dedupeBy(d.data,x=>x.id);
+ auditoria=dedupeBy(e.data,x=>x.id);
+ window.catalogoInventario=insumos.map(x=>({id:x.id,codigo:x.codigo,nombre:x.nombre,categoria:x.categoria,existencia:Number(x.existencia||0),costo:Number(x.costo_unitario||0)}));
+ window.inventarioKardex=movimientos.map(x=>({fecha:new Date(x.fecha_hora).toLocaleString('es-CO'),tipo:x.tipo,material:insumos.find(i=>i.id===x.insumo_id)?.codigo||insumos.find(i=>i.codigo===x.insumo_id)?.codigo,cantidad:x.cantidad,detalle:x.observacion||x.opr_ot_relacionado||''}));
+ renderInventario();
+ return true;
 }
-
 function renderInventarioOperativo(){const b=document.getElementById('inv-body');if(!b)return;const q=(document.getElementById('inv-search')?.value||'').trim().toLowerCase();b.innerHTML=insumos.filter(m=>{const haystack=[m.codigo,m.nombre,m.categoria,m.proveedor,m.ubicacion].map(v=>String(v??'')).join(' ').toLowerCase();return !q||haystack.includes(q);}).map(m=>{const e=Number(m.existencia||0),min=Number(0||0),st=e<=0?['SIN EXISTENCIA','rose']:e<=min?['CRÍTICO','amber']:['ÓPTIMO','emerald'];return `<tr class="border-b border-slate-800/50 hover:bg-slate-800/30"><td class="p-3"><b class="text-white">${esc(m.nombre)}</b><span class="block text-[9px] text-slate-500 font-mono">${esc(m.codigo)}</span></td><td class="p-3 text-slate-400">${esc(m.categoria||'—')}</td><td class="p-3 text-center text-white font-black">${e}</td><td class="p-3 text-center text-slate-400">${0} / ${0}</td><td class="p-3 text-right text-slate-300">${money(m.costo_unitario)}</td><td class="p-3 text-slate-400">${esc(m.proveedor||'—')}</td><td class="p-3 text-slate-400">${esc(m.ubicacion||'—')}</td><td class="p-3 text-center"><span class="px-2 py-1 rounded-full bg-${st[1]}-500/10 text-${st[1]}-400 border border-${st[1]}-500/20 text-[8px] font-black">${st[0]}</span></td><td class="p-3 text-center"><button onclick="openMovimientoInventarioModal('${m.id}')" class="text-blue-400 font-black text-[9px] uppercase">Mover</button></td></tr>`}).join('')||'<tr><td colspan="9" class="p-10 text-center text-slate-600">No hay insumos.</td></tr>';}
 function renderStockTecnicos(){const b=document.getElementById('inv-tech-body');if(!b)return;const g={};stockTecnicos.forEach(x=>{const t=(appPersonalTecnicos()||[]).find(t=>String(t.id)===String(x.tecnico_id));const k=x.tecnico_id;if(!g[k])g[k]={n:t?.nombre||k,v:t?.vehiculo||'Por asignar',a:[]};g[k].a.push(x);});b.innerHTML=Object.values(g).map(x=>`<div class="bg-slate-950 border border-slate-800 rounded-xl p-4"><div class="flex justify-between"><div><b class="text-xs text-white">${esc(x.n)}</b><p class="text-[9px] text-slate-500">Vehículo: ${esc(x.v)}</p></div><span class="text-[9px] text-blue-400 font-black">${x.a.reduce((s,i)=>s+Number(i.existencia||0),0)} unidades</span></div>${x.a.map(i=>`<div class="flex justify-between border-t border-slate-800 mt-3 pt-2 text-[9px]"><span class="text-slate-300">${esc(i.inventario_insumos?.nombre||'Insumo')}</span><b class="text-white">${i.existencia}</b></div>`).join('')}</div>`).join('')||'<div class="col-span-full text-center text-slate-600 p-10">Sin stock asignado.</div>';}
 function renderInventarioKardex(){const b=document.getElementById('inv-k-body');if(!b)return;const q=(document.getElementById('inv-k-search')?.value||'').toLowerCase();b.innerHTML=movimientos.filter(x=>JSON.stringify(x).toLowerCase().includes(q)).map(x=>{const m=insumos.find(i=>i.id===x.insumo_id);return `<tr class="border-b border-slate-800/50"><td class="p-3 text-slate-400">${new Date(x.fecha_hora).toLocaleString('es-CO')}</td><td class="p-3 text-slate-300">${esc(x.usuario_nombre||'—')}</td><td class="p-3"><span class="text-[8px] font-black text-blue-300">${esc(x.tipo)}</span></td><td class="p-3 text-white">${esc(m?.nombre||x.insumo_id)}</td><td class="p-3 text-center">${x.cantidad}</td><td class="p-3 text-center">${x.existencia_anterior}</td><td class="p-3 text-center font-black">${x.existencia_posterior}</td><td class="p-3 font-mono text-blue-300">${esc(x.opr_ot_relacionado||'—')}</td><td class="p-3 text-slate-400">${esc(x.observacion||'—')}</td></tr>`}).join('')||'<tr><td colspan="9" class="p-10 text-center text-slate-600">Sin movimientos.</td></tr>';}
