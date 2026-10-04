@@ -37,24 +37,84 @@ function buildUI(){
 function setTab(t){tab=t;['bodega','tecnicos','kardex','reab','log'].forEach(x=>{document.getElementById('inv-panel-'+x)?.classList.toggle('hidden',x!==t);const b=document.getElementById('tab-inv-'+x);if(b)b.className='px-4 py-3 text-[9px] font-black uppercase tracking-wider border-b-2 '+(x===t?'border-blue-500 text-blue-400':'border-transparent text-slate-500');});if(t==='bodega')renderInventarioOperativo();if(t==='tecnicos')renderStockTecnicos();if(t==='kardex')renderInventarioKardex();if(t==='reab')renderReab();if(t==='log')renderInventarioLog();}
 window.switchInventarioTab=setTab;
 
-async function load(){
- const t=tenant(); if(!window.supabaseClient||!t)return false;
- const [a,b,c,d,e]=await Promise.all([
-  supabaseClient.from('inventario_insumos').select('*').eq('tenant_id',t).eq('activo',true).order('nombre'),
-  supabaseClient.from('inventario_movimientos').select('*').eq('tenant_id',t).order('fecha_hora',{ascending:false}).limit(500),
-  supabaseClient.from('inventario_stock_tecnicos').select('*, inventario_insumos(nombre,codigo)').eq('tenant_id',t).order('updated_at',{ascending:false}),
-  supabaseClient.from('inventario_reabastecimientos').select('*').eq('tenant_id',t).order('fecha_solicitud',{ascending:false}),
-  supabaseClient.from('inventario_log_auditoria').select('*').eq('tenant_id',t).order('fecha_hora',{ascending:false}).limit(500)
- ]);
- const err=[a,b,c,d,e].find(x=>x.error)?.error;
- if(err){console.warn('[Alarvix/Kardex]',err.message);return false;}
- insumos=a.data||[];movimientos=b.data||[];stockTecnicos=c.data||[];reabastecimientos=d.data||[];auditoria=e.data||[];
- window.catalogoInventario=insumos.map(x=>({id:x.id,codigo:x.codigo,nombre:x.nombre,categoria:x.categoria,existencia:Number(x.existencia||0),costo:Number(x.costo_unitario||0)}));
- window.inventarioKardex=movimientos.map(x=>({fecha:new Date(x.fecha_hora).toLocaleString('es-CO'),tipo:x.tipo,material:insumos.find(i=>i.id===x.insumo_id)?.codigo,cantidad:x.cantidad,detalle:x.observacion||x.opr_ot_relacionado||''}));
- renderInventario(); return true;
+async function migrarCatalogoLegacySiHaceFalta(t, cloudInsumos){
+ if(cloudInsumos.length>0) return cloudInsumos;
+ const legacy=Array.isArray(window.catalogoInventario)?window.catalogoInventario:[]; 
+ if(!legacy.length) return cloudInsumos;
+ const migrables=legacy.filter(x=>String(x?.nombre||'').trim() && String(x?.codigo||'').trim());
+ if(!migrables.length) return cloudInsumos;
+ console.info('[Alarvix/Kardex] Migrando catálogo histórico local a Supabase:',migrables.length);
+ const resultado=[];
+ for(const x of migrables){
+   const existenciaInicial=Math.max(0,Number(x.existencia||0));
+   const payload={
+     tenant_id:t,
+     codigo:String(x.codigo).trim(),
+     nombre:String(x.nombre).trim(),
+     categoria:String(x.categoria||'').trim()||null,
+     stock_min:0,
+     stock_max:0,
+     existencia:0,
+     costo_unitario:Math.max(0,Number(x.costo||x.costo_unitario||0)),
+     proveedor:null,
+     ubicacion:'Bodega Central',
+     activo:true
+   };
+   const q=await supabaseClient.from('inventario_insumos').upsert(payload,{onConflict:'tenant_id,codigo'}).select().single();
+   if(q.error){console.warn('[Alarvix/Kardex] No se pudo migrar '+payload.codigo,q.error);continue;}
+   let row=q.data;
+   if(existenciaInicial>0){
+     const mov=await supabaseClient.rpc('registrar_movimiento_inventario',{
+       p_insumo_id:row.id,
+       p_tipo:'ENTRADA',
+       p_cantidad:existenciaInicial,
+       p_tecnico_id:null,
+       p_opr_ot:null,
+       p_observacion:'Migración del inventario histórico de Alarvix'
+     });
+     if(mov.error){
+       console.warn('[Alarvix/Kardex] No se pudo migrar existencia de '+payload.codigo,mov.error);
+     } else {
+       const refreshed=await supabaseClient.from('inventario_insumos').select('*').eq('id',row.id).eq('tenant_id',t).single();
+       if(!refreshed.error && refreshed.data) row=refreshed.data;
+     }
+   }
+   resultado.push(row);
+ }
+ return resultado.length?resultado:cloudInsumos;
 }
 
-function renderInventarioOperativo(){const b=document.getElementById('inv-body');if(!b)return;const q=(document.getElementById('inv-search')?.value||'').toLowerCase();b.innerHTML=insumos.filter(m=>![m.codigo,m.nombre,m.categoria,m.proveedor,m.ubicacion].join(' ').toLowerCase()||![m.codigo,m.nombre,m.categoria,m.proveedor,m.ubicacion].join(' ').toLowerCase().includes(q)).map(m=>{const e=Number(m.existencia||0),min=Number(m.stock_min||0),st=e<=0?['SIN EXISTENCIA','rose']:e<=min?['CRÍTICO','amber']:['ÓPTIMO','emerald'];return `<tr class="border-b border-slate-800/50 hover:bg-slate-800/30"><td class="p-3"><b class="text-white">${esc(m.nombre)}</b><span class="block text-[9px] text-slate-500 font-mono">${esc(m.codigo)}</span></td><td class="p-3 text-slate-400">${esc(m.categoria||'—')}</td><td class="p-3 text-center text-white font-black">${e}</td><td class="p-3 text-center text-slate-400">${m.stock_min} / ${m.stock_max}</td><td class="p-3 text-right text-slate-300">${money(m.costo_unitario)}</td><td class="p-3 text-slate-400">${esc(m.proveedor||'—')}</td><td class="p-3 text-slate-400">${esc(m.ubicacion||'—')}</td><td class="p-3 text-center"><span class="px-2 py-1 rounded-full bg-${st[1]}-500/10 text-${st[1]}-400 border border-${st[1]}-500/20 text-[8px] font-black">${st[0]}</span></td><td class="p-3 text-center"><button onclick="openMovimientoInventarioModal('${m.id}')" class="text-blue-400 font-black text-[9px] uppercase">Mover</button></td></tr>`}).join('')||'<tr><td colspan="9" class="p-10 text-center text-slate-600">No hay insumos.</td></tr>';}
+async function load(){
+ const t=tenant(); if(!window.supabaseClient||!t)return false;
+ try{
+   const [a,b,c,d,e]=await Promise.all([
+    supabaseClient.from('inventario_insumos').select('*').eq('tenant_id',t).eq('activo',true).order('nombre'),
+    supabaseClient.from('inventario_movimientos').select('*').eq('tenant_id',t).order('fecha_hora',{ascending:false}).limit(500),
+    supabaseClient.from('inventario_stock_tecnicos').select('*, inventario_insumos(nombre,codigo)').eq('tenant_id',t).order('updated_at',{ascending:false}),
+    supabaseClient.from('inventario_reabastecimientos').select('*').eq('tenant_id',t).order('fecha_solicitud',{ascending:false}),
+    supabaseClient.from('inventario_log_auditoria').select('*').eq('tenant_id',t).order('fecha_hora',{ascending:false}).limit(500)
+   ]);
+   const errores=[a,b,c,d,e].filter(x=>x.error);
+   if(errores.length) console.warn('[Alarvix/Kardex] Consultas con error:',errores.map(x=>x.error));
+   insumos=await migrarCatalogoLegacySiHaceFalta(t,a.error?[]:(a.data||[]));
+   movimientos=b.error?[]:(b.data||[]);
+   stockTecnicos=c.error?[]:(c.data||[]);
+   reabastecimientos=d.error?[]:(d.data||[]);
+   auditoria=e.error?[]:(e.data||[]);
+   window.catalogoInventario=insumos.map(x=>({id:x.id,codigo:x.codigo,nombre:x.nombre,categoria:x.categoria,existencia:Number(x.existencia||0),costo:Number(x.costo_unitario||0)}));
+   window.inventarioKardex=movimientos.map(x=>({fecha:new Date(x.fecha_hora).toLocaleString('es-CO'),tipo:x.tipo,material:insumos.find(i=>i.id===x.insumo_id)?.codigo,cantidad:x.cantidad,detalle:x.observacion||x.opr_ot_relacionado||''}));
+   renderInventario();
+   if(errores.length) toast('Inventario cargado con advertencias','La Bodega Central está disponible; revisa la consola para la consulta que requiere atención.',true);
+   return true;
+ }catch(err){
+   console.error('[Alarvix/Kardex] Error cargando inventario',err);
+   toast('Error de inventario',err?.message||'No se pudo cargar la información.',true);
+   renderInventario();
+   return false;
+ }
+}
+
+function renderInventarioOperativo(){const b=document.getElementById('inv-body');if(!b)return;const q=(document.getElementById('inv-search')?.value||'').trim().toLowerCase();b.innerHTML=insumos.filter(m=>{const haystack=[m.codigo,m.nombre,m.categoria,m.proveedor,m.ubicacion].map(v=>String(v??'')).join(' ').toLowerCase();return !q||haystack.includes(q);}).map(m=>{const e=Number(m.existencia||0),min=Number(m.stock_min||0),st=e<=0?['SIN EXISTENCIA','rose']:e<=min?['CRÍTICO','amber']:['ÓPTIMO','emerald'];return `<tr class="border-b border-slate-800/50 hover:bg-slate-800/30"><td class="p-3"><b class="text-white">${esc(m.nombre)}</b><span class="block text-[9px] text-slate-500 font-mono">${esc(m.codigo)}</span></td><td class="p-3 text-slate-400">${esc(m.categoria||'—')}</td><td class="p-3 text-center text-white font-black">${e}</td><td class="p-3 text-center text-slate-400">${m.stock_min} / ${m.stock_max}</td><td class="p-3 text-right text-slate-300">${money(m.costo_unitario)}</td><td class="p-3 text-slate-400">${esc(m.proveedor||'—')}</td><td class="p-3 text-slate-400">${esc(m.ubicacion||'—')}</td><td class="p-3 text-center"><span class="px-2 py-1 rounded-full bg-${st[1]}-500/10 text-${st[1]}-400 border border-${st[1]}-500/20 text-[8px] font-black">${st[0]}</span></td><td class="p-3 text-center"><button onclick="openMovimientoInventarioModal('${m.id}')" class="text-blue-400 font-black text-[9px] uppercase">Mover</button></td></tr>`}).join('')||'<tr><td colspan="9" class="p-10 text-center text-slate-600">No hay insumos.</td></tr>';}
 function renderStockTecnicos(){const b=document.getElementById('inv-tech-body');if(!b)return;const g={};stockTecnicos.forEach(x=>{const t=(window.personalTecnicos||[]).find(t=>String(t.id)===String(x.tecnico_id));const k=x.tecnico_id;if(!g[k])g[k]={n:t?.nombre||k,v:t?.vehiculo||'Por asignar',a:[]};g[k].a.push(x);});b.innerHTML=Object.values(g).map(x=>`<div class="bg-slate-950 border border-slate-800 rounded-xl p-4"><div class="flex justify-between"><div><b class="text-xs text-white">${esc(x.n)}</b><p class="text-[9px] text-slate-500">Vehículo: ${esc(x.v)}</p></div><span class="text-[9px] text-blue-400 font-black">${x.a.reduce((s,i)=>s+Number(i.existencia||0),0)} unidades</span></div>${x.a.map(i=>`<div class="flex justify-between border-t border-slate-800 mt-3 pt-2 text-[9px]"><span class="text-slate-300">${esc(i.inventario_insumos?.nombre||'Insumo')}</span><b class="text-white">${i.existencia}</b></div>`).join('')}</div>`).join('')||'<div class="col-span-full text-center text-slate-600 p-10">Sin stock asignado.</div>';}
 function renderInventarioKardex(){const b=document.getElementById('inv-k-body');if(!b)return;const q=(document.getElementById('inv-k-search')?.value||'').toLowerCase();b.innerHTML=movimientos.filter(x=>JSON.stringify(x).toLowerCase().includes(q)).map(x=>{const m=insumos.find(i=>i.id===x.insumo_id);return `<tr class="border-b border-slate-800/50"><td class="p-3 text-slate-400">${new Date(x.fecha_hora).toLocaleString('es-CO')}</td><td class="p-3 text-slate-300">${esc(x.usuario_nombre||'—')}</td><td class="p-3"><span class="text-[8px] font-black text-blue-300">${esc(x.tipo)}</span></td><td class="p-3 text-white">${esc(m?.nombre||x.insumo_id)}</td><td class="p-3 text-center">${x.cantidad}</td><td class="p-3 text-center">${x.existencia_anterior}</td><td class="p-3 text-center font-black">${x.existencia_posterior}</td><td class="p-3 font-mono text-blue-300">${esc(x.opr_ot_relacionado||'—')}</td><td class="p-3 text-slate-400">${esc(x.observacion||'—')}</td></tr>`}).join('')||'<tr><td colspan="9" class="p-10 text-center text-slate-600">Sin movimientos.</td></tr>';}
 function renderReab(){const b=document.getElementById('inv-reab-body');if(!b)return;b.innerHTML=reabastecimientos.map(x=>{const m=insumos.find(i=>i.id===x.insumo_id);let action='—';if(x.estado==='SOLICITADA')action='<button onclick="cambiarEstadoReabastecimiento(\\''+x.id+'\\',\\'APROBADA\\')" class="text-blue-400 text-[9px] font-black">APROBAR</button>';else if(x.estado==='APROBADA')action='<button onclick="cambiarEstadoReabastecimiento(\\''+x.id+'\\',\\'EN_COMPRA\\')" class="text-orange-400 text-[9px] font-black">EN COMPRA</button>';else if(x.estado==='EN_COMPRA')action='<button onclick="recibirReabastecimiento(\\''+x.id+'\\')" class="text-emerald-400 text-[9px] font-black">RECIBIR</button>';return '<tr class="border-b border-slate-800/50"><td class="p-3 text-slate-400">'+new Date(x.fecha_solicitud).toLocaleDateString('es-CO')+'</td><td class="p-3 text-white">'+esc(m?.nombre||'—')+'</td><td class="p-3">'+x.cantidad+'</td><td class="p-3 text-slate-400">'+esc(x.proveedor||'—')+'</td><td class="p-3 text-orange-300 font-black text-[8px]">'+esc(x.estado)+'</td><td class="p-3">'+action+'</td></tr>'}).join('')||'<tr><td colspan="6" class="p-10 text-center text-slate-600">Sin solicitudes.</td></tr>';}
