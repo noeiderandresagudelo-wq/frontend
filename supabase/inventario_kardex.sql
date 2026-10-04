@@ -316,6 +316,44 @@ $$;
 
 grant execute on function public.recibir_reabastecimiento_inventario(uuid,uuid,text) to authenticated;
 
+-- Migración única desde el inventario legado, si la tabla antigua existe.
+-- La existencia antigua se convierte en una ENTRADA inicial auditada.
+do $
+declare
+  r record;
+  v_id uuid;
+begin
+  if to_regclass('public.inventario') is not null then
+    for r in execute $q$
+      select tenant_id, codigo, nombre, categoria, existencia, costo
+      from public.inventario
+      where tenant_id is not null
+    $q$ loop
+      select id into v_id
+      from public.inventario_insumos
+      where tenant_id = r.tenant_id and codigo = r.codigo
+      limit 1;
+
+      if v_id is null then
+        insert into public.inventario_insumos(
+          tenant_id,codigo,nombre,categoria,existencia,costo_unitario,activo
+        ) values (
+          r.tenant_id,r.codigo,r.nombre,r.categoria,0,coalesce(r.costo,0),true
+        ) returning id into v_id;
+
+        if coalesce(r.existencia,0) > 0 then
+          perform public.registrar_movimiento_inventario(
+            r.tenant_id,v_id,'ENTRADA',r.existencia,null,
+            'MIGRACION-INVENTARIO',
+            'Migración inicial desde public.inventario',
+            null,'Sistema'
+          );
+        end if;
+      end if;
+    end loop;
+  end if;
+end $;
+
 -- Realtime
 do $
 declare t text;
