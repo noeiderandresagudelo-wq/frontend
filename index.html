@@ -3155,6 +3155,7 @@
 
             <form id="form-cliente" onsubmit="handleSaveCliente(event)" class="space-y-3">
                 <input type="hidden" id="cliente-form-id-original" value="">
+                <input type="hidden" id="cliente-form-edit-mode" value="puesto">
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Código de Abonado</label>
@@ -3203,6 +3204,17 @@
                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Supervisor que Reacciona</label>
                     <input type="text" id="cliente-form-supervisor" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
                 </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Teléfono del puesto</label><input type="text" id="cliente-form-telefono" class="w-full h-10 bg-slate-950 border border-slate-800 rounded-lg px-3 text-xs text-white"></div>
+                    <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Teléfono supervisor</label><input type="text" id="cliente-form-telefono-supervisor" class="w-full h-10 bg-slate-950 border border-slate-800 rounded-lg px-3 text-xs text-white"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Panel de alarma</label><input type="text" id="cliente-form-modelo-panel" class="w-full h-10 bg-slate-950 border border-slate-800 rounded-lg px-3 text-xs text-white"></div>
+                    <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Comunicador</label><input type="text" id="cliente-form-comunicador" class="w-full h-10 bg-slate-950 border border-slate-800 rounded-lg px-3 text-xs text-white"></div>
+                </div>
+                <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Zonas configuradas</label><input type="text" id="cliente-form-zonas" class="w-full h-10 bg-slate-950 border border-slate-800 rounded-lg px-3 text-xs text-white" placeholder="Ej. 1-16 / perimetral / acceso"></div>
+                <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Datos de facturación / observaciones</label><textarea id="cliente-form-facturacion" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white" placeholder="Razón social, NIT, correo de facturación, condiciones..."></textarea>
 
                 <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
                     <input type="checkbox" id="cliente-form-incomunicada" class="accent-rose-500">
@@ -8770,7 +8782,14 @@
                 ubicacion: cl.ubicacion || null,
                 zona_id: cl.zonaId || null,
                 supervisor_reaccion: cl.supervisorReaccion || null,
-                incomunicada: !!cl.incomunicada
+                incomunicada: !!cl.incomunicada,
+                telefono: cl.telefono || null,
+                telefono_supervisor: cl.telefonoSupervisor || null,
+                modelo_panel: cl.modeloPanel || null,
+                tipo_comunicador: cl.tipoComunicador || null,
+                zonas_configuradas: cl.zonasConfiguradas || null,
+                contactos_emergencia: Array.isArray(cl.contactosEmergencia) ? cl.contactosEmergencia : [],
+                datos_facturacion: cl.datosFacturacion && typeof cl.datosFacturacion === 'object' ? cl.datosFacturacion : {}
             };
         }
         function rowToCliente(row) {
@@ -8787,7 +8806,14 @@
                 ubicacion: row.ubicacion || "0,0",
                 zonaId: row.zona_id || "",
                 supervisorReaccion: row.supervisor_reaccion || "",
-                incomunicada: !!row.incomunicada
+                incomunicada: !!row.incomunicada,
+                telefono: row.telefono || "",
+                telefonoSupervisor: row.telefono_supervisor || "",
+                modeloPanel: row.modelo_panel || "",
+                tipoComunicador: row.tipo_comunicador || "",
+                zonasConfiguradas: row.zonas_configuradas || "",
+                contactosEmergencia: Array.isArray(row.contactos_emergencia) ? row.contactos_emergencia : [],
+                datosFacturacion: row.datos_facturacion && typeof row.datos_facturacion === 'object' ? row.datos_facturacion : {}
             };
         }
 
@@ -12742,55 +12768,138 @@ function renderBurbujasChat(containerId, mensajes) {
             if (!container) return;
 
             const q = String(document.getElementById('crm-busqueda')?.value || '').trim().toLowerCase();
-            const data = (!q ? crmClientes : crmClientes.filter(c => [
+            const base = !q ? [...crmClientes] : crmClientes.filter(c => [
                 c.id, c.nombre, c.puesto, c.clienteNombre, c.ciudad, c.direccion,
                 c.supervisorReaccion, c.ansTime
-            ].some(v => String(v || '').toLowerCase().includes(q))));
+            ].some(v => String(v || '').toLowerCase().includes(q)));
 
-            container.innerHTML = '';
-
-            document.getElementById('crm-directorio-title').innerText =
-                window.crmVistaActual === 'puestos' ? 'Puestos / Abonados' : 'Puestos del CRM';
-            document.getElementById('crm-directorio-subtitle').innerText =
-                'Selecciona un puesto para consultar su ficha técnica y operativa.';
-            document.getElementById('crm-directorio-count').innerText = data.length;
-
-            data.forEach(cl => {
-                const d = document.createElement('button');
-                d.type = 'button';
-                const selected = String(window.crmPuestoSeleccionadoId || '') === String(cl.id);
-                d.className = 'w-full text-left p-3 rounded-xl cursor-pointer border transition ' +
-                    (selected
-                        ? 'bg-slate-800 border-blue-500/60 shadow-lg shadow-blue-950/20'
-                        : 'bg-slate-950 border-slate-800 hover:border-blue-500/30 hover:bg-slate-900');
-                d.onclick = () => selectClienteCRM(cl.id);
-
-                const comunicacion = cl.incomunicada
-                    ? '<span class="inline-flex items-center gap-1 text-[8px] font-black text-rose-400"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>SIN COMUNICACIÓN</span>'
-                    : '<span class="inline-flex items-center gap-1 text-[8px] font-black text-emerald-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>COMUNICACIÓN ACTIVA</span>';
-
-                d.innerHTML =
-                    '<div class="flex items-start justify-between gap-2">' +
-                        '<div class="min-w-0">' +
-                            '<span class="text-[8px] font-black uppercase tracking-wider text-blue-400">Puesto / Abonado</span>' +
-                            '<h4 class="text-xs font-extrabold text-white mt-1 truncate">' + escEstudio(cl.puesto || cl.nombre || 'Puesto sin nombre') + '</h4>' +
-                        '</div>' +
-                        '<span class="text-[8px] font-mono font-bold text-slate-500 shrink-0">' + escEstudio(cl.id) + '</span>' +
-                    '</div>' +
-                    '<p class="text-[9px] text-slate-400 mt-1 truncate">' +
-                        escEstudio(cl.clienteNombre || 'Cliente no definido') + ' · ' + escEstudio(cl.ciudad || 'Ciudad no registrada') +
-                    '</p>' +
-                    '<div class="flex items-center justify-between gap-2 mt-2">' +
-                        comunicacion +
-                        '<span class="text-[8px] text-slate-500">ANS ' + escEstudio(cl.ansTime || 'S/D') + '</span>' +
-                    '</div>';
-
-                container.appendChild(d);
+            const grupos = new Map();
+            base.forEach(cl => {
+                const key = String(cl.clienteNombre || 'Cliente sin razón social').trim() || 'Cliente sin razón social';
+                if (!grupos.has(key)) grupos.set(key, []);
+                grupos.get(key).push(cl);
             });
 
-            if (!data.length) {
-                container.innerHTML = '<div class="text-center py-12 text-[10px] text-slate-600 italic">No hay puestos que coincidan con la búsqueda.</div>';
+            container.innerHTML = '';
+            document.getElementById('crm-directorio-title').innerText = 'Clientes / Cuentas';
+            document.getElementById('crm-directorio-subtitle').innerText = 'Cuenta matriz → puestos y abonados.';
+            document.getElementById('crm-directorio-count').innerText = grupos.size;
+
+            if (!grupos.size) {
+                container.innerHTML = '<div class="text-center py-12 text-[10px] text-slate-600 italic">No hay clientes o puestos que coincidan con la búsqueda.</div>';
+                return;
             }
+
+            grupos.forEach((puestos, clienteNombre) => {
+                const wrap = document.createElement('div');
+                wrap.className = 'rounded-xl border border-slate-800 bg-slate-950 overflow-hidden';
+
+                const cuenta = document.createElement('div');
+                cuenta.className = 'flex items-center gap-2 p-3 hover:bg-slate-900 transition';
+                cuenta.innerHTML =
+                    '<button type="button" class="flex-1 min-w-0 text-left flex items-center gap-2">' +
+                        '<span class="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center shrink-0"><i class="fa-solid fa-building text-[10px]"></i></span>' +
+                        '<span class="min-w-0"><strong class="block text-[10px] font-black text-white uppercase truncate">' + escEstudio(clienteNombre) + '</strong><span class="text-[8px] text-slate-500">' + puestos.length + ' puesto' + (puestos.length === 1 ? '' : 's') + '</span></span>' +
+                    '</button>' +
+                    '<button type="button" class="w-7 h-7 rounded-lg text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 transition" title="Editar datos del cliente"><i class="fa-solid fa-pen text-[9px]"></i></button>' +
+                    '<i class="fa-solid fa-chevron-down text-[9px] text-slate-600 mr-1 transition-transform"></i>';
+
+                const toggleBtn=cuenta.querySelector('button');
+                const editBtn=cuenta.querySelectorAll('button')[1];
+                const arrow=cuenta.querySelector('i.fa-chevron-down');
+                const list=document.createElement('div');
+                list.className='hidden border-t border-slate-800 p-2 space-y-1';
+                toggleBtn.onclick=()=>{ list.classList.toggle('hidden'); arrow.classList.toggle('rotate-180'); };
+                editBtn.onclick=()=>openEditarClienteCRM(puestos[0].id,'cliente');
+
+                puestos.forEach(cl=>{
+                    const item=document.createElement('button');
+                    item.type='button';
+                    item.className='w-full text-left ml-2 pl-3 pr-2 py-2 rounded-lg border-l-2 transition '+
+                        (String(window.crmPuestoSeleccionadoId||'')===String(cl.id) ? 'border-blue-500 bg-blue-500/10' : 'border-slate-800 hover:border-blue-500/40 hover:bg-slate-900');
+                    item.innerHTML='<div class="flex items-center gap-2"><i class="fa-solid fa-location-dot text-[9px] text-blue-400 shrink-0"></i><span class="min-w-0 flex-1"><strong class="block text-[9px] font-extrabold text-slate-200 truncate">'+escEstudio(cl.puesto||cl.nombre||'Puesto sin nombre')+'</strong><span class="block text-[8px] text-slate-500 truncate">'+escEstudio(cl.ciudad||'Ciudad no registrada')+' · #'+escEstudio(cl.id)+'</span></span><span class="text-[8px] font-bold '+(cl.incomunicada?'text-rose-400':'text-emerald-400')+'">'+(cl.incomunicada?'SIN COM':'OK')+'</span></div>';
+                    item.onclick=()=>selectClienteCRM(cl.id);
+                    list.appendChild(item);
+                });
+
+                wrap.appendChild(cuenta); wrap.appendChild(list); container.appendChild(wrap);
+            });
+        }
+
+        function openEditarClienteCRM(id, modo='puesto') {
+            const cl=crmClientes.find(x=>String(x.id)===String(id));
+            if(!cl) return;
+            const form=document.getElementById('modal-cliente-form');
+            if(!form) return;
+            document.getElementById('cliente-form-title').innerText=modo==='cliente'?'Editar Datos del Cliente':'Editar Puesto';
+            document.getElementById('cliente-form-id-original').value=cl.id;
+            document.getElementById('cliente-form-edit-mode').value=modo;
+            const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v??''};
+            set('cliente-form-abonado',cl.id); set('cliente-form-ciudad',cl.ciudad); set('cliente-form-puesto',cl.puesto||cl.nombre);
+            set('cliente-form-cliente-nombre',cl.clienteNombre); set('cliente-form-direccion',cl.direccion);
+            set('cliente-form-departamento',cl.departamento); set('cliente-form-ubicacion',cl.ubicacion);
+            set('cliente-form-supervisor',cl.supervisorReaccion); set('cliente-form-telefono',cl.telefono);
+            set('cliente-form-telefono-supervisor',cl.telefonoSupervisor); set('cliente-form-modelo-panel',cl.modeloPanel);
+            set('cliente-form-comunicador',cl.tipoComunicador); set('cliente-form-zonas',cl.zonasConfiguradas);
+            set('cliente-form-facturacion',cl.datosFacturacion?.observaciones||'');
+            const z=document.getElementById('cliente-form-zona'); if(z){z.innerHTML='<option value="">Sin zona</option>'+activeZones.map(x=>'<option value="'+escEstudio(x.id)+'">'+escEstudio(x.nombre||x.id)+'</option>').join('');z.value=cl.zonaId||'';}
+            const inc=document.getElementById('cliente-form-incomunicada'); if(inc)inc.checked=!!cl.incomunicada;
+            form.classList.remove('hidden');
+        }
+
+        function openClienteFormModal() {
+            const form=document.getElementById('modal-cliente-form'); if(!form)return;
+            document.getElementById('cliente-form-title').innerText='Nuevo Cliente / Puesto';
+            document.getElementById('cliente-form-id-original').value='';
+            document.getElementById('cliente-form-edit-mode').value='puesto';
+            document.getElementById('form-cliente')?.reset();
+            const z=document.getElementById('cliente-form-zona'); if(z)z.innerHTML='<option value="">Sin zona</option>'+activeZones.map(x=>'<option value="'+escEstudio(x.id)+'">'+escEstudio(x.nombre||x.id)+'</option>').join('');
+            form.classList.remove('hidden');
+        }
+
+        function closeClienteFormModal(){ document.getElementById('modal-cliente-form')?.classList.add('hidden'); }
+
+        async function handleSaveCliente(event) {
+            event.preventDefault();
+            if(currentUser && !obtenerPermisosRol(currentUser).canEdit){showToast('Sin permisos','Tu rol no puede editar clientes o puestos.',true);return;}
+            const original=String(document.getElementById('cliente-form-id-original')?.value||'').trim();
+            const modo=document.getElementById('cliente-form-edit-mode')?.value||'puesto';
+            const get=id=>String(document.getElementById(id)?.value||'').trim();
+            const nombreCliente=get('cliente-form-cliente-nombre')||'Cliente sin razón social';
+            const datosFacturacion={observaciones:get('cliente-form-facturacion')};
+            const values={
+                ciudad:get('cliente-form-ciudad'), puesto:get('cliente-form-puesto'), clienteNombre:nombreCliente,
+                direccion:get('cliente-form-direccion'), departamento:get('cliente-form-departamento'), ubicacion:get('cliente-form-ubicacion'),
+                supervisorReaccion:get('cliente-form-supervisor'), telefono:get('cliente-form-telefono'),
+                telefonoSupervisor:get('cliente-form-telefono-supervisor'), modeloPanel:get('cliente-form-modelo-panel'),
+                tipoComunicador:get('cliente-form-comunicador'), zonasConfiguradas:get('cliente-form-zonas'),
+                zonaId:get('cliente-form-zona'), incomunicada:!!document.getElementById('cliente-form-incomunicada')?.checked,
+                datosFacturacion
+            };
+            let afectados=[];
+            if(modo==='cliente' && original){
+                const base=crmClientes.find(x=>String(x.id)===original);
+                const anterior=base?.clienteNombre||'';
+                afectados=crmClientes.filter(x=>(x.clienteNombre||'')===anterior);
+                afectados.forEach(x=>{x.clienteNombre=nombreCliente;});
+            }else if(original){
+                const cl=crmClientes.find(x=>String(x.id)===original);
+                if(!cl){showToast('No encontrado','El puesto ya no está disponible.',true);return;}
+                Object.assign(cl,values); afectados=[cl];
+            }else{
+                const id=get('cliente-form-abonado');
+                if(!id){showToast('Dato requerido','El código de abonado es obligatorio.',true);return;}
+                const nuevo={id,nombre:values.puesto||'Puesto',...values};
+                crmClientes.push(nuevo); afectados=[nuevo];
+            }
+            for(const cl of afectados){
+                const ok=await syncPush('clientes',clienteToRow(cl));
+                if(!ok){showToast('No se pudo guardar','Supabase rechazó el cambio. Revisa la consola.',true);return;}
+            }
+            closeClienteFormModal(); window.crmPuestoSeleccionadoId=afectados[0]?.id||window.crmPuestoSeleccionadoId;
+            refrescarVistasClientes();
+            if(window.crmPuestoSeleccionadoId) selectClienteCRM(window.crmPuestoSeleccionadoId);
+            showToast('Guardado correctamente','Los datos del cliente/puesto fueron actualizados en Supabase.');
         }
 
         function setCRMView(view) {
