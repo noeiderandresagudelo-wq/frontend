@@ -1088,7 +1088,7 @@
             <form id="form-solicitud-cliente" onsubmit="handleSolicitudCliente(event)" class="space-y-3">
                 <div>
                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Tipo de Servicio</label>
-                    <select id="solicitud-tipo" required class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-blue-500">
+                    <select id="solicitud-tipo" required class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
                         <option value="Soporte Técnico de Alarma">Soporte Técnico de Alarma</option>
                         <option value="Mantenimiento Correctivo">Mantenimiento Correctivo (algo está fallando)</option>
                         <option value="Mantenimiento Preventivo">Mantenimiento Preventivo (revisión programada)</option>
@@ -1441,7 +1441,7 @@
                     <!-- Ficha y Formulario Rápido de Edición / Alta -->
                     <div class="lg:col-span-4 bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 flex flex-col justify-between">
                         <div class="space-y-4">
-                            <div class="border-b border-slate-800 pb-3">
+                            <div class="pb-3 border-b border-slate-800/60">
                                 <h3 id="form-personal-title" class="text-xs font-extrabold text-white uppercase tracking-wider font-heading">Ficha de Colaborador</h3>
                                 <p class="text-[10px] text-slate-400 mt-1">Completa los campos para añadir a un miembro o haz clic en "Editar" en la plantilla.</p>
                             </div>
@@ -1452,24 +1452,24 @@
 
                                 <div>
                                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Nombre Completo</label>
-                                    <input type="text" id="manage-nombre" required placeholder="Ej: Mario Andrés Vargas" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-blue-500">
+                                    <input type="text" id="manage-nombre" required placeholder="Ej: Mario Andrés Vargas" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
                                 </div>
 
-                                <div class="grid grid-cols-2 gap-2">
+                                <div class="grid grid-cols-2 gap-4 border-t border-slate-800/60 pt-5">
                                     <div>
                                         <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Usuario Acceso</label>
-                                        <input type="email" id="manage-username" required placeholder="correo@empresa.com" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-blue-500">
+                                        <input type="email" id="manage-username" required placeholder="correo@empresa.com" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
                                     </div>
                                     <div>
                                         <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Contraseña</label>
-                                        <input type="text" id="manage-password" required placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-blue-500 font-mono">
+                                        <input type="text" id="manage-password" required placeholder="••••••••" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 font-mono">
                                     </div>
                                 </div>
 
                                 <div class="grid grid-cols-2 gap-2">
                                     <div>
                                         <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Rol Operativo</label>
-                                        <select id="manage-rol" onchange="toggleVehicleFields()" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none">
+                                        <select id="manage-rol" onchange="toggleVehicleFields()" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none">
                                             <option value="ADMIN">ADMIN (Acceso Total)</option>
                                             <option value="DESPACHADOR">DESPACHADOR (Despacho)</option>
                                             <option value="TECNICO">TECNICO (Campo)</option>
@@ -1479,7 +1479,7 @@
                                     </div>
                                     <div>
                                         <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Celular Contacto</label>
-                                        <input type="tel" id="manage-celular" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" autocomplete="tel" placeholder="3001234567" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,10)" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none">
+                                        <input type="tel" id="manage-celular" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" autocomplete="tel" placeholder="3001234567" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,10)" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none">
                                     </div>
                                 </div>
 
@@ -1488,11 +1488,11 @@
                                     <div class="grid grid-cols-2 gap-2 border-t border-slate-800/80 pt-3">
                                         <div>
                                             <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Placa / Vehículo</label>
-                                            <input type="text" id="manage-vehiculo" placeholder="MOTO-214 (SUP)" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none">
+                                            <input type="text" id="manage-vehiculo" placeholder="MOTO-214 (SUP)" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none">
                                         </div>
                                         <div>
                                             <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Ciudad Base</label>
-                                            <select id="manage-ciudad" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none">
+                                            <select id="manage-ciudad" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none">
                                                 <option value="BARRANQUILLA">Barranquilla</option>
                                                 <option value="BOGOTA">Bogotá</option>
                                                 <option value="CALI">Cali</option>
@@ -1783,7 +1783,7 @@
                                             <th class="p-3">Sector</th>
                                             <th class="p-3 text-center">Última visita</th>
                                             <th class="p-3 text-center">Vencimiento</th>
-                                            <th class="p-3 text-center">Estado</th>
+                                            <th class="py-4 px-4 text-center">Estado</th>
                                             <th class="p-3 text-center">Acciones</th>
                                         </tr>
                                     </thead>
@@ -2468,22 +2468,24 @@
 
             <!-- VISTA 6: COTIZACIONES & MANO DE OBRA -->
             <section id="view-cotizaciones" class="space-y-6 hidden">
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div class="grid grid-cols-12 gap-6 p-6">
+                    <div class="col-span-12 lg:col-span-5">
+
                     <!-- Formulario de Creación de Cotización -->
-                    <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col justify-between">
                         <div class="space-y-4">
                             <div class="border-b border-slate-800 pb-3">
                                 <h3 class="text-xs font-extrabold text-white uppercase tracking-wider">Generador de Presupuestos Comerciales</h3>
                                 <p class="text-[10px] text-slate-400 mt-1">Integra materiales del Kardex y mano de obra para cobros.</p>
                             </div>
 
-                            <div class="space-y-3">
+                            <div class="space-y-5">
                                 <div>
                                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Buscar Puesto (Cliente, Puesto o Abonado)</label>
-                                    <input type="text" id="cot-search-servicio" oninput="filterCotizacionServicios(this.value)" placeholder="Ej: Baumtic, Santa Selene, ST-2026-000003..." class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-purple-500 mb-2">
+                                    <input type="text" id="cot-search-servicio" oninput="filterCotizacionServicios(this.value)" placeholder="Ej: Baumtic, Santa Selene, ST-2026-000003..." class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500 mb-2">
 
                                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Seleccionar Incidente Técnico Relacionado</label>
-                                    <select id="cot-select-servicio" onchange="onCotServicioChange(this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none">
+                                    <select id="cot-select-servicio" onchange="onCotServicioChange(this.value)" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none">
                                         <!-- Inyectado dinámicamente -->
                                     </select>
                                 </div>
@@ -2512,21 +2514,21 @@
                                 <div class="grid grid-cols-2 gap-2">
                                     <div>
                                         <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Costo Mano de Obra ($)</label>
-                                        <input type="number" id="cot-mano-obra" value="120000" oninput="calculateCotizacionPreview()" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none">
+                                        <input type="number" id="cot-mano-obra" value="120000" oninput="calculateCotizacionPreview()" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none">
                                     </div>
                                     <div>
                                         <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">IVA Aplicable (%)</label>
-                                        <input type="number" id="cot-iva" value="19" oninput="calculateCotizacionPreview()" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none">
+                                        <input type="number" id="cot-iva" value="19" oninput="calculateCotizacionPreview()" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none">
                                     </div>
                                 </div>
 
                                 <div class="border-t border-slate-800/80 pt-3">
                                     <span class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Añadir Materiales Utilizados</span>
-                                    <div class="flex gap-2">
-                                        <select id="cot-add-material" class="flex-grow bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none">
+                                    <div class="flex gap-2 pt-1">
+                                        <select id="cot-add-material" class="flex-grow h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none">
                                             <!-- Inyectado dinámicamente -->
                                         </select>
-                                        <input type="number" id="cot-add-qty" value="1" min="1" class="w-16 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white text-center focus:outline-none">
+                                        <input type="number" id="cot-add-qty" value="1" min="1" class="w-20 h-11 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm text-white text-center focus:outline-none">
                                         <button onclick="addMaterialToCotizacion()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-lg text-xs font-bold transition">Agregar</button>
                                     </div>
 
@@ -2538,7 +2540,7 @@
                         </div>
 
                         <!-- Resumen y Guardado -->
-                        <div class="mt-6 pt-4 border-t border-slate-800 bg-slate-950 p-4 rounded-xl space-y-3">
+                        <div class="mt-6 pt-5 border-t border-slate-800/60 space-y-3">
                             <div class="flex justify-between items-center text-xs">
                                 <span class="text-slate-400">Total Materiales:</span>
                                 <span class="text-white font-mono" id="cot-preview-mat-total">$0</span>
@@ -2566,23 +2568,25 @@
                     </div>
 
                     <!-- Listado de Cotizaciones Generadas -->
-                    <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col justify-between">
+                    </div>
+                    <div class="col-span-12 lg:col-span-7 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col justify-between">
                         <div>
-                            <div class="p-4 bg-slate-950 border-b border-slate-800">
+                            <div class="px-6 py-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+
                                 <h3 class="text-xs font-extrabold text-white uppercase tracking-wider">Historial de Cotizaciones Emitidas</h3>
                             </div>
                             <div class="overflow-x-auto custom-scrollbar">
                                 <table class="w-full text-left border-collapse min-w-[600px]">
                                     <thead>
                                         <tr class="bg-slate-950/50 border-b border-slate-800 text-[10px] text-slate-400 uppercase tracking-wider font-bold">
-                                            <th class="p-3">Código</th>
-                                            <th class="p-3">Servicio Técnico</th>
-                                            <th class="p-3">Cliente</th>
-                                            <th class="p-3">Trazabilidad</th>
+                                            <th class="py-4 px-4">Código</th>
+                                            <th class="py-4 px-4">Servicio Técnico</th>
+                                            <th class="py-4 px-4">Cliente</th>
+                                            <th class="py-4 px-4">Trazabilidad</th>
                                             <th class="p-3 text-center">Estado</th>
-                                            <th class="p-3 text-right">Total Presupuestado</th>
-                                            <th class="p-3 text-center">Instalación</th>
-                                            <th class="p-3 text-center font-heading">Acciones</th>
+                                            <th class="py-4 px-4 text-right">Total Presupuestado</th>
+                                            <th class="py-4 px-4 text-center">Instalación</th>
+                                            <th class="py-4 px-4 text-center font-heading">Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody id="tbl-cotizaciones-body" class="divide-y divide-slate-800/40 text-xs text-slate-300">
@@ -2926,7 +2930,7 @@
                 <!-- Tipo de Servicio Técnico -->
                 <div>
                     <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Tipo de Servicio</label>
-                    <select id="form-service-tipo" onchange="autoFillServiceParameters()" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-blue-500 font-medium">
+                    <select id="form-service-tipo" onchange="autoFillServiceParameters()" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 font-medium">
                         <option value="Soporte Técnico de Alarma">Soporte Técnico de Alarma 🚨</option>
                         <option value="Mantenimiento Correctivo">Mantenimiento Correctivo 🔧</option>
                         <option value="Ajuste de Cámaras CCTV">Ajuste de Cámaras CCTV 📹</option>
@@ -2974,14 +2978,14 @@
             <form id="form-estudio-seguridad" onsubmit="guardarEstudioSeguridad(event)" class="space-y-4">
                 <input type="hidden" id="estudio-edit-id">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Cliente / Empresa</label><input id="estudio-cliente" required placeholder="Ej. Empresa ABC S.A.S." class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-violet-500"></div>
-                    <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Contacto</label><input id="estudio-contacto" placeholder="Nombre y teléfono" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-violet-500"></div>
-                    <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Dirección</label><input id="estudio-direccion" required placeholder="Lugar a inspeccionar" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-violet-500"></div>
-                    <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Ciudad</label><input id="estudio-ciudad" value="BARRANQUILLA" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-violet-500"></div>
-                    <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Servicio que desea instalar</label><select id="estudio-tipo" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-violet-500"><option>CCTV</option><option>Alarmas</option><option>Control de acceso</option><option>Cerca eléctrica</option><option>Monitoreo</option><option>GPS</option><option>Otro</option></select></div>
-                    <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Técnico para la visita</label><select id="estudio-tecnico" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-violet-500"></select></div>
+                    <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Cliente / Empresa</label><input id="estudio-cliente" required placeholder="Ej. Empresa ABC S.A.S." class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500"></div>
+                    <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Contacto</label><input id="estudio-contacto" placeholder="Nombre y teléfono" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500"></div>
+                    <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Dirección</label><input id="estudio-direccion" required placeholder="Lugar a inspeccionar" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500"></div>
+                    <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Ciudad</label><input id="estudio-ciudad" value="BARRANQUILLA" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500"></div>
+                    <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Servicio que desea instalar</label><select id="estudio-tipo" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500"><option>CCTV</option><option>Alarmas</option><option>Control de acceso</option><option>Cerca eléctrica</option><option>Monitoreo</option><option>GPS</option><option>Otro</option></select></div>
+                    <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Técnico para la visita</label><select id="estudio-tecnico" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500"></select></div>
                 </div>
-                <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Necesidad / solicitud del cliente</label><textarea id="estudio-necesidad" required rows="3" placeholder="Qué desea instalar y qué necesita proteger..." class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-violet-500"></textarea></div>
+                <div><label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Necesidad / solicitud del cliente</label><textarea id="estudio-necesidad" required rows="3" placeholder="Qué desea instalar y qué necesita proteger..." class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500"></textarea></div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3"><input id="estudio-area" placeholder="Área aproximada" class="bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white"><input id="estudio-accesos" placeholder="Cantidad de accesos" class="bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white"><input id="estudio-zonas" placeholder="Zonas críticas" class="bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white"></div>
                 <div class="flex gap-2 justify-end pt-3 border-t border-slate-800"><button type="button" onclick="closeEstudioModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2.5 rounded-lg text-xs font-bold">Cancelar</button><button type="submit" class="bg-violet-600 hover:bg-violet-500 text-white px-5 py-2.5 rounded-lg text-xs font-black uppercase">Guardar estudio</button></div>
             </form>
@@ -3000,23 +3004,23 @@
                 <input type="hidden" id="form-user-id-editando" value="">
                 <div>
                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Nombre Completo</label>
-                    <input type="text" id="form-user-nombre" required placeholder="Ej: Diana Valencia" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-blue-500">
+                    <input type="text" id="form-user-nombre" required placeholder="Ej: Diana Valencia" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
                 </div>
 
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Usuario (Username)</label>
-                        <input type="text" id="form-user-username" required placeholder="diana.v" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-blue-500">
+                        <input type="text" id="form-user-username" required placeholder="diana.v" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
                     </div>
                     <div>
                         <label id="form-user-password-label" class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Contraseña</label>
-                        <input type="password" id="form-user-password" placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-blue-500">
+                        <input type="password" id="form-user-password" placeholder="••••••••" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
                     </div>
                 </div>
 
                 <div>
                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Rol de Acceso & Permisos</label>
-                    <select id="form-user-rol" onchange="toggleAbonadoFieldCreateUser()" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-blue-500">
+                    <select id="form-user-rol" onchange="toggleAbonadoFieldCreateUser()" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
                         <option value="ADMIN">Super Administrador (ADMIN)</option>
                         <option value="DESPACHADOR">Despachador Central (DESPACHADOR)</option>
                         <option value="TECNICO">Técnico de Campo (TECNICO)</option>
@@ -3027,7 +3031,7 @@
 
                 <div id="wrap-form-user-abonado" class="hidden">
                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Código de Abonado a Vincular</label>
-                    <input type="text" id="form-user-abonado" placeholder="Ej: 0071" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-blue-500 font-mono">
+                    <input type="text" id="form-user-abonado" placeholder="Ej: 0071" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 font-mono">
                     <p id="form-user-abonado-feedback" class="text-[9px] text-slate-500 italic mt-1">Este cliente solo va a ver los servicios y datos de este abonado.</p>
                 </div>
 
@@ -3051,13 +3055,13 @@
                 <input type="hidden" id="form-mat-codigo-edit" value="">
                 <div>
                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Nombre del Material</label>
-                    <input type="text" id="form-mat-nombre" required placeholder="Ej: Sensor Infrarrojo de Movimiento" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none">
+                    <input type="text" id="form-mat-nombre" required placeholder="Ej: Sensor Infrarrojo de Movimiento" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none">
                 </div>
 
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Categoría</label>
-                        <select id="form-mat-categoria" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none">
+                        <select id="form-mat-categoria" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none">
                             <option value="Alarmas">Alarmas</option>
                             <option value="CCTV">CCTV</option>
                             <option value="Conectividad">Conectividad</option>
@@ -3072,7 +3076,7 @@
 
                 <div>
                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Costo Unitario ($)</label>
-                    <input type="number" id="form-mat-costo" value="45000" required class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none">
+                    <input type="number" id="form-mat-costo" value="45000" required class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none">
                 </div>
 
                 <div class="flex gap-2 justify-end pt-4 border-t border-slate-800">
@@ -3102,33 +3106,33 @@
                     </div>
                     <div>
                         <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Ciudad</label>
-                        <input type="text" id="cliente-form-ciudad" required placeholder="Ej: BARRANQUILLA" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-emerald-500">
+                        <input type="text" id="cliente-form-ciudad" required placeholder="Ej: BARRANQUILLA" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
                     </div>
                 </div>
 
                 <div>
                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Nombre del Puesto / Cuenta</label>
-                    <input type="text" id="cliente-form-puesto" required placeholder="Ej: Almacén Principal" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-emerald-500">
+                    <input type="text" id="cliente-form-puesto" required placeholder="Ej: Almacén Principal" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
                 </div>
 
                 <div>
                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Cliente (Empresa)</label>
-                    <input type="text" id="cliente-form-cliente-nombre" placeholder="Ej: Credi AO S.A.S" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-emerald-500">
+                    <input type="text" id="cliente-form-cliente-nombre" placeholder="Ej: Credi AO S.A.S" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
                 </div>
 
                 <div>
                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Dirección</label>
-                    <input type="text" id="cliente-form-direccion" required class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-emerald-500">
+                    <input type="text" id="cliente-form-direccion" required class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
                 </div>
 
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Departamento</label>
-                        <input type="text" id="cliente-form-departamento" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-emerald-500">
+                        <input type="text" id="cliente-form-departamento" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
                     </div>
                     <div>
                         <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Zona Táctica</label>
-                        <select id="cliente-form-zona" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-emerald-500">
+                        <select id="cliente-form-zona" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
                             <!-- Inyectado dinámicamente -->
                         </select>
                     </div>
@@ -3141,7 +3145,7 @@
 
                 <div>
                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Supervisor que Reacciona</label>
-                    <input type="text" id="cliente-form-supervisor" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-emerald-500">
+                    <input type="text" id="cliente-form-supervisor" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
                 </div>
 
                 <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
@@ -3172,15 +3176,15 @@
             <form id="form-cambiar-password" onsubmit="handleCambiarPassword(event)" class="space-y-3">
                 <div>
                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Contraseña Actual</label>
-                    <input type="password" id="perfil-password-actual" required class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-blue-500">
+                    <input type="password" id="perfil-password-actual" required class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
                 </div>
                 <div>
                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Nueva Contraseña</label>
-                    <input type="password" id="perfil-password-nueva" required minlength="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-blue-500">
+                    <input type="password" id="perfil-password-nueva" required minlength="3" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
                 </div>
                 <div>
                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Confirmar Nueva Contraseña</label>
-                    <input type="password" id="perfil-password-confirmar" required class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-blue-500">
+                    <input type="password" id="perfil-password-confirmar" required class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
                 </div>
                 <div class="flex gap-2 justify-end pt-3 border-t border-slate-800">
                     <button type="button" onclick="closeMiPerfilModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2.5 rounded-lg text-xs font-bold transition">Cancelar</button>
@@ -3443,17 +3447,17 @@
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Fecha de Instalación</label>
-                        <input type="date" id="install-fecha" required class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-emerald-500">
+                        <input type="date" id="install-fecha" required class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
                     </div>
                     <div>
                         <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Hora</label>
-                        <input type="time" id="install-hora" required class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-emerald-500">
+                        <input type="time" id="install-hora" required class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
                     </div>
                 </div>
 
                 <div>
                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Técnico Asignado</label>
-                    <select id="install-tecnico" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-emerald-500">
+                    <select id="install-tecnico" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
                         <!-- Inyectado dinámicamente -->
                     </select>
                     <p id="install-tecnico-lock-note" class="text-[9px] text-slate-500 italic mt-1 hidden">Solo el Administrador puede asignar o cambiar el técnico.</p>
@@ -3492,7 +3496,7 @@
 
                 <div>
                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Tipo de Atención Realizada</label>
-                    <select id="opr-form-tipo-atencion" required class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-emerald-500">
+                    <select id="opr-form-tipo-atencion" required class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
                         <option value="Correctivo">Mantenimiento Correctivo 🔧</option>
                         <option value="Preventivo">Mantenimiento Preventivo 🛡️</option>
                     </select>
