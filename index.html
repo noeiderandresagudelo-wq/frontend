@@ -2493,6 +2493,10 @@
                             <i class="fa-solid fa-clock-rotate-left mr-1.5"></i>Historial y Registro
                             <span id="badge-cotizador-tab" class="ml-1.5 inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-slate-800 text-slate-300 text-[9px] font-black px-1.5">0</span>
                         </button>
+                        <button type="button" id="tab-cotizador-agenda" onclick="switchCotizadorTab('agenda')" class="shrink-0 px-4 py-3 text-[10px] sm:text-xs font-black uppercase tracking-wider border-b-2 border-transparent text-slate-500 hover:text-slate-200 transition">
+                            <i class="fa-solid fa-calendar-check mr-1.5"></i>Agenda de Instalaciones
+                            <span id="badge-cotizador-agenda" class="ml-1.5 inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-slate-800 text-slate-300 text-[9px] font-black px-1.5">0</span>
+                        </button>
                     </div>
                 </div>
 
@@ -2638,28 +2642,37 @@
                     </div>
                 </div>
 
-                <!-- Calendario Visual de Instalaciones Programadas -->
-                <div id="cotizador-calendario-panel" class="p-4 sm:p-6 pt-0">
-                <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
-                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-                        <h3 class="text-xs font-extrabold text-white uppercase tracking-wider"><i class="fa-solid fa-calendar-days text-blue-400 mr-1.5"></i>Calendario de Instalaciones Programadas</h3>
-                        <div class="flex items-center gap-2">
-                            <button onclick="cambiarMesCalendarioInstalaciones(-1)" class="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs"><i class="fa-solid fa-chevron-left"></i></button>
-                            <span id="calendario-instalaciones-mes-label" class="text-[11px] font-bold text-slate-300 w-28 text-center">-</span>
-                            <button onclick="cambiarMesCalendarioInstalaciones(1)" class="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs"><i class="fa-solid fa-chevron-right"></i></button>
+                <!-- Agenda / Calendario de Instalaciones Programadas -->
+                <div id="cotizador-calendario-panel" class="hidden p-4 sm:p-6 pt-2">
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                        <div class="px-4 py-3 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <h3 class="text-xs font-extrabold text-white uppercase tracking-wider"><i class="fa-solid fa-calendar-check text-blue-400 mr-1.5"></i>Agenda de Instalaciones Programadas</h3>
+                                <p class="text-[10px] text-slate-500 mt-0.5">Próximas instalaciones, responsable y estado operativo.</p>
+                            </div>
+                            <div class="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded-lg p-1">
+                                <button type="button" id="btn-agenda-lista" onclick="switchAgendaInstalacionesView('lista')" class="px-2.5 py-1.5 rounded-md text-[9px] font-black uppercase bg-blue-600 text-white">Agenda</button>
+                                <button type="button" id="btn-agenda-mes" onclick="switchAgendaInstalacionesView('mes')" class="px-2.5 py-1.5 rounded-md text-[9px] font-black uppercase text-slate-400 hover:text-white">Mes</button>
+                            </div>
+                        </div>
+                        <div id="agenda-instalaciones-lista" class="max-h-[420px] overflow-y-auto custom-scrollbar p-3 space-y-2"></div>
+                        <div id="agenda-instalaciones-mes" class="hidden max-w-2xl mx-auto p-3">
+                            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-3 max-h-[420px] overflow-y-auto custom-scrollbar">
+                                <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                                    <button type="button" onclick="cambiarMesCalendarioInstalaciones(-1)" class="w-7 h-7 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs"><i class="fa-solid fa-chevron-left"></i></button>
+                                    <span id="calendario-instalaciones-mes-label" class="text-[11px] font-bold text-slate-300 text-center">-</span>
+                                    <button type="button" onclick="cambiarMesCalendarioInstalaciones(1)" class="w-7 h-7 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs"><i class="fa-solid fa-chevron-right"></i></button>
+                                </div>
+                                <div class="grid grid-cols-7 gap-1 text-center text-[8px] font-bold text-slate-500 uppercase">
+                                    <span>Dom</span><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span>
+                                </div>
+                                <div id="calendario-instalaciones-grid" class="grid grid-cols-7 gap-1"></div>
+                                <div id="calendario-instalaciones-detalle" class="pt-2 border-t border-slate-800 space-y-2"></div>
+                            </div>
                         </div>
                     </div>
-                    <div class="grid grid-cols-7 gap-1 text-center text-[9px] font-bold text-slate-500 uppercase">
-                        <span>Dom</span><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span>
-                    </div>
-                    <div id="calendario-instalaciones-grid" class="grid grid-cols-7 gap-1">
-                        <!-- Inyectado dinámicamente -->
-                    </div>
-                    <div id="calendario-instalaciones-detalle" class="pt-2 border-t border-slate-800 space-y-2">
-                        <p class="text-[11px] text-slate-500 italic text-center py-2">Tocá un día con instalaciones programadas para ver el detalle.</p>
-                    </div>
                 </div>
-                </div>
+
             </section>
 
             <!-- VISTA: MENSAJES (Chat con Clientes y Técnicos) -->
@@ -7324,7 +7337,7 @@
                 } else if (modId === 'cotizaciones') {
                     loadCotizacionForm();
                     renderCotizacionesTable();
-                    renderCalendarioInstalaciones();
+                    renderAgendaInstalaciones();
                 } else if (modId === 'clientes') {
                     renderClientesCRM();
                 } else if (modId === 'finanzas') {
@@ -11792,24 +11805,93 @@ function renderBurbujasChat(containerId, mensajes) {
             const calendario = document.getElementById('cotizador-calendario-panel');
             const btnNueva = document.getElementById('tab-cotizador-nueva');
             const btnHist = document.getElementById('tab-cotizador-historial');
+            const btnAgenda = document.getElementById('tab-cotizador-agenda');
             if (!nueva || !historial) return;
 
-            const esNueva = tab !== 'historial';
-            nueva.classList.toggle('hidden', !esNueva);
-            historial.classList.toggle('hidden', esNueva);
-            if (calendario) calendario.classList.toggle('hidden', esNueva);
+            const esNueva = tab === 'nueva';
+            const esHistorial = tab === 'historial';
+            const esAgenda = tab === 'agenda';
 
-            if (btnNueva) {
-                btnNueva.className = esNueva
-                    ? 'shrink-0 px-4 py-3 text-[10px] sm:text-xs font-black uppercase tracking-wider border-b-2 border-blue-500 text-blue-400 transition'
-                    : 'shrink-0 px-4 py-3 text-[10px] sm:text-xs font-black uppercase tracking-wider border-b-2 border-transparent text-slate-500 hover:text-slate-200 transition';
-            }
-            if (btnHist) {
-                btnHist.className = !esNueva
-                    ? 'shrink-0 px-4 py-3 text-[10px] sm:text-xs font-black uppercase tracking-wider border-b-2 border-blue-500 text-blue-400 transition'
-                    : 'shrink-0 px-4 py-3 text-[10px] sm:text-xs font-black uppercase tracking-wider border-b-2 border-transparent text-slate-500 hover:text-slate-200 transition';
+            nueva.classList.toggle('hidden', !esNueva);
+            historial.classList.toggle('hidden', !esHistorial);
+            if (calendario) calendario.classList.toggle('hidden', !esAgenda);
+
+            const activa = 'shrink-0 px-4 py-3 text-[10px] sm:text-xs font-black uppercase tracking-wider border-b-2 border-blue-500 text-blue-400 transition';
+            const inactiva = 'shrink-0 px-4 py-3 text-[10px] sm:text-xs font-black uppercase tracking-wider border-b-2 border-transparent text-slate-500 hover:text-slate-200 transition';
+
+            if (btnNueva) btnNueva.className = esNueva ? activa : inactiva;
+            if (btnHist) btnHist.className = esHistorial ? activa : inactiva;
+            if (btnAgenda) btnAgenda.className = esAgenda ? activa : inactiva;
+
+            if (esAgenda) {
+                renderAgendaInstalaciones();
+                switchAgendaInstalacionesView('lista');
             }
         }
+
+        function switchAgendaInstalacionesView(view) {
+            const lista = document.getElementById('agenda-instalaciones-lista');
+            const mes = document.getElementById('agenda-instalaciones-mes');
+            const btnLista = document.getElementById('btn-agenda-lista');
+            const btnMes = document.getElementById('btn-agenda-mes');
+            if (!lista || !mes) return;
+
+            const esLista = view !== 'mes';
+            lista.classList.toggle('hidden', !esLista);
+            mes.classList.toggle('hidden', esLista);
+
+            const activo = 'px-2.5 py-1.5 rounded-md text-[9px] font-black uppercase bg-blue-600 text-white';
+            const inactivo = 'px-2.5 py-1.5 rounded-md text-[9px] font-black uppercase text-slate-400 hover:text-white';
+            if (btnLista) btnLista.className = esLista ? activo : inactivo;
+            if (btnMes) btnMes.className = !esLista ? activo : inactivo;
+
+            if (!esLista) renderCalendarioInstalaciones();
+        }
+
+        function renderAgendaInstalaciones() {
+            const container = document.getElementById('agenda-instalaciones-lista');
+            const badge = document.getElementById('badge-cotizador-agenda');
+            if (!container) return;
+
+            const eventos = [];
+            instalacionesProgramadas.forEach(inst => {
+                if (!inst.fecha) return;
+                const tech = personalTecnicos.find(t => String(t.id) === String(inst.tecnicoId));
+                eventos.push({
+                    fecha: String(inst.fecha),
+                    hora: String(inst.hora || ''),
+                    cliente: inst.cliente || 'Cliente sin nombre',
+                    tecnico: tech ? tech.nombre : 'Sin técnico asignado',
+                    estado: inst.estado || 'Programada',
+                    codigo: inst.cotizacionCodigo || inst.id || 'INST'
+                });
+            });
+
+            eventos.sort((a,b) => (a.fecha + ' ' + a.hora).localeCompare(b.fecha + ' ' + b.hora));
+            if (badge) badge.textContent = String(eventos.length);
+
+            if (!eventos.length) {
+                container.innerHTML = '<div class="py-12 text-center"><i class="fa-regular fa-calendar-xmark text-2xl text-slate-600"></i><p class="text-xs font-bold text-slate-400 mt-2">No hay instalaciones programadas</p><p class="text-[10px] text-slate-600 mt-1">Cuando una cotización aprobada tenga fecha y técnico, aparecerá aquí.</p></div>';
+                return;
+            }
+
+            container.innerHTML = eventos.map(ev => {
+                const estado = String(ev.estado || 'Programada');
+                const estadoClass = estado === 'Completada'
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                    : estado === 'Cancelada'
+                        ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                        : 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
+                const fecha = ev.fecha.split('-').reverse().join('/');
+                return '<div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex flex-col md:flex-row md:items-center gap-3">' +
+                    '<div class="md:w-36 shrink-0"><span class="text-[9px] font-black text-blue-400 uppercase block">' + fecha + '</span><span class="text-xs font-bold text-white">' + (ev.hora || 'Hora por definir') + '</span></div>' +
+                    '<div class="min-w-0 flex-1"><p class="text-xs font-extrabold text-white truncate">' + ev.cliente + '</p><p class="text-[9px] text-slate-500 mt-0.5">Cotización ' + ev.codigo + '</p></div>' +
+                    '<div class="md:w-44"><span class="text-[8px] text-slate-500 uppercase block">Técnico asignado</span><p class="text-[10px] text-slate-300 truncate">' + ev.tecnico + '</p></div>' +
+                    '<span class="self-start md:self-center shrink-0 px-2.5 py-1 rounded-full text-[9px] font-black uppercase ' + estadoClass + '">' + estado + '</span>' +
+                    '</div>';
+            }).join('');
+        }
+
 
         function renderCotizacionesTable() {
             const container = document.getElementById('tbl-cotizaciones-body');
