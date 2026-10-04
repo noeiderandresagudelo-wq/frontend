@@ -7352,6 +7352,9 @@
                     renderComprasERP();
                 } else if (modId === 'inventario') {
                     renderInventario();
+                    if (typeof window.cargarInventarioKardex === 'function') {
+                        setTimeout(() => window.cargarInventarioKardex(), 0);
+                    }
                 } else if (modId === 'cotizaciones') {
                     loadCotizacionForm();
                     renderCotizacionesTable();
