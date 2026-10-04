@@ -5561,18 +5561,101 @@
             }
         }
 
-        function updateMobileTaskState(consecutivo, newState) {
-            // La ubicación GPS es obligatoria para operar en campo: si no está activa, se bloquea
-            // el cambio de estado y se le vuelve a pedir el permiso al técnico.
+        async function updateMobileTaskState(consecutivo, newState) {
+            // La ubicación GPS es obligatoria para operar en campo.
             if (!verificarGPSObligatorio()) return;
 
-            updateServiceState(consecutivo, newState, "Modificación realizada vía terminal de campo del celular del Técnico.");
-            showToast("Mobile Sync", `Estado de ${consecutivo} sincronizado en la central.`);
+            const servicio = incidentesServicios.find(i => i.consecutivo === consecutivo);
+            if (!servicio) {
+                showToast("Servicio no encontrado", "No se pudo localizar el servicio.", true);
+                return;
+            }
+
+            // La llegada al sitio se valida físicamente contra las coordenadas
+            // registradas del cliente. Pulsar el botón por sí solo NO cambia el estado.
+            let evidenciaArribo = null;
+            if (newState === "Llegó al sitio") {
+                try {
+                    showToast("Validando llegada", "Comprobando tu ubicación GPS frente al sitio del servicio...");
+                    const validacion = await validarArriboServicioTecnico(servicio);
+
+                    if (!validacion.valido) {
+                        showToast("Llegada no validada", validacion.mensaje, true);
+                        return;
+                    }
+
+                    evidenciaArribo = validacion;
+                } catch (error) {
+                    console.error("[Alarvix GPS] Error validando llegada del servicio:", error);
+                    showToast("No se pudo validar la llegada", error?.message || "No fue posible obtener tu ubicación actual.", true);
+                    return;
+                }
+            }
+
+            updateServiceState(
+                consecutivo,
+                newState,
+                evidenciaArribo
+                    ? "Llegada validada por GPS. Distancia al sitio: " + Math.round(evidenciaArribo.distanciaMetros) + " m. Precisión GPS: " + Math.round(evidenciaArribo.gps.accuracy || 0) + " m."
+                    : "Modificación realizada vía terminal de campo del celular del Técnico.",
+                evidenciaArribo
+            );
+
+            showToast(
+                newState === "Llegó al sitio" ? "Llegada confirmada" : "Mobile Sync",
+                newState === "Llegó al sitio"
+                    ? "El GPS confirmó que estás dentro del radio permitido del cliente."
+                    : `Estado de ${consecutivo} sincronizado en la central.`
+            );
+
             refreshMobileView();
 
             if (newState === "Finalizado") {
                 showOPRReport(consecutivo);
             }
+        }
+
+        function obtenerCoordenadasDestinoServicioTecnico(servicio) {
+            if (!servicio) return null;
+            const cliente = crmClientes.find(c => String(c.id) === String(servicio.abonadoId));
+            if (!cliente || !cliente.ubicacion) return null;
+
+            const partes = String(cliente.ubicacion).split(',').map(v => Number(String(v).trim()));
+            if (partes.length !== 2 || !Number.isFinite(partes[0]) || !Number.isFinite(partes[1])) return null;
+            if (Math.abs(partes[0]) > 90 || Math.abs(partes[1]) > 180) return null;
+
+            return { lat: partes[0], lng: partes[1], fuente: "cliente" };
+        }
+
+        async function validarArriboServicioTecnico(servicio) {
+            const destino = obtenerCoordenadasDestinoServicioTecnico(servicio);
+
+            if (!destino) {
+                return {
+                    valido: false,
+                    mensaje: "Este cliente no tiene coordenadas GPS registradas. La Central debe registrar la ubicación del cliente antes de confirmar el arribo."
+                };
+            }
+
+            const gps = await obtenerGPSActualTecnico();
+            const distanciaMetros = distanciaKm(gps.lat, gps.lng, destino.lat, destino.lng) * 1000;
+            const precision = Number.isFinite(gps.accuracy) ? gps.accuracy : 999;
+
+            // Radio adaptativo: nunca menor a 150 m ni mayor a 250 m.
+            // Se tiene en cuenta la precisión reportada por el GPS del teléfono.
+            const radioPermitido = Math.max(150, Math.min(250, precision * 2.5));
+            const valido = distanciaMetros <= radioPermitido;
+
+            return {
+                valido,
+                gps,
+                destino,
+                distanciaMetros,
+                radioPermitido,
+                mensaje: valido
+                    ? "Llegada validada a " + Math.round(distanciaMetros) + " m del sitio."
+                    : "El GPS indica " + Math.round(distanciaMetros) + " m del sitio. Debes estar dentro de aproximadamente " + Math.round(radioPermitido) + " m para marcar la llegada."
+            };
         }
 
         /**
@@ -9964,7 +10047,7 @@ function renderBurbujasChat(containerId, mensajes) {
             renderMonitoreoTable(filtered);
         }
 
-        function updateServiceState(consecutivo, newState, comments = "Cambio manual por operador de central") {
+        function updateServiceState(consecutivo, newState, comments = "Cambio manual por operador de central", evidenciaGps = null) {
             try {
                 const s = incidentesServicios.find(i => i.consecutivo === consecutivo);
                 if (!s) return;
@@ -9978,7 +10061,17 @@ function renderBurbujasChat(containerId, mensajes) {
                     fecha: now.toISOString(),
                     hora: `${hh}:${mm}`,
                     user: currentUser?.nombre || "Despachador Central",
-                    gps: "10.9639, -74.7964",
+                    gps: evidenciaGps?.gps
+                        ? evidenciaGps.gps.lat.toFixed(6) + ", " + evidenciaGps.gps.lng.toFixed(6)
+                        : "S/D",
+                    ...(evidenciaGps?.gps ? {
+                        latitud: evidenciaGps.gps.lat,
+                        longitud: evidenciaGps.gps.lng,
+                        precision_m: evidenciaGps.gps.accuracy,
+                        distancia_m: Math.round(evidenciaGps.distanciaMetros),
+                        radio_permitido_m: Math.round(evidenciaGps.radioPermitido),
+                        validado_gps: true
+                    } : {}),
                     msg: `Cambio de estado a [${newState}]. Observación: ${comments}`
                 });
 
