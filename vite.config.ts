@@ -16,6 +16,8 @@ function copyPwaAssets() {
       if (existsSync(icons)) cpSync(icons, resolve(dist, 'icons'), { recursive: true })
       const sw = resolve(root, 'sw.js')
       if (existsSync(sw) && !existsSync(resolve(dist, 'sw.js'))) copyFileSync(sw, resolve(dist, 'sw.js'))
+      const inventarioKardex = resolve(root, 'inventario-kardex.js')
+      if (existsSync(inventarioKardex)) copyFileSync(inventarioKardex, resolve(dist, 'inventario-kardex.js'))
     }
   }
 }
