@@ -114,6 +114,32 @@ create policy "inventario reab update" on public.inventario_reabastecimientos fo
 drop policy if exists "inventario audit select" on public.inventario_log_auditoria;
 create policy "inventario audit select" on public.inventario_log_auditoria for select to authenticated using (tenant_id = current_tenant_id());
 
+-- Blindaje de inmutabilidad: ningún UPDATE/INSERT directo del cliente puede alterar existencia.
+create or replace function public.proteger_existencia_inventario()
+returns trigger
+language plpgsql
+set search_path = ''
+as $
+begin
+  if tg_op = 'UPDATE'
+     and new.existencia is distinct from old.existencia
+     and coalesce(current_setting('app.inventario_movimiento', true),'0') <> '1' then
+    raise exception 'La existencia solo puede cambiar mediante un movimiento de Kardex';
+  end if;
+  if tg_op = 'INSERT'
+     and new.existencia <> 0
+     and coalesce(current_setting('app.inventario_movimiento', true),'0') <> '1' then
+    raise exception 'La existencia inicial debe ser 0; registre una ENTRADA para crear stock';
+  end if;
+  return new;
+end;
+$;
+
+drop trigger if exists trg_proteger_existencia_inventario on public.inventario_insumos;
+create trigger trg_proteger_existencia_inventario
+before insert or update on public.inventario_insumos
+for each row execute function public.proteger_existencia_inventario();
+
 create or replace function public.registrar_movimiento_inventario(
   p_insumo_id uuid,
   p_tipo text,
@@ -139,6 +165,7 @@ declare
   v_usuario uuid := auth.uid();
 begin
   if v_tenant is null then raise exception 'No hay tenant_id en la sesión'; end if;
+  perform set_config('app.inventario_movimiento','1',true);
   if p_cantidad is null or p_cantidad <= 0 then raise exception 'La cantidad debe ser mayor que cero'; end if;
   if p_tipo not in ('ENTRADA','SALIDA_TECNICO','CONSUMO_OPR','DEVOLUCION','AJUSTE') then raise exception 'Tipo de movimiento no permitido'; end if;
 
