@@ -3503,7 +3503,7 @@
                     <textarea id="opr-form-trabajo-realizado" required placeholder="Describe la falla encontrada, la solución aplicada y el estado final del sistema..." class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white h-24 focus:outline-none focus:border-emerald-500"></textarea>
                 </div>
 
-                <div class="space-y-2">
+                <div id="opr-requerimientos-cotizacion-wrap" class="space-y-2 hidden">
                     <label class="block text-[9px] font-bold text-amber-400 uppercase mb-1">Requerimientos para Cotización</label>
                     <textarea id="opr-form-requerimientos-cotizacion" placeholder="Describe el alcance general: qué se debe reparar, reemplazar, instalar o suministrar." class="w-full bg-slate-950 border border-amber-500/20 rounded-lg p-2.5 text-xs text-white h-20 focus:outline-none focus:border-amber-500"></textarea>
                     <p class="text-[9px] text-slate-500 italic">El detalle estructurado de materiales, equipos y trabajos se enviará al Cotizador junto con este diagnóstico.</p>
@@ -3550,10 +3550,10 @@
                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1.5">¿Este servicio requiere Cotización?</label>
                     <div class="grid grid-cols-2 gap-2">
                         <label class="flex items-center justify-center gap-2 bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-300 cursor-pointer has-[:checked]:border-amber-500 has-[:checked]:text-amber-400 has-[:checked]:bg-amber-500/10 transition">
-                            <input type="radio" name="opr-requiere-cot" value="Si" class="accent-amber-500"> Sí, requiere cotización
+                            <input type="radio" name="opr-requiere-cot" value="Si" class="accent-amber-500" onchange="toggleRequerimientosCotizacionTecnico()"> Sí, requiere cotización
                         </label>
                         <label class="flex items-center justify-center gap-2 bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-300 cursor-pointer has-[:checked]:border-emerald-500 has-[:checked]:text-emerald-400 has-[:checked]:bg-emerald-500/10 transition">
-                            <input type="radio" name="opr-requiere-cot" value="No" checked class="accent-emerald-500"> No, servicio cerrado
+                            <input type="radio" name="opr-requiere-cot" value="No" checked class="accent-emerald-500" onchange="toggleRequerimientosCotizacionTecnico()"> No, servicio cerrado
                         </label>
                     </div>
                     <p class="text-[9px] text-slate-500 italic mt-1.5">Si marcas "Sí", el caso pasará automáticamente al Cotizador. Si marcas "No", el servicio queda finalizado y listo para cierre.</p>
@@ -3569,6 +3569,27 @@
 
     <!-- LOGICA SCRIPT DE CONTROL Y COMUNICACIONES -->
     <script>
+        // Formato documental oficial Alarvix: Colombia, DD/MM/AAAA y hora 24h.
+        const ZONA_HORARIA_DOCUMENTAL = 'America/Bogota';
+        function formatearFechaDocumental(valor) {
+            if (!valor) return 'No registrada';
+            const fecha = valor instanceof Date ? valor : new Date(valor);
+            if (Number.isNaN(fecha.getTime())) return 'No registrada';
+            return new Intl.DateTimeFormat('en-GB', { timeZone: ZONA_HORARIA_DOCUMENTAL, day: '2-digit', month: '2-digit', year: 'numeric' }).format(fecha);
+        }
+        function formatearFechaHoraDocumental(valor) {
+            if (!valor) return 'No registrada';
+            const fecha = valor instanceof Date ? valor : new Date(valor);
+            if (Number.isNaN(fecha.getTime())) return 'No registrada';
+            return new Intl.DateTimeFormat('en-GB', { timeZone: ZONA_HORARIA_DOCUMENTAL, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(fecha);
+        }
+        function formatearHoraDocumental(valor) {
+            if (!valor) return 'No registrada';
+            const fecha = valor instanceof Date ? valor : new Date(valor);
+            if (Number.isNaN(fecha.getTime())) return 'No registrada';
+            return new Intl.DateTimeFormat('en-GB', { timeZone: ZONA_HORARIA_DOCUMENTAL, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(fecha);
+        }
+
         // CONFIGURACIONES Y DATOS MAESTROS INDEPENDIENTES (Sin dependencias externas)
         let activeCentral = "BARRANQUILLA";
 
@@ -5844,6 +5865,20 @@
             });
         }
 
+        function toggleRequerimientosCotizacionTecnico() {
+            const wrap = document.getElementById('opr-requerimientos-cotizacion-wrap');
+            const requiere = document.querySelector('input[name="opr-requiere-cot"]:checked')?.value === 'Si';
+            if (wrap) wrap.classList.toggle('hidden', !requiere);
+            if (!requiere) {
+                const campo = document.getElementById('opr-form-requerimientos-cotizacion');
+                if (campo) campo.value = '';
+                const lista = document.getElementById('opr-requerimientos-cotizacion-list');
+                if (lista) lista.innerHTML = '';
+                const vacio = document.getElementById('opr-requerimientos-cotizacion-empty');
+                if (vacio) vacio.classList.remove('hidden');
+            }
+        }
+
         function openTechOprModal(consecutivo) {
             try {
                 const s = incidentesServicios.find(i => i.consecutivo === consecutivo);
@@ -5865,6 +5900,7 @@
                 tipoSelect.value = (s.tipo && s.tipo.toUpperCase().includes("PREVENT")) ? "Preventivo" : "Correctivo";
 
                 document.querySelectorAll('input[name="opr-requiere-cot"]').forEach(r => r.checked = (r.value === "No"));
+                toggleRequerimientosCotizacionTecnico();
 
                 // Restablece / precarga la evidencia fotográfica (si ya se había tomado una para este servicio)
                 oprFotoEvidenciaTemp = (s.informeTecnico && s.informeTecnico.fotoEvidencia) || null;
@@ -5996,8 +6032,8 @@
                 const trabajoRealizado = document.getElementById('opr-form-trabajo-realizado').value.trim();
                 const requiereCotEl = document.querySelector('input[name="opr-requiere-cot"]:checked');
                 const requiereCot = requiereCotEl ? requiereCotEl.value === "Si" : false;
-                const requerimientosCotizacion = document.getElementById('opr-form-requerimientos-cotizacion')?.value.trim() || '';
-                const requerimientosCotizacionItems = obtenerRequerimientosCotizacionTecnico();
+                const requerimientosCotizacion = requiereCot ? (document.getElementById('opr-form-requerimientos-cotizacion')?.value.trim() || '') : '';
+                const requerimientosCotizacionItems = requiereCot ? obtenerRequerimientosCotizacionTecnico() : [];
 
                 // Guardar el informe del técnico como parte del servicio (soporte de la OPR)
                 s.evidenciaDano = trabajoRealizado;
@@ -6696,7 +6732,7 @@
             cargarIdentidadDocumentalEmpresa().then(aplicarIdentidadOPRModal).catch(() => {});
             document.getElementById('opr-estudio-id').value = e.id;
             const fechaVisitaOPR = e.oprReport?.fechaVisita || e.fechaLlegada || e.fechaCreacion || new Date().toISOString();
-            const fechaVisitaTextoOPR = new Date(fechaVisitaOPR).toLocaleDateString('es-CO');
+            const fechaVisitaTextoOPR = formatearFechaDocumental(fechaVisitaOPR);
             const idHeaderOPR = document.getElementById('opr-estudio-id-header');
             const fechaHeaderOPR = document.getElementById('opr-estudio-fecha-header');
             if (idHeaderOPR) idHeaderOPR.textContent = e.id || 'ES-XXXXXX';
@@ -6713,7 +6749,7 @@
             document.getElementById('opr-estudio-ingreso').value = buscarTiempo('ingreso');
             document.getElementById('opr-estudio-despacho').value = buscarTiempo('despacho');
             document.getElementById('opr-estudio-arribo').value = buscarTiempo('arribo');
-            document.getElementById('opr-estudio-cierre').value = e.oprReport?.fecha ? new Date(e.oprReport.fecha).toLocaleString('es-CO') : '--';
+            document.getElementById('opr-estudio-cierre').value = e.oprReport?.fecha ? formatearFechaHoraDocumental(e.oprReport.fecha) : '--';
             const opr = e.oprReport || {};
             ['hallazgos','requerimientos','equipos','riesgos','recomendaciones','observaciones'].forEach(function(k){
                 document.getElementById('opr-estudio-'+k).value = opr[k] || '';
@@ -10737,7 +10773,7 @@ function renderBurbujasChat(containerId, mensajes) {
                 document.getElementById('opr-consecutivo').innerText = s.consecutivo;
                 cargarIdentidadDocumentalEmpresa().then(aplicarIdentidadOPRModal).catch(() => {});
                 const fechaPrincipalOPR = s.informeTecnico?.fechaVisita || s.informeTecnico?.fechaCierre || s.fechaCreacion;
-                document.getElementById('opr-fecha').innerText = fechaPrincipalOPR ? new Date(fechaPrincipalOPR).toLocaleDateString('es-CO') : "--/--/----";
+                document.getElementById('opr-fecha').innerText = fechaPrincipalOPR ? formatearFechaDocumental(fechaPrincipalOPR) : "--/--/----";
                 document.getElementById('opr-abonado-id').innerText = s.abonadoId;
                 document.getElementById('opr-cliente-nombre').innerText = cl.nombre;
                 document.getElementById('opr-cliente-direccion').innerText = cl.direccion;
@@ -11350,8 +11386,8 @@ function renderBurbujasChat(containerId, mensajes) {
             const tecnicoNombre = info.tecnico || tecnico.nombre || 'Técnico no registrado';
             const fechaFuente = info.fechaVisita || info.fecha || s.fechaCreacion || null;
             const fecha = fechaFuente ? new Date(fechaFuente) : null;
-            const fechaTexto = fecha && !isNaN(fecha.getTime()) ? fecha.toLocaleDateString('es-CO') : 'No registrada';
-            const horaTexto = fecha && !isNaN(fecha.getTime()) ? fecha.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}) : 'No registrada';
+            const fechaTexto = fecha && !isNaN(fecha.getTime()) ? formatearFechaDocumental(fecha) : 'No registrada';
+            const horaTexto = fecha && !isNaN(fecha.getTime()) ? formatearHoraDocumental(fecha) : 'No registrada';
             const diagnostico = info.descripcion || s.evidenciaDano || s.descripcion || 'El técnico no dejó una descripción técnica registrada.';
             const baseCotizacion = info.requerimientosCotizacion || 'El técnico no dejó requerimientos específicos para cotizar. El Cotizador debe definir materiales y mano de obra con base en el diagnóstico.';
             const requerimientosItems = Array.isArray(info.requerimientosCotizacionItems)
@@ -11767,9 +11803,9 @@ function renderBurbujasChat(containerId, mensajes) {
                     <td class="p-3">
                         <div class="space-y-0.5 min-w-[175px]">
                             <span class="text-[9px] font-bold text-slate-300 block"><i class="fa-solid fa-user-gear text-blue-400 mr-1"></i>Técnico: ${c.tecnicoNombre || 'No registrado'}</span>
-                            <span class="text-[8px] text-slate-500 block"><i class="fa-solid fa-calendar-day mr-1"></i>Visita: ${c.fechaVisitaTecnica ? new Date(c.fechaVisitaTecnica).toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'}) : 'No registrada'}</span>
+                            <span class="text-[8px] text-slate-500 block"><i class="fa-solid fa-calendar-day mr-1"></i>Visita: ${c.fechaVisitaTecnica ? formatearFechaHoraDocumental(c.fechaVisitaTecnica) : 'No registrada'}</span>
                             <span class="text-[8px] text-slate-500 block"><i class="fa-solid fa-user-tie mr-1"></i>Cotizó: ${c.cotizadorNombre || 'No registrado'}</span>
-                            <span class="text-[8px] text-slate-500 block"><i class="fa-solid fa-clock mr-1"></i>Emitida: ${c.fechaCreacion ? new Date(c.fechaCreacion).toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'}) : 'No registrada'}</span>
+                            <span class="text-[8px] text-slate-500 block"><i class="fa-solid fa-clock mr-1"></i>Emitida: ${c.fechaCreacion ? formatearFechaHoraDocumental(c.fechaCreacion) : 'No registrada'}</span>
                         </div>
                     </td>
                     <td class="p-3 text-center">
@@ -12144,11 +12180,11 @@ function renderBurbujasChat(containerId, mensajes) {
             doc.setFontSize(8);
             doc.text(`Técnico de visita: ${cot.tecnicoNombre || 'No registrado'}`, 15, 90);
             const fechaVisitaPdf = cot.fechaVisitaTecnica ? new Date(cot.fechaVisitaTecnica) : null;
-            const fechaVisitaTxt = fechaVisitaPdf && !isNaN(fechaVisitaPdf.getTime()) ? fechaVisitaPdf.toLocaleDateString('es-CO') + ' ' + fechaVisitaPdf.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}) : 'No registrada';
+            const fechaVisitaTxt = fechaVisitaPdf && !isNaN(fechaVisitaPdf.getTime()) ? formatearFechaHoraDocumental(fechaVisitaPdf) : 'No registrada';
             doc.text(`Fecha / hora de visita: ${fechaVisitaTxt}`, 15, 95);
             doc.text(`Cotización elaborada por: ${cot.cotizadorNombre || 'No registrado'}`, 105, 90);
             const fechaCotPdf = cot.fechaCreacion ? new Date(cot.fechaCreacion) : null;
-            const fechaCotTxt = fechaCotPdf && !isNaN(fechaCotPdf.getTime()) ? fechaCotPdf.toLocaleDateString('es-CO') + ' ' + fechaCotPdf.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}) : 'No registrada';
+            const fechaCotTxt = fechaCotPdf && !isNaN(fechaCotPdf.getTime()) ? formatearFechaHoraDocumental(fechaCotPdf) : 'No registrada';
             doc.text(`Fecha / hora de cotización: ${fechaCotTxt}`, 105, 95);
             doc.setFont("helvetica", "bold");
             doc.text("Diagnóstico técnico que origina el presupuesto:", 15, 101);
