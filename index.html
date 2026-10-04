@@ -5148,7 +5148,33 @@
                 return;
             }
 
+            // Agrupar los servicios por CLIENTE y mostrar debajo cada PUESTO/ABONADO.
+            // Así el técnico identifica primero la empresa y luego el punto específico donde debe atender.
+            const gruposPorCliente = new Map();
             techTasks.forEach(task => {
+                const cl = crmClientes.find(c => String(c.id) === String(task.abonadoId)) || { nombre: "Cliente Desconocido", clienteNombre: "Cliente Desconocido", direccion: "S/D" };
+                const clienteNombre = String(cl.clienteNombre || cl.cliente_nombre || cl.nombre || "Cliente Desconocido").trim();
+                const key = clienteNombre.toLowerCase();
+                if (!gruposPorCliente.has(key)) gruposPorCliente.set(key, { nombre: clienteNombre, tareas: [] });
+                gruposPorCliente.get(key).tareas.push(task);
+            });
+
+            gruposPorCliente.forEach(grupo => {
+                const group = document.createElement('section');
+                group.className = "space-y-2.5";
+                group.innerHTML = `
+                    <div class="flex items-center justify-between px-1 pt-1">
+                        <div class="min-w-0">
+                            <span class="text-[8px] font-black uppercase tracking-widest text-blue-400">Cliente</span>
+                            <h3 class="text-sm font-extrabold text-white truncate">${escEstudio(grupo.nombre)}</h3>
+                        </div>
+                        <span class="shrink-0 ml-2 px-2 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-[9px] font-bold text-blue-300">${grupo.tareas.length} ${grupo.tareas.length === 1 ? 'servicio' : 'servicios'}</span>
+                    </div>
+                    <div class="space-y-3"></div>
+                `;
+                const groupList = group.querySelector('.space-y-3');
+
+                grupo.tareas.forEach(task => {
                 const cl = crmClientes.find(c => c.id === task.abonadoId) || { nombre: "Cliente Desconocido", direccion: "S/D" };
                 const div = document.createElement('div');
                 div.className = "bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3 shadow-md hover:border-emerald-500/30 transition-colors duration-150";
@@ -5243,6 +5269,9 @@
                     </div>
                 `;
                 container.appendChild(div);
+
+                });
+                container.appendChild(group);
             });
         }
 
