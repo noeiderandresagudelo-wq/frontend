@@ -56,7 +56,7 @@ window.switchInventarioTab=setTab;
 async function load(){
  const t=tenant(); if(!appSupabase()||!t)return false;
  const consultas=[
-   ['insumos',supabaseClient.from('inventario_insumos').select('id,codigo,tenant_id,nombre,categoria,existencia,costo_unitario,proveedor,ubicacion,stock_min,stock_max').eq('tenant_id',t).order('nombre')],
+   ['insumos',supabaseClient.from('inventario_insumos').select('id,codigo,tenant_id,nombre,categoria,existencia,costo_unitario,proveedor,ubicacion').eq('tenant_id',t).order('nombre')],
    ['movimientos',supabaseClient.from('inventario_movimientos').select('*').eq('tenant_id',t).order('created_at',{ascending:false}).limit(500)],
    ['stock_tecnicos',supabaseClient.from('inventario_stock_tecnicos').select('*').eq('tenant_id',t).order('updated_at',{ascending:false})],
    ['reabastecimientos',supabaseClient.from('inventario_reabastecimientos').select('*').eq('tenant_id',t).order('fecha_solicitud',{ascending:false})],
@@ -68,7 +68,7 @@ async function load(){
    const msg=String(resultados[0].value.error.message||'').toLowerCase();
    if(msg.includes('ubicacion') && msg.includes('schema cache')){
      resultados[0]=await supabaseClient.from('inventario_insumos')
-       .select('id,codigo,tenant_id,nombre,categoria,existencia,costo_unitario,proveedor,stock_min,stock_max')
+       .select('id,codigo,tenant_id,nombre,categoria,existencia,costo_unitario,proveedor')
        .eq('tenant_id',t).order('nombre');
    }
  }
