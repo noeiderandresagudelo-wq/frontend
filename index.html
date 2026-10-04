@@ -11118,7 +11118,7 @@ function renderBurbujasChat(containerId, mensajes) {
             const fechaTexto = fecha && !isNaN(fecha.getTime()) ? fecha.toLocaleDateString('es-CO') : 'No registrada';
             const horaTexto = fecha && !isNaN(fecha.getTime()) ? fecha.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}) : 'No registrada';
             const diagnostico = info.descripcion || s.evidenciaDano || s.descripcion || 'El técnico no dejó una descripción técnica registrada.';
-            const baseCotizacion = info.requerimientosCotizacion || 'El técnico no dejó requerimientos específicos para cotizar. El Cotizador debe definir materiales y mano de obra con base en el diagnóstico.',
+            const baseCotizacion = info.requerimientosCotizacion || 'El técnico no dejó requerimientos específicos para cotizar. El Cotizador debe definir materiales y mano de obra con base en el diagnóstico.';
             const requerimientos = [
                 info.hallazgos ? 'Hallazgos: ' + info.hallazgos : '',
                 info.requerimientos ? 'Requerimientos: ' + info.requerimientos : '',
