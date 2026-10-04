@@ -3496,6 +3496,12 @@
                 </div>
 
                 <div>
+                    <label class="block text-[9px] font-bold text-amber-400 uppercase mb-1">Requerimientos para Cotización</label>
+                    <textarea id="opr-form-requerimientos-cotizacion" placeholder="Si el servicio requiere cotización, describe qué equipo, repuesto, material o trabajo adicional debe cotizarse. Ej.: reemplazo de sensor DSC, 20 m de cable UTP, instalación de fuente..." class="w-full bg-slate-950 border border-amber-500/20 rounded-lg p-2.5 text-xs text-white h-20 focus:outline-none focus:border-amber-500"></textarea>
+                    <p class="text-[9px] text-slate-500 italic mt-1">Este contenido será enviado al Cotizador como base técnica de la cotización.</p>
+                </div>
+
+                <div>
                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1.5">Evidencia Fotográfica (Cámara)</label>
                     <div id="opr-foto-preview-wrap" class="hidden mb-2">
                         <img id="opr-foto-preview" class="w-full max-h-40 object-cover rounded-lg border border-slate-800" />
@@ -4895,7 +4901,7 @@
                 const nextNum = incidentesServicios.length + 1;
                 const consecutivo = `ST-2026-${String(nextNum).padStart(6, '0')}`;
                 const now = new Date();
-                const fechaHora = `2026-07-15 ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+                const fechaHora = `${now.toISOString().slice(0,10)} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
                 incidentesServicios.push({
                     consecutivo,
@@ -4909,7 +4915,7 @@
                     insumosUsados: [],
                     origenSolicitud: "Cliente",
                     timeline: [
-                        { fecha: "2026-07-15", hora: fechaHora.split(' ')[1], user: currentUser.nombre, gps: "S/D", msg: `Solicitud creada directamente por el cliente desde el Portal Alarvix: "${descripcion}"` }
+                        { fecha: now.toISOString(), hora: fechaHora.split(' ')[1], user: currentUser.nombre, gps: "S/D", msg: `Solicitud creada directamente por el cliente desde el Portal Alarvix: "${descripcion}"` }
                     ]
                 });
 
@@ -5743,6 +5749,8 @@
                 document.getElementById('opr-form-consecutivo').innerText = consecutivo;
                 document.getElementById('opr-form-consecutivo-hidden').value = consecutivo;
                 document.getElementById('opr-form-trabajo-realizado').value = s.evidenciaDano || '';
+                const reqCotEl = document.getElementById('opr-form-requerimientos-cotizacion');
+                if (reqCotEl) reqCotEl.value = s.informeTecnico?.requerimientosCotizacion || '';
 
                 // Preseleccionar el tipo de atención según el tipo de servicio original, si aplica
                 const tipoSelect = document.getElementById('opr-form-tipo-atencion');
@@ -5880,6 +5888,7 @@
                 const trabajoRealizado = document.getElementById('opr-form-trabajo-realizado').value.trim();
                 const requiereCotEl = document.querySelector('input[name="opr-requiere-cot"]:checked');
                 const requiereCot = requiereCotEl ? requiereCotEl.value === "Si" : false;
+                const requerimientosCotizacion = document.getElementById('opr-form-requerimientos-cotizacion')?.value.trim() || '';
 
                 // Guardar el informe del técnico como parte del servicio (soporte de la OPR)
                 s.evidenciaDano = trabajoRealizado;
@@ -5887,6 +5896,7 @@
                     tipoAtencion,
                     descripcion: trabajoRealizado,
                     requiereCotizacion: requiereCot,
+                    requerimientosCotizacion,
                     fecha: new Date().toISOString(),
                     fechaVisita: (Array.isArray(s.timeline) ? ((s.timeline.find(t => t && /Llegó/i.test(t.msg || '')) || {}).fecha || null) : null) || new Date().toISOString(),
                     fechaCierre: new Date().toISOString(),
@@ -10123,7 +10133,7 @@ function renderBurbujasChat(containerId, mensajes) {
                 const mm = String(now.getMinutes()).padStart(2, '0');
 
                 s.timeline.push({
-                    fecha: "2026-07-11",
+                    fecha: now.toISOString(),
                     hora: `${hh}:${mm}`,
                     user: "Despachador Central",
                     gps: "10.9639, -74.7964",
@@ -12530,7 +12540,7 @@ function renderBurbujasChat(containerId, mensajes) {
                 const now = new Date();
                 const hh = String(now.getHours()).padStart(2, '0');
                 const mm = String(now.getMinutes()).padStart(2, '0');
-                const dateStr = "2026-07-11";
+                const dateStr = now.toISOString().slice(0, 10);
 
                 const newS = {
                     consecutivo: nextId,
