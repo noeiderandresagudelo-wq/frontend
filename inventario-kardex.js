@@ -57,12 +57,21 @@ async function load(){
  const t=tenant(); if(!appSupabase()||!t)return false;
  const consultas=[
    ['insumos',supabaseClient.from('inventario_insumos').select('id,codigo,tenant_id,nombre,categoria,existencia,costo_unitario,proveedor,ubicacion,stock_min,stock_max').eq('tenant_id',t).order('nombre')],
-   ['movimientos',supabaseClient.from('inventario_movimientos').select('*').eq('tenant_id',t).order('fecha_hora',{ascending:false}).limit(500)],
+   ['movimientos',supabaseClient.from('inventario_movimientos').select('*').eq('tenant_id',t).order('created_at',{ascending:false}).limit(500)],
    ['stock_tecnicos',supabaseClient.from('inventario_stock_tecnicos').select('*').eq('tenant_id',t).order('updated_at',{ascending:false})],
    ['reabastecimientos',supabaseClient.from('inventario_reabastecimientos').select('*').eq('tenant_id',t).order('fecha_solicitud',{ascending:false})],
    ['auditoria',supabaseClient.from('inventario_auditoria').select('*').eq('tenant_id',t).order('fecha_hora',{ascending:false}).limit(500)]
  ];
  const resultados=await Promise.allSettled(consultas.map(x=>x[1]));
+ // Compatibilidad con esquemas antiguos: ubicacion es opcional en insumos.
+ if(resultados[0]?.status==='fulfilled' && resultados[0].value?.error){
+   const msg=String(resultados[0].value.error.message||'').toLowerCase();
+   if(msg.includes('ubicacion') && msg.includes('schema cache')){
+     resultados[0]=await supabaseClient.from('inventario_insumos')
+       .select('id,codigo,tenant_id,nombre,categoria,existencia,costo_unitario,proveedor,stock_min,stock_max')
+       .eq('tenant_id',t).order('nombre');
+   }
+ }
  const datos=resultados.map((r,i)=>{
    if(r.status==='fulfilled') return {nombre:consultas[i][0],data:r.value?.data||[],error:r.value?.error||null};
    return {nombre:consultas[i][0],data:[],error:r.reason||new Error('Consulta rechazada')};
@@ -85,7 +94,7 @@ async function load(){
  reabastecimientos=dedupeBy(d.data,x=>x.id);
  auditoria=dedupeBy(e.data,x=>x.id);
  window.catalogoInventario=insumos.map(x=>({id:x.id,codigo:x.codigo,nombre:x.nombre,categoria:x.categoria,existencia:Number(x.existencia||0),costo:Number(x.costo_unitario||0)}));
- window.inventarioKardex=movimientos.map(x=>({fecha:new Date(x.fecha_hora).toLocaleString('es-CO'),tipo:x.tipo,material:insumos.find(i=>i.id===x.insumo_id)?.codigo||insumos.find(i=>i.codigo===x.insumo_id)?.codigo,cantidad:x.cantidad,detalle:x.observacion||x.opr_ot_relacionado||''}));
+ window.inventarioKardex=movimientos.map(x=>({fecha:new Date(x.created_at || x.fecha_hora).toLocaleString('es-CO'),tipo:x.tipo,material:insumos.find(i=>i.id===x.insumo_id)?.codigo||insumos.find(i=>i.codigo===x.insumo_id)?.codigo,cantidad:x.cantidad,detalle:x.observacion||x.opr_ot_relacionado||''}));
  renderInventario();
  return true;
 }
