@@ -192,6 +192,7 @@ declare
   v_stock numeric;
 begin
   if p_tenant_id is null or p_insumo_id is null then raise exception 'Tenant e insumo son obligatorios.'; end if;
+  if p_tenant_id <> ((auth.jwt() -> 'app_metadata' ->> 'tenant_id')::uuid) then raise exception 'Tenant no autorizado para este movimiento.'; end if;
   if p_cantidad is null or p_cantidad = 0 then raise exception 'La cantidad debe ser diferente de cero.'; end if;
   if p_tipo not in ('ENTRADA','SALIDA_TECNICO','CONSUMO_OPR','DEVOLUCION','AJUSTE') then
     raise exception 'Tipo de movimiento no permitido.';
