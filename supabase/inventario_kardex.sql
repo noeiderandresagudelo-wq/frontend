@@ -319,7 +319,7 @@ grant execute on function public.recibir_reabastecimiento_inventario(uuid,uuid,t
 
 -- Migración única desde el inventario legado, si la tabla antigua existe.
 -- La existencia antigua se convierte en una ENTRADA inicial auditada.
-do $
+do $$
 declare
   r record;
   v_id uuid;
@@ -353,10 +353,10 @@ begin
       end if;
     end loop;
   end if;
-end $;
+end $$;
 
 -- Realtime
-do $
+do $$
 declare t text;
 begin
   foreach t in array array['inventario_insumos','inventario_stock_tecnicos','inventario_movimientos','inventario_reabastecimientos','inventario_auditoria'] loop
