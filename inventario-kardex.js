@@ -4,7 +4,23 @@
 
 let insumos=[], movimientos=[], stockTecnicos=[], reabastecimientos=[], auditoria=[], tab='bodega';
 
-function tenant(){ return window.currentUser?.tenant_id || window.currentUser?.tenantId || null; }
+function appUser(){
+  try { if (typeof currentUser !== 'undefined' && currentUser) return currentUser; } catch(e) {}
+  return window.currentUser || null;
+}
+function appSupabase(){
+  try { if (typeof supabaseClient !== 'undefined' && supabaseClient) return supabaseClient; } catch(e) {}
+  return window.supabaseClient || null;
+}
+function appPersonalTecnicos(){
+  try { if (typeof personalTecnicos !== 'undefined' && Array.isArray(personalTecnicos)) return personalTecnicos; } catch(e) {}
+  return Array.isArray(window.personalTecnicos) ? window.personalTecnicos : [];
+}
+function legacyCatalogo(){
+  try { if (typeof catalogoInventario !== 'undefined' && Array.isArray(catalogoInventario)) return catalogoInventario; } catch(e) {}
+  return Array.isArray(window.catalogoInventario) ? window.catalogoInventario : [];
+}
+function tenant(){ const u=appUser(); return u?.tenant_id || u?.tenantId || null; }
 function esc(v){ const d=document.createElement('div'); d.textContent=String(v??''); return d.innerHTML; }
 function money(v){ return '$'+Number(v||0).toLocaleString('es-CO'); }
 function toast(t,m,e){ if(typeof window.showToast==='function') window.showToast(t,m,!!e); }
@@ -39,7 +55,7 @@ window.switchInventarioTab=setTab;
 
 async function migrarCatalogoLegacySiHaceFalta(t, cloudInsumos){
  if(cloudInsumos.length>0) return cloudInsumos;
- const legacy=Array.isArray(window.catalogoInventario)?window.catalogoInventario:[]; 
+ const legacy=legacyCatalogo(); 
  if(!legacy.length) return cloudInsumos;
  const migrables=legacy.filter(x=>String(x?.nombre||'').trim() && String(x?.codigo||'').trim());
  if(!migrables.length) return cloudInsumos;
@@ -85,7 +101,7 @@ async function migrarCatalogoLegacySiHaceFalta(t, cloudInsumos){
 }
 
 async function load(){
- const t=tenant(); if(!window.supabaseClient||!t)return false;
+ const t=tenant(); if(!appSupabase()||!t)return false;
  try{
    const [a,b,c,d,e]=await Promise.all([
     supabaseClient.from('inventario_insumos').select('*').eq('tenant_id',t).eq('activo',true).order('nombre'),
@@ -115,7 +131,7 @@ async function load(){
 }
 
 function renderInventarioOperativo(){const b=document.getElementById('inv-body');if(!b)return;const q=(document.getElementById('inv-search')?.value||'').trim().toLowerCase();b.innerHTML=insumos.filter(m=>{const haystack=[m.codigo,m.nombre,m.categoria,m.proveedor,m.ubicacion].map(v=>String(v??'')).join(' ').toLowerCase();return !q||haystack.includes(q);}).map(m=>{const e=Number(m.existencia||0),min=Number(m.stock_min||0),st=e<=0?['SIN EXISTENCIA','rose']:e<=min?['CRÍTICO','amber']:['ÓPTIMO','emerald'];return `<tr class="border-b border-slate-800/50 hover:bg-slate-800/30"><td class="p-3"><b class="text-white">${esc(m.nombre)}</b><span class="block text-[9px] text-slate-500 font-mono">${esc(m.codigo)}</span></td><td class="p-3 text-slate-400">${esc(m.categoria||'—')}</td><td class="p-3 text-center text-white font-black">${e}</td><td class="p-3 text-center text-slate-400">${m.stock_min} / ${m.stock_max}</td><td class="p-3 text-right text-slate-300">${money(m.costo_unitario)}</td><td class="p-3 text-slate-400">${esc(m.proveedor||'—')}</td><td class="p-3 text-slate-400">${esc(m.ubicacion||'—')}</td><td class="p-3 text-center"><span class="px-2 py-1 rounded-full bg-${st[1]}-500/10 text-${st[1]}-400 border border-${st[1]}-500/20 text-[8px] font-black">${st[0]}</span></td><td class="p-3 text-center"><button onclick="openMovimientoInventarioModal('${m.id}')" class="text-blue-400 font-black text-[9px] uppercase">Mover</button></td></tr>`}).join('')||'<tr><td colspan="9" class="p-10 text-center text-slate-600">No hay insumos.</td></tr>';}
-function renderStockTecnicos(){const b=document.getElementById('inv-tech-body');if(!b)return;const g={};stockTecnicos.forEach(x=>{const t=(window.personalTecnicos||[]).find(t=>String(t.id)===String(x.tecnico_id));const k=x.tecnico_id;if(!g[k])g[k]={n:t?.nombre||k,v:t?.vehiculo||'Por asignar',a:[]};g[k].a.push(x);});b.innerHTML=Object.values(g).map(x=>`<div class="bg-slate-950 border border-slate-800 rounded-xl p-4"><div class="flex justify-between"><div><b class="text-xs text-white">${esc(x.n)}</b><p class="text-[9px] text-slate-500">Vehículo: ${esc(x.v)}</p></div><span class="text-[9px] text-blue-400 font-black">${x.a.reduce((s,i)=>s+Number(i.existencia||0),0)} unidades</span></div>${x.a.map(i=>`<div class="flex justify-between border-t border-slate-800 mt-3 pt-2 text-[9px]"><span class="text-slate-300">${esc(i.inventario_insumos?.nombre||'Insumo')}</span><b class="text-white">${i.existencia}</b></div>`).join('')}</div>`).join('')||'<div class="col-span-full text-center text-slate-600 p-10">Sin stock asignado.</div>';}
+function renderStockTecnicos(){const b=document.getElementById('inv-tech-body');if(!b)return;const g={};stockTecnicos.forEach(x=>{const t=(appPersonalTecnicos()||[]).find(t=>String(t.id)===String(x.tecnico_id));const k=x.tecnico_id;if(!g[k])g[k]={n:t?.nombre||k,v:t?.vehiculo||'Por asignar',a:[]};g[k].a.push(x);});b.innerHTML=Object.values(g).map(x=>`<div class="bg-slate-950 border border-slate-800 rounded-xl p-4"><div class="flex justify-between"><div><b class="text-xs text-white">${esc(x.n)}</b><p class="text-[9px] text-slate-500">Vehículo: ${esc(x.v)}</p></div><span class="text-[9px] text-blue-400 font-black">${x.a.reduce((s,i)=>s+Number(i.existencia||0),0)} unidades</span></div>${x.a.map(i=>`<div class="flex justify-between border-t border-slate-800 mt-3 pt-2 text-[9px]"><span class="text-slate-300">${esc(i.inventario_insumos?.nombre||'Insumo')}</span><b class="text-white">${i.existencia}</b></div>`).join('')}</div>`).join('')||'<div class="col-span-full text-center text-slate-600 p-10">Sin stock asignado.</div>';}
 function renderInventarioKardex(){const b=document.getElementById('inv-k-body');if(!b)return;const q=(document.getElementById('inv-k-search')?.value||'').toLowerCase();b.innerHTML=movimientos.filter(x=>JSON.stringify(x).toLowerCase().includes(q)).map(x=>{const m=insumos.find(i=>i.id===x.insumo_id);return `<tr class="border-b border-slate-800/50"><td class="p-3 text-slate-400">${new Date(x.fecha_hora).toLocaleString('es-CO')}</td><td class="p-3 text-slate-300">${esc(x.usuario_nombre||'—')}</td><td class="p-3"><span class="text-[8px] font-black text-blue-300">${esc(x.tipo)}</span></td><td class="p-3 text-white">${esc(m?.nombre||x.insumo_id)}</td><td class="p-3 text-center">${x.cantidad}</td><td class="p-3 text-center">${x.existencia_anterior}</td><td class="p-3 text-center font-black">${x.existencia_posterior}</td><td class="p-3 font-mono text-blue-300">${esc(x.opr_ot_relacionado||'—')}</td><td class="p-3 text-slate-400">${esc(x.observacion||'—')}</td></tr>`}).join('')||'<tr><td colspan="9" class="p-10 text-center text-slate-600">Sin movimientos.</td></tr>';}
 function renderReab(){const b=document.getElementById('inv-reab-body');if(!b)return;b.innerHTML=reabastecimientos.map(x=>{const m=insumos.find(i=>i.id===x.insumo_id);let action='—';if(x.estado==='SOLICITADA')action='<button onclick="cambiarEstadoReabastecimiento(\\''+x.id+'\\',\\'APROBADA\\')" class="text-blue-400 text-[9px] font-black">APROBAR</button>';else if(x.estado==='APROBADA')action='<button onclick="cambiarEstadoReabastecimiento(\\''+x.id+'\\',\\'EN_COMPRA\\')" class="text-orange-400 text-[9px] font-black">EN COMPRA</button>';else if(x.estado==='EN_COMPRA')action='<button onclick="recibirReabastecimiento(\\''+x.id+'\\')" class="text-emerald-400 text-[9px] font-black">RECIBIR</button>';return '<tr class="border-b border-slate-800/50"><td class="p-3 text-slate-400">'+new Date(x.fecha_solicitud).toLocaleDateString('es-CO')+'</td><td class="p-3 text-white">'+esc(m?.nombre||'—')+'</td><td class="p-3">'+x.cantidad+'</td><td class="p-3 text-slate-400">'+esc(x.proveedor||'—')+'</td><td class="p-3 text-orange-300 font-black text-[8px]">'+esc(x.estado)+'</td><td class="p-3">'+action+'</td></tr>'}).join('')||'<tr><td colspan="6" class="p-10 text-center text-slate-600">Sin solicitudes.</td></tr>';}
 window.cambiarEstadoReabastecimiento=async function(id,estado){const r=await supabaseClient.from('inventario_reabastecimientos').update({estado}).eq('id',id).eq('tenant_id',tenant());if(r.error){toast('No se pudo actualizar',r.error.message,true);return;}await load();toast('Reabastecimiento actualizado','Estado: '+estado);};
@@ -123,6 +139,7 @@ function renderInventarioLog(){const b=document.getElementById('inv-log-body');i
 function renderInventario(){renderInventarioOperativo();renderStockTecnicos();renderInventarioKardex();renderReab();renderInventarioLog();}
 
 window.renderInventario=renderInventario;
+window.cargarInventarioKardex=load;
 
 function openAddMaterialModal(id){document.getElementById('kdx-insumo-form').reset();document.getElementById('kdx-insumo-id').value='';document.getElementById('kdx-insumo-title').textContent='Crear Insumo';if(id){const m=insumos.find(x=>x.id===id);if(m){document.getElementById('kdx-insumo-id').value=m.id;document.getElementById('kdx-codigo').value=m.codigo;document.getElementById('kdx-nombre').value=m.nombre;document.getElementById('kdx-categoria').value=m.categoria||'';document.getElementById('kdx-costo').value=m.costo_unitario||0;document.getElementById('kdx-min').value=m.stock_min||0;document.getElementById('kdx-max').value=m.stock_max||0;document.getElementById('kdx-proveedor').value=m.proveedor||'';document.getElementById('kdx-ubicacion').value=m.ubicacion||'';document.getElementById('kdx-insumo-title').textContent='Editar ficha · '+m.codigo;}}document.getElementById('modal-kardex-insumo').classList.remove('hidden');document.getElementById('modal-kardex-insumo').classList.add('flex');}
 window.openAddMaterialModal=openAddMaterialModal;
@@ -131,7 +148,7 @@ window.closeAddMaterialModal=()=>{document.getElementById('modal-kardex-insumo')
 
 window.guardarInsumoKardex=async function(ev){ev.preventDefault();const t=tenant();const id=document.getElementById('kdx-insumo-id').value;const payload={tenant_id:t,codigo:document.getElementById('kdx-codigo').value.trim(),nombre:document.getElementById('kdx-nombre').value.trim(),categoria:document.getElementById('kdx-categoria').value.trim()||null,costo_unitario:Number(document.getElementById('kdx-costo').value)||0,stock_min:Number(document.getElementById('kdx-min').value)||0,stock_max:Number(document.getElementById('kdx-max').value)||0,proveedor:document.getElementById('kdx-proveedor').value.trim()||null,ubicacion:document.getElementById('kdx-ubicacion').value.trim()||null};if(payload.stock_max<payload.stock_min){toast('Datos inválidos','El stock máximo no puede ser menor al mínimo.',true);return;}const q=id?supabaseClient.from('inventario_insumos').update(payload).eq('id',id).eq('tenant_id',t):supabaseClient.from('inventario_insumos').insert(payload);const r=await q;if(r.error){toast('No se pudo guardar',r.error.message,true);return;}window.closeAddMaterialModal();await load();toast('Ficha guardada','La existencia no fue modificada. Usa Registrar Movimiento para cambiar stock.');};
 
-function poblarMovimiento(pre){document.getElementById('kdx-insumo').innerHTML='<option value="">Seleccionar insumo...</option>'+insumos.map(x=>`<option value="${x.id}" ${x.id===pre?'selected':''}>${esc(x.codigo)} · ${esc(x.nombre)} · stock ${x.existencia}</option>`).join('');document.getElementById('kdx-tecnico').innerHTML='<option value="">Seleccionar técnico...</option>'+(window.personalTecnicos||[]).map(x=>`<option value="${x.id}">${esc(x.nombre)}</option>`).join('');}
+function poblarMovimiento(pre){document.getElementById('kdx-insumo').innerHTML='<option value="">Seleccionar insumo...</option>'+insumos.map(x=>`<option value="${x.id}" ${x.id===pre?'selected':''}>${esc(x.codigo)} · ${esc(x.nombre)} · stock ${x.existencia}</option>`).join('');document.getElementById('kdx-tecnico').innerHTML='<option value="">Seleccionar técnico...</option>'+(appPersonalTecnicos()||[]).map(x=>`<option value="${x.id}">${esc(x.nombre)}</option>`).join('');}
 function openMovimientoInventarioModal(id){poblarMovimiento(id);document.getElementById('kdx-tipo').value='ENTRADA';document.getElementById('kdx-cantidad').value='';document.getElementById('kdx-serial').value='';document.getElementById('kdx-opr').value='';document.getElementById('kdx-obs').value='';actualizarFormularioMovimientoInventario();document.getElementById('modal-kardex-mov').classList.remove('hidden');document.getElementById('modal-kardex-mov').classList.add('flex');}
 window.openMovimientoInventarioModal=openMovimientoInventarioModal;
 window.closeMovimientoInventarioModal=()=>{document.getElementById('modal-kardex-mov')?.classList.add('hidden');document.getElementById('modal-kardex-mov')?.classList.remove('flex');};
@@ -141,7 +158,7 @@ window.guardarMovimientoInventario=async function(ev){ev.preventDefault();const 
 
 window.openReabastecimientoModal=()=>{document.getElementById('kdx-reab-insumo').innerHTML=insumos.map(x=>`<option value="${x.id}">${esc(x.nombre)} · stock ${x.existencia}</option>`).join('');document.getElementById('modal-kardex-reab').classList.remove('hidden');document.getElementById('modal-kardex-reab').classList.add('flex');};
 window.closeReabastecimientoModal=()=>{document.getElementById('modal-kardex-reab')?.classList.add('hidden');document.getElementById('modal-kardex-reab')?.classList.remove('flex');};
-window.guardarReabastecimiento=async function(ev){ev.preventDefault();const r=await supabaseClient.from('inventario_reabastecimientos').insert({tenant_id:tenant(),insumo_id:document.getElementById('kdx-reab-insumo').value,cantidad:Number(document.getElementById('kdx-reab-cantidad').value),proveedor:document.getElementById('kdx-reab-proveedor').value.trim()||null,observacion:document.getElementById('kdx-reab-obs').value.trim()||null,solicitud:'Reposición de stock',solicitado_por:window.currentUser?.id});if(r.error){toast('No se pudo crear',r.error.message,true);return;}window.closeReabastecimientoModal();await load();toast('Solicitud creada','Quedó en estado SOLICITADA.');};
+window.guardarReabastecimiento=async function(ev){ev.preventDefault();const r=await supabaseClient.from('inventario_reabastecimientos').insert({tenant_id:tenant(),insumo_id:document.getElementById('kdx-reab-insumo').value,cantidad:Number(document.getElementById('kdx-reab-cantidad').value),proveedor:document.getElementById('kdx-reab-proveedor').value.trim()||null,observacion:document.getElementById('kdx-reab-obs').value.trim()||null,solicitud:'Reposición de stock',solicitado_por:appUser()?.id});if(r.error){toast('No se pudo crear',r.error.message,true);return;}window.closeReabastecimientoModal();await load();toast('Solicitud creada','Quedó en estado SOLICITADA.');};
 window.recibirReabastecimiento=async function(id){const r=reabastecimientos.find(x=>x.id===id);if(!r)return;const u=await supabaseClient.from('inventario_reabastecimientos').update({estado:'RECIBIDA',fecha_recepcion:new Date().toISOString()}).eq('id',id).eq('tenant_id',tenant());if(u.error){toast('No se pudo recibir',u.error.message,true);return;}const m=await supabaseClient.rpc('registrar_movimiento_inventario',{p_insumo_id:r.insumo_id,p_tipo:'ENTRADA',p_cantidad:r.cantidad,p_observacion:'Ingreso automático por recepción de reabastecimiento'});if(m.error){toast('Recepción incompleta',m.error.message,true);return;}await load();toast('Reabastecimiento recibido','Ingreso registrado en Bodega Central.');};
 
 window.syncInventarioActual=()=>load();
@@ -154,6 +171,6 @@ async function boot(){buildUI();await load();}
 const originalLoad=window.cargarDatosNubeAlarvix;
 if(originalLoad){window.cargarDatosNubeAlarvix=async function(){const r=await originalLoad.apply(this,arguments);await load();return r;};}
 document.addEventListener('DOMContentLoaded',boot);
-setTimeout(()=>{buildUI();if(window.currentUser)load();},1200);
-setInterval(()=>{if(window.currentUser&&document.getElementById('view-inventario')&&!document.getElementById('view-inventario').classList.contains('hidden'))load();},30000);
+setTimeout(()=>{buildUI();if(appUser())load();},1200);
+setInterval(()=>{if(appUser()&&document.getElementById('view-inventario')&&!document.getElementById('view-inventario').classList.contains('hidden'))load();},30000);
 })();
