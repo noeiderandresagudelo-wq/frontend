@@ -8687,6 +8687,7 @@
                 console.error("[Alarvix/Supabase] No se guardó", tabla, "porque falta sesión autenticada.");
                 return false;
             }
+
             try {
                 const tenantId = row.tenant_id || currentUser.tenant_id || currentUser.tenantId || null;
                 if (!tenantId) {
@@ -8694,7 +8695,99 @@
                     showToast("Tenant no configurado", "La sesión administrativa no tiene tenant_id. Cierra sesión y vuelve a entrar.", true);
                     return false;
                 }
+
                 const payload = { ...row, tenant_id: tenantId };
+
+                // SERVICIOS TÉCNICOS:
+                // No dependemos de una restricción UNIQUE sobre "consecutivo".
+                // Buscamos primero por consecutivo + tenant y luego hacemos UPDATE o INSERT.
+                // Esto evita que un servicio se quede únicamente en memoria cuando
+                // la tabla no tiene un índice UNIQUE compatible con upsert(onConflict).
+                if (tabla === "servicios") {
+                    const consecutivo = String(payload.consecutivo || "").trim();
+
+                    if (!consecutivo) {
+                        console.error("[Alarvix/Supabase] Servicio sin consecutivo.", payload);
+                        showToast("Servicio no guardado", "El servicio no tiene consecutivo.", true);
+                        return false;
+                    }
+
+                    const { data: existentes, error: buscarError } = await supabaseClient
+                        .from("servicios")
+                        .select("consecutivo")
+                        .eq("tenant_id", tenantId)
+                        .eq("consecutivo", consecutivo)
+                        .limit(1);
+
+                    if (buscarError) {
+                        console.error("[Alarvix/Supabase] Error buscando servicio antes de guardar:", {
+                            message: buscarError.message,
+                            code: buscarError.code,
+                            details: buscarError.details,
+                            hint: buscarError.hint,
+                            payload
+                        });
+                        showToast("No se pudo verificar el servicio", buscarError.message, true);
+                        return false;
+                    }
+
+                    let resultado;
+
+                    if (Array.isArray(existentes) && existentes.length > 0) {
+                        resultado = await supabaseClient
+                            .from("servicios")
+                            .update(payload)
+                            .eq("tenant_id", tenantId)
+                            .eq("consecutivo", consecutivo);
+                    } else {
+                        resultado = await supabaseClient
+                            .from("servicios")
+                            .insert(payload);
+                    }
+
+                    if (resultado.error) {
+                        const error = resultado.error;
+                        console.error("[Alarvix/Supabase] Error guardando servicio técnico:", {
+                            message: error.message,
+                            code: error.code,
+                            details: error.details,
+                            hint: error.hint,
+                            payload
+                        });
+                        showToast(
+                            "Servicio no guardado",
+                            error.hint || error.details || error.message || "Supabase rechazó el registro.",
+                            true
+                        );
+                        return false;
+                    }
+
+                    // Verificación real: confirmamos que el registro existe en la nube.
+                    const { data: verificado, error: verificarError } = await supabaseClient
+                        .from("servicios")
+                        .select("consecutivo, tenant_id, estado")
+                        .eq("tenant_id", tenantId)
+                        .eq("consecutivo", consecutivo)
+                        .limit(1);
+
+                    if (verificarError || !Array.isArray(verificado) || verificado.length === 0) {
+                        console.error("[Alarvix/Supabase] El servicio se envió pero no pudo verificarse en la nube:", {
+                            verificarError,
+                            consecutivo,
+                            tenantId
+                        });
+                        showToast(
+                            "Guardado no confirmado",
+                            verificarError?.message || "El servicio no pudo ser confirmado en Supabase.",
+                            true
+                        );
+                        return false;
+                    }
+
+                    console.log("[Alarvix/Supabase] Servicio técnico persistido y verificado ✔", verificado[0]);
+                    return true;
+                }
+
                 const conflictKey = supabaseConflictKey(tabla);
                 const { error } = await supabaseClient
                     .from(tabla)
@@ -8708,13 +8801,14 @@
                         hint: error.hint,
                         payload
                     });
-                    showToast("No se guardó en la nube", `${tabla}: ${error.message}`, true);
+                    showToast("No se guardó en la nube", `${tabla}: ${error.hint || error.message}`, true);
                     return false;
                 }
+
                 return true;
             } catch (e) {
                 console.error(`[Alarvix/Supabase] Excepción al guardar '${tabla}':`, e);
-                showToast("Error de nube", `No se pudo guardar en ${tabla}.`, true);
+                showToast("Error de nube", `No se pudo guardar en ${tabla}: ${e?.message || "error desconocido"}`, true);
                 return false;
             }
         }
