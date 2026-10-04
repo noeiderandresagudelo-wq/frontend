@@ -50,6 +50,7 @@ create table if not exists public.inventario_movimientos (
   destino text,
   opr_ot_relacionado text,
   observacion text,
+  serial text,
   created_at timestamptz not null default now()
 );
 
@@ -79,7 +80,8 @@ create table if not exists public.inventario_log_auditoria (
   accion text not null,
   entidad text not null,
   entidad_id text,
-  detalle jsonb not null default '{}'::jsonb
+  detalle jsonb not null default '{}'::jsonb,
+  serial text
 );
 
 create index if not exists idx_inv_insumos_tenant on public.inventario_insumos(tenant_id, activo, nombre);
@@ -146,7 +148,8 @@ create or replace function public.registrar_movimiento_inventario(
   p_cantidad numeric,
   p_tecnico_id text default null,
   p_opr_ot text default null,
-  p_observacion text default null
+  p_observacion text default null,
+  p_serial text default null
 )
 returns jsonb
 language plpgsql
@@ -211,18 +214,18 @@ begin
   values(v_tenant,v_usuario,v_usuario_nombre,p_tipo,p_insumo_id,p_tecnico_id,p_cantidad,v_mov,v_antes,v_despues,
     case when p_tipo='SALIDA_TECNICO' then 'Bodega Central' when p_tipo in ('CONSUMO_OPR','DEVOLUCION') then 'Stock Técnico' else 'Proveedor/Bodega' end,
     case when p_tipo='SALIDA_TECNICO' then 'Stock Técnico' when p_tipo='CONSUMO_OPR' then 'OPR' else 'Bodega Central' end,
-    p_opr_ot,p_observacion);
+    p_opr_ot,p_observacion,p_serial);
 
   insert into public.inventario_log_auditoria(tenant_id,usuario_id,usuario_nombre,accion,entidad,entidad_id,detalle)
   values(v_tenant,v_usuario,v_usuario_nombre,p_tipo,'inventario_insumos',p_insumo_id::text,
-    jsonb_build_object('cantidad',p_cantidad,'movimiento',v_mov,'opr_ot',p_opr_ot,'tecnico_id',p_tecnico_id,'observacion',p_observacion));
+    jsonb_build_object('cantidad',p_cantidad,'movimiento',v_mov,'opr_ot',p_opr_ot,'tecnico_id',p_tecnico_id,'observacion',p_observacion,'serial',p_serial));
 
   return jsonb_build_object('ok',true,'tipo',p_tipo,'insumo_id',p_insumo_id,'existencia_anterior',v_antes,'existencia_posterior',v_despues);
 end;
 $$;
 
-revoke all on function public.registrar_movimiento_inventario(uuid,text,numeric,text,text,text) from public;
-grant execute on function public.registrar_movimiento_inventario(uuid,text,numeric,text,text,text) to authenticated;
+revoke all on function public.registrar_movimiento_inventario(uuid,text,numeric,text,text,text,text) from public;
+grant execute on function public.registrar_movimiento_inventario(uuid,text,numeric,text,text,text,text) to authenticated;
 revoke insert, update, delete on public.inventario_movimientos from authenticated;
 revoke insert, update, delete on public.inventario_log_auditoria from authenticated;
 
