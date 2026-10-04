@@ -6121,7 +6121,7 @@
             } catch(e) { console.error("Error al descontar stock de instalación:", e); }
         }
 
-        function submitTechOprInforme(event) {
+        async function submitTechOprInforme(event) {
             event.preventDefault();
             try {
                 if (!verificarGPSObligatorio()) return;
@@ -6171,6 +6171,15 @@
                     updateServiceState(consecutivo, "Cotización", `Informe OPR (${tipoAtencion}) diligenciado por el técnico: ${trabajoRealizado}. El técnico determina que el servicio requiere cotización.`);
                     showToast("OPR Enviada a Cotizador", `El servicio ${consecutivo} pasó a Cotización para revisión comercial.`);
                 } else {
+                    // El OPR cerrado consume automáticamente los materiales del stock del técnico.
+                    // La existencia nunca se modifica directamente desde el frontend.
+                    if (Array.isArray(s.insumosUsados) && s.insumosUsados.length && !s.inventarioConsumoOprRegistrado) {
+                        const consumoOk = await descontarStockInstalacion(s, consecutivo);
+                        if (!consumoOk) {
+                            showToast("OPR no cerrado", "No se pudo registrar el consumo de inventario. Verifica el stock del técnico.", true);
+                            return;
+                        }
+                    }
                     updateServiceState(consecutivo, "Finalizado", `Informe OPR (${tipoAtencion}) diligenciado por el técnico: ${trabajoRealizado}. Servicio cerrado sin necesidad de cotización.`);
                     showToast("Servicio Finalizado", `Se registró el OPR de ${consecutivo} y el servicio quedó finalizado.`);
 
