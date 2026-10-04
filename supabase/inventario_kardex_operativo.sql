@@ -221,7 +221,7 @@ begin
 
   insert into public.inventario_log_auditoria(tenant_id,usuario_id,usuario_nombre,accion,entidad,entidad_id,detalle,serial)
   values(v_tenant,v_usuario,v_usuario_nombre,p_tipo,'inventario_insumos',p_insumo_id::text,
-    jsonb_build_object('cantidad',p_cantidad,'movimiento',v_mov,'opr_ot',p_opr_ot,'tecnico_id',p_tecnico_id,'observacion',p_observacion,'serial',p_serial));
+    jsonb_build_object('cantidad',p_cantidad,'movimiento',v_mov,'opr_ot',p_opr_ot,'tecnico_id',p_tecnico_id,'observacion',p_observacion,'serial',p_serial),p_serial);
 
   return jsonb_build_object('ok',true,'tipo',p_tipo,'insumo_id',p_insumo_id,'existencia_anterior',v_antes,'existencia_posterior',v_despues);
 end;
