@@ -7050,6 +7050,7 @@
         function renderReportesSLA() {
             try {
                 const servicios = Array.isArray(incidentesServicios) ? incidentesServicios : [];
+
                 const filtroEl = document.getElementById('sla-filtro-ciudad');
                 const ciudades = [...new Set(servicios.map(s => {
                     const cl = crmClientes.find(c => String(c.id) === String(s?.abonadoId));
@@ -7195,7 +7196,7 @@
                 if(ebar) ebar.style.width=(programados ? Math.min(100,Math.round(ejecutadosProgramados/programados*100)) : '0')+'%';
 
                 const cityMap = {};
-                datos.forEach(d => { const key=d.ciudad||'SIN CIUDAD'; const x=cityMap[key]||(cityMap[key]={n:key,total:0,final:0,eval:0,ok:0}); x.total++; if(['Cerrado','Finalizado'].includes(String(d.servicio?.estado||'')))x.final++; if(d.cumpleSLA!==null){x.eval++;if(d.cumpleSLA)x.ok;} });
+                datos.forEach(d => { const key=d.ciudad||'SIN CIUDAD'; const x=cityMap[key]||(cityMap[key]={n:key,total:0,final:0,eval:0,ok:0}); x.total++; if(['Cerrado','Finalizado'].includes(String(d.servicio?.estado||'')))x.final++; if(d.cumpleSLA!==null){x.eval++;if(d.cumpleSLA)x.ok++;} });
                 const cityBody=document.getElementById('sla-ciudades-body');
                 if(cityBody)cityBody.innerHTML=Object.values(cityMap).sort((a,b)=>b.total-a.total).map(x=>{const pct=x.eval?Math.round(x.ok/x.eval*100):null;return '<tr class="border-t border-slate-800"><td class="p-3 text-xs font-bold text-white">'+escEstudio(x.n)+'</td><td class="p-3 text-center text-xs text-slate-200">'+x.total+'</td><td class="p-3 text-center text-xs text-emerald-400">'+x.final+'</td><td class="p-3 text-center text-xs font-bold '+(pct===null?'text-slate-500':pct>=90?'text-emerald-400':pct>=70?'text-amber-400':'text-rose-400')+'">'+(pct===null?'N/D':pct+'%')+'</td></tr>';}).join('')||'<tr><td colspan="4" class="p-8 text-center text-[10px] text-slate-500">Sin datos.</td></tr>';
                 const riskBody=document.getElementById('sla-riesgos-body');
@@ -8566,7 +8567,19 @@
                 ).length;
 
                 document.getElementById('kpi-criticos').innerText = criticos;
-                document.getElementById('kpi-tiempo-respuesta').innerText = '28m';
+                const respuestasDashboard = list.map(s => {
+                    const timeline = Array.isArray(s.timeline) ? s.timeline : [];
+                    const creado = [...timeline].find(t => t && t.tipo === 'creacion')?.fecha || s.fechaCreacion || s.fecha_creacion || s.created_at;
+                    const despacho = [...timeline].reverse().find(t => t && (t.tipo === 'despacho' || /despacho ruta|inici[oó] desplazamiento|en camino/i.test(String(t.msg || ''))))?.fecha || s.fechaDespachoRuta || s.fecha_despacho_ruta || s.despachoRuta;
+                    const a = creado ? new Date(creado).getTime() : NaN;
+                    const b = despacho ? new Date(despacho).getTime() : NaN;
+                    return Number.isFinite(a) && Number.isFinite(b) && b >= a ? (b-a)/60000 : null;
+                }).filter(Number.isFinite);
+                const promedioDashboard = respuestasDashboard.length ? respuestasDashboard.reduce((a,b)=>a+b,0) / respuestasDashboard.length : null;
+                document.getElementById('kpi-tiempo-respuesta').innerText =
+                    promedioDashboard === null ? 'N/D' :
+                    promedioDashboard < 60 ? Math.round(promedioDashboard) + 'm' :
+                    Math.round(promedioDashboard / 60 * 10) / 10 + 'h';
                 document.getElementById('stat-unidades-activas').innerText = unidadesActivas;
                 document.getElementById('stat-alertas-criticas').innerText = criticos;
                 document.getElementById('stat-cerrados-hoy').innerText = cerradosHoy;
