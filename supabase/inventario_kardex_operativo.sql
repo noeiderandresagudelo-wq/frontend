@@ -84,6 +84,9 @@ create table if not exists public.inventario_log_auditoria (
   serial text
 );
 
+alter table public.inventario_movimientos add column if not exists serial text;
+alter table public.inventario_log_auditoria add column if not exists serial text;
+
 create index if not exists idx_inv_insumos_tenant on public.inventario_insumos(tenant_id, activo, nombre);
 create index if not exists idx_inv_stock_tech_tenant on public.inventario_stock_tecnicos(tenant_id, tecnico_id);
 create index if not exists idx_inv_mov_tenant_fecha on public.inventario_movimientos(tenant_id, fecha_hora desc);
@@ -210,13 +213,13 @@ begin
     update public.inventario_insumos set existencia=v_despues, updated_at=now() where id=p_insumo_id and tenant_id=v_tenant;
   end if;
 
-  insert into public.inventario_movimientos(tenant_id,usuario_id,usuario_nombre,tipo,insumo_id,tecnico_id,cantidad,movimiento,existencia_anterior,existencia_posterior,origen,destino,opr_ot_relacionado,observacion)
+  insert into public.inventario_movimientos(tenant_id,usuario_id,usuario_nombre,tipo,insumo_id,tecnico_id,cantidad,movimiento,existencia_anterior,existencia_posterior,origen,destino,opr_ot_relacionado,observacion,serial)
   values(v_tenant,v_usuario,v_usuario_nombre,p_tipo,p_insumo_id,p_tecnico_id,p_cantidad,v_mov,v_antes,v_despues,
     case when p_tipo='SALIDA_TECNICO' then 'Bodega Central' when p_tipo in ('CONSUMO_OPR','DEVOLUCION') then 'Stock Técnico' else 'Proveedor/Bodega' end,
     case when p_tipo='SALIDA_TECNICO' then 'Stock Técnico' when p_tipo='CONSUMO_OPR' then 'OPR' else 'Bodega Central' end,
     p_opr_ot,p_observacion,p_serial);
 
-  insert into public.inventario_log_auditoria(tenant_id,usuario_id,usuario_nombre,accion,entidad,entidad_id,detalle)
+  insert into public.inventario_log_auditoria(tenant_id,usuario_id,usuario_nombre,accion,entidad,entidad_id,detalle,serial)
   values(v_tenant,v_usuario,v_usuario_nombre,p_tipo,'inventario_insumos',p_insumo_id::text,
     jsonb_build_object('cantidad',p_cantidad,'movimiento',v_mov,'opr_ot',p_opr_ot,'tecnico_id',p_tecnico_id,'observacion',p_observacion,'serial',p_serial));
 
