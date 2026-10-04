@@ -129,6 +129,11 @@ revoke update on public.inventario_insumos from authenticated;
 revoke delete on public.inventario_insumos from authenticated;
 revoke update, delete on public.inventario_stock_tecnicos from authenticated;
 
+drop policy if exists inventario_insumos_insert_tenant on public.inventario_insumos;
+create policy inventario_insumos_insert_tenant on public.inventario_insumos
+for insert to authenticated
+with check (tenant_id = (auth.jwt() -> 'app_metadata' ->> 'tenant_id')::uuid);
+
 grant select on public.inventario_insumos, public.inventario_stock_tecnicos,
   public.inventario_movimientos, public.inventario_reabastecimientos,
   public.inventario_auditoria to authenticated;
@@ -312,7 +317,8 @@ $$;
 grant execute on function public.recibir_reabastecimiento_inventario(uuid,uuid,text) to authenticated;
 
 -- Realtime
-do $$
+do $
+declare t text;
 begin
   foreach t in array array['inventario_insumos','inventario_stock_tecnicos','inventario_movimientos','inventario_reabastecimientos','inventario_auditoria'] loop
     if not exists (
