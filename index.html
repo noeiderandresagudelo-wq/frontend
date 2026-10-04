@@ -8802,7 +8802,7 @@
             }
         }
 
-        function intentarAsignacionAutomatica(consecutivo) {
+        async function intentarAsignacionAutomatica(consecutivo) {
             try {
                 const s = incidentesServicios.find(i => i.consecutivo === consecutivo);
                 if (!s || s.tecnicoId) return; // ya tiene técnico, no tocar
@@ -8858,15 +8858,21 @@
                     msg: `Asignado automáticamente a ${mejor.nombre} según disponibilidad, carga de trabajo y cercanía.`
                 });
 
-                syncServicioActual(consecutivo);
+                const guardadoAsignacion = await syncServicioActual(consecutivo);
+                if (!guardadoAsignacion) {
+                    console.error("[Alarvix/Supabase] La asignación automática no pudo persistirse.", { consecutivo });
+                    showToast("Asignación no persistida", "El técnico fue seleccionado, pero el cambio no pudo guardarse en Supabase.", true);
+                    return;
+                }
                 showToast("Asignación Automática", `${consecutivo} fue asignado solo a ${mejor.nombre}.`);
                 refrescarVistasServicios();
             } catch(e) { console.error("Error en asignación automática:", e); }
         }
 
-        function syncServicioActual(consecutivo) {
+        async function syncServicioActual(consecutivo) {
             const s = incidentesServicios.find(i => i.consecutivo === consecutivo);
-            if (s) syncPush("servicios", servicioToRow(s));
+            if (!s) return false;
+            return await syncPush("servicios", servicioToRow(s));
         }
         function syncClienteActual(id) {
             const cl = crmClientes.find(c => c.id === id);
@@ -12485,7 +12491,7 @@ function renderBurbujasChat(containerId, mensajes) {
             document.getElementById('modal-create-service').classList.add('hidden');
         }
 
-        function handleCreateService(event) {
+        async function handleCreateService(event) {
             event.preventDefault();
             try {
                 // Validación estricta de permisos de edición
@@ -12562,10 +12568,18 @@ function renderBurbujasChat(containerId, mensajes) {
                 };
 
                 incidentesServicios.push(newS);
-                syncServicioActual(nextId);
-                intentarAsignacionAutomatica(nextId);
 
-                showToast("Servicio Creado", `Incidente ${nextId} creado con éxito.`);
+                // Confirmamos la creación solo después de que Supabase acepte el registro.
+                const guardado = await syncServicioActual(nextId);
+                if (!guardado) {
+                    incidentesServicios = incidentesServicios.filter(i => i.consecutivo !== nextId);
+                    showToast("Servicio no creado", "No fue posible guardar el servicio en Supabase. Revisa el error de consola antes de continuar.", true);
+                    return;
+                }
+
+                await intentarAsignacionAutomatica(nextId);
+
+                showToast("Servicio Creado", `Incidente ${nextId} creado y guardado en la nube.`);
                 closeCreateServiceModal();
                 
                 document.getElementById('form-create-service').reset();
@@ -12578,7 +12592,10 @@ function renderBurbujasChat(containerId, mensajes) {
                 } else if (!document.getElementById('view-servicios').classList.contains('hidden')) {
                     renderServiciosCompleto();
                 }
-            } catch(e) { console.error("Error creación de servicio:", e); }
+            } catch(e) {
+                console.error("Error creación de servicio:", e);
+                showToast("Error al crear servicio", e?.message || "Ocurrió un error inesperado.", true);
+            }
         }
 
         function openAddMaterialModal() {
