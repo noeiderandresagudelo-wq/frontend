@@ -8272,15 +8272,30 @@
          * módulo, sin tener que navegar manualmente uno por uno.
          */
         function openGlobalSearch() {
-            document.getElementById('modal-global-search').classList.remove('hidden');
+            const modal = document.getElementById('modal-global-search');
             const input = document.getElementById('input-global-search');
-            input.value = '';
-            document.getElementById('global-search-results').innerHTML = '<p class="text-[11px] text-slate-500 italic text-center py-8">Escribí al menos 2 letras para buscar en todo el sistema.</p>';
-            setTimeout(() => input.focus(), 50);
+            const results = document.getElementById('global-search-results');
+            if (!modal) {
+                console.error('[Alarvix] No existe el modal de búsqueda global.');
+                return;
+            }
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+            if (input) {
+                input.value = '';
+                setTimeout(() => input.focus(), 50);
+            }
+            if (results) {
+                results.innerHTML = '<p class="text-[11px] text-slate-500 italic text-center py-8">Escribí al menos 2 letras para buscar en todo el sistema.</p>';
+            }
         }
 
         function closeGlobalSearch() {
-            document.getElementById('modal-global-search').classList.add('hidden');
+            const modal = document.getElementById('modal-global-search');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+            }
         }
 
         function ejecutarBusquedaGlobal(query) {
@@ -8411,12 +8426,25 @@
         }
 
         function openCopilotAI() {
-            document.getElementById('modal-copilot-ai').classList.remove('hidden');
+            const modal = document.getElementById('modal-copilot-ai');
+            if (!modal) {
+                console.error('[Alarvix] No existe el modal del Copiloto IA.');
+                return;
+            }
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+            requestAnimationFrame(() => {
+                const input = document.getElementById('input-chat-ai');
+                if (input) input.focus({ preventScroll: true });
+            });
         }
 
         function closeCopilotAI() {
             const modal = document.getElementById('modal-copilot-ai');
-            if (modal) modal.classList.add('hidden');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+            }
         }
 
         // Refuerzo de los botones globales del encabezado: evita depender únicamente
@@ -8424,19 +8452,30 @@
         function inicializarAccionesHeader() {
             const btnSearch = document.getElementById('btn-global-search');
             const btnCopilot = document.getElementById('btn-open-copilot');
+
+            // Exponer explícitamente las acciones en window para los onclick
+            // y para evitar fallos si el navegador no resuelve el handler inline.
+            window.openGlobalSearch = openGlobalSearch;
+            window.closeGlobalSearch = closeGlobalSearch;
+            window.openCopilotAI = openCopilotAI;
+            window.closeCopilotAI = closeCopilotAI;
+
             if (btnSearch && !btnSearch.dataset.alarvixBound) {
                 btnSearch.dataset.alarvixBound = '1';
                 btnSearch.addEventListener('click', function(event) {
                     event.preventDefault();
+                    event.stopPropagation();
                     try { openGlobalSearch(); } catch (error) { console.error('[Alarvix] Error abriendo búsqueda global:', error); }
-                });
+                }, true);
             }
+
             if (btnCopilot && !btnCopilot.dataset.alarvixBound) {
                 btnCopilot.dataset.alarvixBound = '1';
                 btnCopilot.addEventListener('click', function(event) {
                     event.preventDefault();
+                    event.stopPropagation();
                     try { openCopilotAI(); } catch (error) { console.error('[Alarvix] Error abriendo Copiloto IA:', error); }
-                });
+                }, true);
             }
         }
 
