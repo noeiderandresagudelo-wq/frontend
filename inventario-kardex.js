@@ -108,10 +108,21 @@ function renderReab(){
   b.innerHTML=reabastecimientos.map(x=>{
     const m=insumos.find(i=>i.id===x.insumo_id);
     let action='—';
-    if(x.estado==='SOLICITADA') action='<button class="text-blue-400 text-[9px] font-black" onclick="cambiarEstadoReabastecimiento(\''+x.id+'\',\'APROBADA\')">APROBAR</button>';
-    else if(x.estado==='APROBADA') action='<button class="text-orange-400 text-[9px] font-black" onclick="cambiarEstadoReabastecimiento(\''+x.id+'\',\'EN_COMPRA\')">EN COMPRA</button>';
-    else if(x.estado==='EN_COMPRA') action='<button class="text-emerald-400 text-[9px] font-black" onclick="recibirReabastecimiento(\''+x.id+'\')">RECIBIR</button>';
-    return '<tr class="border-b border-slate-800/50"><td class="p-3 text-slate-400">'+new Date(x.fecha_solicitud).toLocaleDateString('es-CO')+'</td><td class="p-3 text-white">'+esc(m?.nombre||'—')+'</td><td class="p-3">'+x.cantidad+'</td><td class="p-3 text-slate-400">'+esc(x.proveedor||'—')+'</td><td class="p-3 text-orange-300 font-black text-[8px]">'+esc(x.estado)+'</td><td class="p-3">'+action+'</td></tr>';
+    if(x.estado==='SOLICITADA'){
+      action=`<button class="text-blue-400 text-[9px] font-black" onclick="cambiarEstadoReabastecimiento('${x.id}','APROBADA')">APROBAR</button>`;
+    }else if(x.estado==='APROBADA'){
+      action=`<button class="text-orange-400 text-[9px] font-black" onclick="cambiarEstadoReabastecimiento('${x.id}','EN_COMPRA')">EN COMPRA</button>`;
+    }else if(x.estado==='EN_COMPRA'){
+      action=`<button class="text-emerald-400 text-[9px] font-black" onclick="recibirReabastecimiento('${x.id}')">RECIBIR</button>`;
+    }
+    return `<tr class="border-b border-slate-800/50">
+      <td class="p-3 text-slate-400">${new Date(x.fecha_solicitud).toLocaleDateString('es-CO')}</td>
+      <td class="p-3 text-white">${esc(m?.nombre||'—')}</td>
+      <td class="p-3">${x.cantidad}</td>
+      <td class="p-3 text-slate-400">${esc(x.proveedor||'—')}</td>
+      <td class="p-3 text-orange-300 font-black text-[8px]">${esc(x.estado)}</td>
+      <td class="p-3">${action}</td>
+    </tr>`;
   }).join('')||'<tr><td colspan="6" class="p-10 text-center text-slate-600">Sin solicitudes.</td></tr>';
 }
 window.cambiarEstadoReabastecimiento=async function(id,estado){const r=await supabaseClient.from('inventario_reabastecimientos').update({estado}).eq('id',id).eq('tenant_id',tenant());if(r.error){toast('No se pudo actualizar',r.error.message,true);return;}await load();toast('Reabastecimiento actualizado','Estado: '+estado);};
