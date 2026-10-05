@@ -12092,16 +12092,31 @@ function renderBurbujasChat(containerId, mensajes) {
 
         function addMaterialToCotizacion() {
             const code = document.getElementById('cot-add-material').value;
-            const qty = parseInt(document.getElementById('cot-add-qty').value) || 1;
+            const qty = Math.max(1, parseInt(document.getElementById('cot-add-qty').value) || 1);
 
-            const mat = catalogoInventario.find(x => x.codigo === code);
+            // El selector manual también debe usar el mismo inventario operativo
+            // que utiliza el técnico: public.inventario_insumos.
+            const mat = (Array.isArray(inventarioInsumosTecnicoCotizacion)
+                ? inventarioInsumosTecnicoCotizacion
+                : []
+            ).find(x => String(x.codigo || x.id) === String(code))
+                || catalogoInventario.find(x => String(x.codigo) === String(code));
+
             if (!mat) return;
 
-            const exist = tempCotMateriales.find(x => x.codigo === code);
+            const costo = Number(mat.costo_unitario ?? mat.costo ?? 0);
+            const codigoReal = String(mat.codigo || code);
+            const exist = tempCotMateriales.find(x => String(x.codigo) === codigoReal);
+
             if (exist) {
                 exist.qty += qty;
             } else {
-                tempCotMateriales.push({ codigo: code, nombre: mat.nombre, costo: mat.costo, qty: qty });
+                tempCotMateriales.push({
+                    codigo: codigoReal,
+                    nombre: mat.nombre || 'Insumo',
+                    costo,
+                    qty
+                });
             }
 
             calculateCotizacionPreview();
