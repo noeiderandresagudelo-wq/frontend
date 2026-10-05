@@ -4748,71 +4748,95 @@
 
         async function cargarStockTecnicoMovil() {
             const container = document.getElementById('lista-inventario-tecnico');
-            if (!container || !currentUser?.tecnicoId || !currentUser?.tenant_id || !supabaseClient) return [];
+            if (!container || !currentUser?.tecnicoId || !supabaseClient) return [];
 
             container.innerHTML = '<p class="text-[11px] text-slate-500 italic text-center py-8"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Consultando tu stock...</p>';
 
+            const tecnicoId = String(currentUser.tecnicoId).trim();
+            const tenantId = currentUser.tenant_id || currentUser.tenantId || null;
+
             try {
-                let query = await supabaseClient
+                // 1) Fuente oficial: stock individual del técnico.
+                let stockResult = supabaseClient
                     .from('inventario_stock_tecnicos')
-                    .select('id,tecnico_id,insumo_id,existencia,updated_at,inventario_insumos(codigo,nombre,categoria,costo_unitario,ubicacion,proveedor)')
-                    .eq('tenant_id', currentUser.tenant_id)
-                    .eq('tecnico_id', currentUser.tecnicoId)
+                    .select('id,tecnico_id,insumo_id,existencia,updated_at')
+                    .eq('tecnico_id', tecnicoId)
                     .gt('existencia', 0)
                     .order('updated_at', { ascending: false });
 
-                if (query.error) {
-                    console.warn('[Alarvix Inventario Técnico] Relación anidada no disponible, usando consulta de respaldo:', query.error.message);
+                if (tenantId) stockResult = stockResult.eq('tenant_id', tenantId);
+                const stockResponse = await stockResult;
 
-                    const stockResult = await supabaseClient
-                        .from('inventario_stock_tecnicos')
-                        .select('id,tecnico_id,insumo_id,existencia,updated_at')
-                        .eq('tenant_id', currentUser.tenant_id)
-                        .eq('tecnico_id', currentUser.tecnicoId)
-                        .gt('existencia', 0)
-                        .order('updated_at', { ascending: false });
+                if (!stockResponse.error) {
+                    const stockRows = stockResponse.data || [];
+                    const ids = [...new Set(stockRows.map(x => x.insumo_id).filter(Boolean))];
 
-                    if (stockResult.error) throw stockResult.error;
-
-                    const ids = [...new Set((stockResult.data || []).map(x => x.insumo_id).filter(Boolean))];
                     let catalogo = [];
                     if (ids.length) {
-                        const catalogoResult = await supabaseClient
+                        let catQuery = supabaseClient
                             .from('inventario_insumos')
                             .select('id,codigo,nombre,categoria,costo_unitario,ubicacion,proveedor')
-                            .eq('tenant_id', currentUser.tenant_id)
                             .in('id', ids);
-                        if (catalogoResult.error) throw catalogoResult.error;
-                        catalogo = catalogoResult.data || [];
+                        if (tenantId) catQuery = catQuery.eq('tenant_id', tenantId);
+                        const catResponse = await catQuery;
+                        if (catResponse.error) throw catResponse.error;
+                        catalogo = catResponse.data || [];
                     }
 
                     const porId = new Map(catalogo.map(x => [String(x.id), x]));
-                    query = {
-                        data: (stockResult.data || []).map(x => ({
-                            ...x,
-                            inventario_insumos: porId.get(String(x.insumo_id)) || null
-                        })),
-                        error: null
-                    };
+                    stockTecnicoMovil = stockRows.map(row => {
+                        const item = porId.get(String(row.insumo_id)) || {};
+                        return {
+                            id: row.id,
+                            insumo_id: row.insumo_id,
+                            codigo: item.codigo || row.insumo_id,
+                            nombre: item.nombre || 'Insumo',
+                            categoria: item.categoria || 'Sin categoría',
+                            existencia: Number(row.existencia || 0),
+                            ubicacion: item.ubicacion || null,
+                            proveedor: item.proveedor || null,
+                            updated_at: row.updated_at || null
+                        };
+                    }).filter(x => x.existencia > 0);
+
+                    renderInventarioTecnico();
+                    return stockTecnicoMovil;
                 }
 
-                stockTecnicoMovil = (query.data || []).map(row => {
-                    const item = row.inventario_insumos || {};
-                    return {
-                        id: row.id,
-                        insumo_id: row.insumo_id,
-                        codigo: item.codigo || row.insumo_id,
-                        nombre: item.nombre || 'Insumo',
-                        categoria: item.categoria || 'Sin categoría',
-                        existencia: Number(row.existencia || 0),
-                        ubicacion: item.ubicacion || null,
-                        proveedor: item.proveedor || null,
-                        updated_at: row.updated_at || null
-                    };
-                }).filter(x => x.existencia > 0);
+                console.warn('[Alarvix Inventario Técnico] inventario_stock_tecnicos no disponible:', stockResponse.error.message);
 
-                renderInventarioTecnico();
-                return stockTecnicoMovil;
+                // 2) Compatibilidad con la implementación anterior: si el stock técnico
+                // ya está guardado en la tabla legacy inventario, lo leemos desde allí.
+                let legacyQuery = supabaseClient
+                    .from('inventario')
+                    .select('*')
+                    .eq('tecnico_id', tecnicoId);
+
+                if (tenantId) legacyQuery = legacyQuery.eq('tenant_id', tenantId);
+                const legacyResponse = await legacyQuery;
+
+                if (!legacyResponse.error) {
+                    stockTecnicoMovil = (legacyResponse.data || []).map(row => ({
+                        id: row.id || row.codigo,
+                        insumo_id: row.insumo_id || row.id || row.codigo,
+                        codigo: row.codigo || '',
+                        nombre: row.nombre || 'Insumo',
+                        categoria: row.categoria || 'Sin categoría',
+                        existencia: Number(row.existencia ?? row.stock ?? row.cantidad ?? 0),
+                        ubicacion: row.ubicacion || null,
+                        proveedor: row.proveedor || null,
+                        updated_at: row.updated_at || null
+                    })).filter(x => x.existencia > 0);
+
+                    renderInventarioTecnico();
+                    return stockTecnicoMovil;
+                }
+
+                throw new Error(
+                    'No se pudo consultar el stock técnico. ' +
+                    'Nuevo: ' + (stockResponse.error?.message || 'sin detalle') +
+                    ' | Legacy: ' + (legacyResponse.error?.message || 'sin detalle')
+                );
             } catch (error) {
                 console.error('[Alarvix Inventario Técnico] No se pudo cargar el stock del técnico:', error);
                 stockTecnicoMovil = [];
@@ -4820,7 +4844,6 @@
                 return [];
             }
         }
-
         function renderInventarioTecnico() {
             const container = document.getElementById('lista-inventario-tecnico');
             if (!container) return;
