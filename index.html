@@ -6033,6 +6033,46 @@
         }
 
         let requerimientosCotizacionTecnicoTemp = [];
+        // Catálogo que utiliza el técnico al definir equipos/materiales para una cotización.
+        // Debe salir de la nueva tabla public.inventario_insumos, no del inventario legado.
+        let inventarioInsumosTecnicoCotizacion = [];
+
+        async function cargarInventarioInsumosTecnicoCotizacion() {
+            try {
+                if (!window.supabaseClient) throw new Error('Supabase no disponible');
+
+                let query = supabaseClient
+                    .from('inventario_insumos')
+                    .select('id,tenant_id,codigo,nombre,categoria,existencia,costo_unitario,stock_minimo,stock_maximo,proveedor,ubicacion')
+                    .order('nombre', { ascending: true });
+
+                const tenantId = currentUser?.tenant_id || currentUser?.tenantId || currentUser?.empresa_id || currentUser?.empresaId || null;
+                if (tenantId) query = query.eq('tenant_id', tenantId);
+
+                const { data, error } = await query;
+                if (error) throw error;
+
+                inventarioInsumosTecnicoCotizacion = (Array.isArray(data) ? data : [])
+                    .map(m => ({
+                        id: m.id,
+                        codigo: String(m.codigo || '').trim(),
+                        nombre: String(m.nombre || '').trim(),
+                        categoria: String(m.categoria || '').trim(),
+                        existencia: Number(m.existencia || 0),
+                        costo_unitario: Number(m.costo_unitario || 0),
+                        proveedor: String(m.proveedor || '').trim(),
+                        ubicacion: String(m.ubicacion || '').trim()
+                    }))
+                    .filter(m => m.codigo || m.nombre);
+
+                console.log('[Alarvix Cotización Técnico] Catálogo cargado desde public.inventario_insumos:', inventarioInsumosTecnicoCotizacion.length);
+                return inventarioInsumosTecnicoCotizacion;
+            } catch (error) {
+                console.error('[Alarvix Cotización Técnico] Error consultando public.inventario_insumos:', error);
+                inventarioInsumosTecnicoCotizacion = [];
+                return [];
+            }
+        }
 
         function escaparHtmlCotTecnico(valor) {
             return String(valor ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -6085,13 +6125,13 @@
             items.forEach(item=>{
                 const row=document.createElement('div');
                 row.className='bg-slate-900 border border-slate-800 rounded-lg p-2 space-y-2';
-                const opts='<option value="">Sin código</option>'+(Array.isArray(catalogoInventario)?catalogoInventario.map(mat=>'<option value="'+escaparHtmlCotTecnico(mat.codigo)+'" '+(String(mat.codigo)===String(item.codigo)?'selected':'')+'>'+escaparHtmlCotTecnico(mat.codigo+' · '+mat.nombre)+'</option>').join(''):'');
+                const opts='<option value="">Sin código</option>'+(Array.isArray(inventarioInsumosTecnicoCotizacion)?inventarioInsumosTecnicoCotizacion.map(mat=>'<option value="'+escaparHtmlCotTecnico(mat.codigo)+'" '+(String(mat.codigo)===String(item.codigo)?'selected':'')+'>'+escaparHtmlCotTecnico(mat.codigo+' · '+mat.nombre)+'</option>').join(''):'');
                 row.innerHTML=`
                     <div class="grid grid-cols-2 gap-2">
                         <select class="bg-slate-950 border border-slate-800 rounded-md p-2 text-[9px] text-white" onchange="actualizarRequerimientoCotizacionTecnico('${escaparHtmlCotTecnico(item.id)}','tipo',this.value)">
                             <option value="Material" ${item.tipo==='Material'?'selected':''}>Material</option><option value="Repuesto" ${item.tipo==='Repuesto'?'selected':''}>Repuesto</option><option value="Equipo" ${item.tipo==='Equipo'?'selected':''}>Equipo</option><option value="Mano de obra" ${item.tipo==='Mano de obra'?'selected':''}>Mano de obra</option>
                         </select>
-                        <select class="bg-slate-950 border border-slate-800 rounded-md p-2 text-[9px] text-white" onchange="actualizarRequerimientoCotizacionTecnico('${escaparHtmlCotTecnico(item.id)}','codigo',this.value); const m=catalogoInventario.find(x=>x.codigo===this.value); if(m){actualizarRequerimientoCotizacionTecnico('${escaparHtmlCotTecnico(item.id)}','descripcion',m.nombre); renderRequerimientosCotizacionTecnico();}">
+                        <select class="bg-slate-950 border border-slate-800 rounded-md p-2 text-[9px] text-white" onchange="actualizarRequerimientoCotizacionTecnico('${escaparHtmlCotTecnico(item.id)}','codigo',this.value); const m=inventarioInsumosTecnicoCotizacion.find(x=>x.codigo===this.value); if(m){actualizarRequerimientoCotizacionTecnico('${escaparHtmlCotTecnico(item.id)}','descripcion',m.nombre); renderRequerimientosCotizacionTecnico();}">
                             ${opts}
                         </select>
                     </div>
