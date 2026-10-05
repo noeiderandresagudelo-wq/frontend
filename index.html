@@ -6183,7 +6183,7 @@
             }
         }
 
-        function openTechOprModal(consecutivo) {
+        async function openTechOprModal(consecutivo) {
             try {
                 const s = incidentesServicios.find(i => i.consecutivo === consecutivo);
                 if (!s) {
@@ -6197,6 +6197,10 @@
                 document.getElementById('opr-form-trabajo-realizado').value = s.evidenciaDano || '';
                 const reqCotEl = document.getElementById('opr-form-requerimientos-cotizacion');
                 if (reqCotEl) reqCotEl.value = s.informeTecnico?.requerimientosCotizacion || '';
+
+                // IMPORTANTE: cargar primero el catálogo REAL de public.inventario_insumos.
+                // Si renderizamos antes, el selector solo contiene la opción estática "Sin código".
+                await cargarInventarioInsumosTecnicoCotizacion();
                 cargarRequerimientosCotizacionTecnico(Array.isArray(s.informeTecnico?.requerimientosCotizacionItems) ? s.informeTecnico.requerimientosCotizacionItems : (Array.isArray(s.insumosUsados) ? s.insumosUsados : []));
 
                 // Preseleccionar el tipo de atención según el tipo de servicio original, si aplica
