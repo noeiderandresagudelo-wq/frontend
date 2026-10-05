@@ -14688,12 +14688,9 @@ function renderBurbujasChat(containerId, mensajes) {
         const modal = document.getElementById('modal-global-search');
         if (modal) {
           modal.classList.remove('hidden', 'pointer-events-none');
-          modal.style.display = 'flex';
-          modal.style.zIndex = '99999';
-          modal.style.opacity = '1';
-          modal.style.visibility = 'visible';
+          modal.style.cssText = 'display: flex !important; opacity: 1 !important; visibility: visible !important; z-index: 999999 !important; position: fixed !important; inset: 0 !important;';
         } else {
-          console.error('[Alarvix] No existe #modal-global-search');
+          console.error('No se encontró #modal-global-search en el DOM');
         }
       };
 
@@ -14702,32 +14699,25 @@ function renderBurbujasChat(containerId, mensajes) {
         const modal = document.getElementById('modal-copilot-ai');
         if (modal) {
           modal.classList.remove('hidden', 'pointer-events-none');
-          modal.style.display = 'flex';
-          modal.style.zIndex = '99999';
-          modal.style.opacity = '1';
-          modal.style.visibility = 'visible';
+          modal.style.cssText = 'display: flex !important; opacity: 1 !important; visibility: visible !important; z-index: 999999 !important; position: fixed !important; inset: 0 !important;';
         } else {
-          console.error('[Alarvix] No existe #modal-copilot-ai');
+          console.error('No se encontró #modal-copilot-ai en el DOM');
         }
       };
 
       window.closeGlobalSearch = function () {
         const modal = document.getElementById('modal-global-search');
         if (modal) {
+          modal.style.cssText = 'display: none !important;';
           modal.classList.add('hidden');
-          modal.style.display = 'none';
-          modal.style.opacity = '0';
-          modal.style.visibility = 'hidden';
         }
       };
 
       window.closeCopilotAI = function () {
         const modal = document.getElementById('modal-copilot-ai');
         if (modal) {
+          modal.style.cssText = 'display: none !important;';
           modal.classList.add('hidden');
-          modal.style.display = 'none';
-          modal.style.opacity = '0';
-          modal.style.visibility = 'hidden';
         }
       };
 
@@ -14741,8 +14731,7 @@ function renderBurbujasChat(containerId, mensajes) {
           style.id = styleId;
           style.textContent =
             '#btn-global-search *, #btn-open-copilot * { pointer-events: none !important; }' +
-            '#btn-global-search, #btn-open-copilot { pointer-events: auto !important; cursor: pointer !important; }' +
-            '#modal-global-search, #modal-copilot-ai { z-index: 99999 !important; }';
+            '#btn-global-search, #btn-open-copilot { pointer-events: auto !important; cursor: pointer !important; }';
           document.head.appendChild(style);
         }
 
