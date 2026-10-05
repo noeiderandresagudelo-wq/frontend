@@ -1123,17 +1123,26 @@
         </div>
     </div>
 
-    <!-- MODAL DE STOCK DISPONIBLE (Vista de Técnico, solo lectura) -->
+    <!-- MODAL DE INVENTARIO DEL TÉCNICO: GENERAL + ASIGNADO -->
     <div id="modal-inventario-tecnico" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-[8700] hidden flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-sm h-[min(720px,calc(100dvh-2rem))] min-h-0 flex flex-col shadow-2xl">
             <div class="flex justify-between items-center border-b border-slate-800 p-4 shrink-0">
                 <div>
-                    <h3 class="text-xs font-extrabold text-white uppercase tracking-wider">Stock Disponible</h3>
-                    <p class="text-[9px] text-slate-500">Existencias asignadas a tu stock de técnico</p>
+                    <h3 id="titulo-inventario-tecnico" class="text-xs font-extrabold text-white uppercase tracking-wider">Inventario General</h3>
+                    <p id="subtitulo-inventario-tecnico" class="text-[9px] text-slate-500">Existencias disponibles en el inventario de la empresa</p>
                 </div>
-                <button onclick="closeInventarioTecnicoModal()" class="text-slate-400 hover:text-white">✕</button>
+                <button onclick="closeInventarioTecnicoModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
             </div>
-            <input type="text" id="search-inventario-tecnico" oninput="renderInventarioTecnico()" placeholder="Buscar insumo..." class="mx-4 mt-3 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+
+            <div class="px-4 pt-3 shrink-0">
+                <div class="flex gap-2">
+                    <button type="button" id="tab-inventario-general" onclick="cambiarVistaInventarioTecnico('general')" class="flex-1 px-3 py-2 rounded-lg border text-[10px] font-black uppercase tracking-wide transition">Inventario General</button>
+                    <button type="button" id="tab-inventario-asignado" onclick="cambiarVistaInventarioTecnico('asignado')" class="flex-1 px-3 py-2 rounded-lg border text-[10px] font-black uppercase tracking-wide transition">Mi Inventario</button>
+                </div>
+            </div>
+
+            <input type="text" id="search-inventario-tecnico" oninput="renderInventarioTecnico()" placeholder="Buscar por código, nombre o categoría..." class="mx-4 mt-3 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 shrink-0">
+
             <div id="lista-inventario-tecnico" class="flex-grow overflow-y-auto custom-scrollbar p-4 space-y-2">
                 <!-- Inyectado dinámicamente -->
             </div>
@@ -4733,9 +4742,14 @@
             document.getElementById('modal-solicitud-cliente').classList.add('hidden');
         }
 
+        let inventarioTecnicoVista = 'general';
+        let stockTecnicoMovil = [];
+
         function openInventarioTecnicoModal() {
-            document.getElementById('search-inventario-tecnico').value = '';
+            const search = document.getElementById('search-inventario-tecnico');
+            if (search) search.value = '';
             document.getElementById('modal-inventario-tecnico').classList.remove('hidden');
+            cambiarVistaInventarioTecnico('general');
             void cargarStockTecnicoMovil();
         }
 
@@ -4743,20 +4757,109 @@
             document.getElementById('modal-inventario-tecnico').classList.add('hidden');
         }
 
-        /** Lista de solo lectura del stock disponible, para que el técnico sepa qué tiene la bodega antes de salir a campo. */
-        let stockTecnicoMovil = [];
+        function cambiarVistaInventarioTecnico(vista) {
+            inventarioTecnicoVista = vista === 'asignado' ? 'asignado' : 'general';
+
+            const btnGeneral = document.getElementById('tab-inventario-general');
+            const btnAsignado = document.getElementById('tab-inventario-asignado');
+            if (btnGeneral && btnAsignado) {
+                const activo = 'bg-blue-600 text-white border-blue-500 shadow-sm';
+                const inactivo = 'bg-slate-950 text-slate-400 border-slate-800';
+                btnGeneral.className = 'flex-1 px-3 py-2 rounded-lg border text-[10px] font-black uppercase tracking-wide transition ' + (inventarioTecnicoVista === 'general' ? activo : inactivo);
+                btnAsignado.className = 'flex-1 px-3 py-2 rounded-lg border text-[10px] font-black uppercase tracking-wide transition ' + (inventarioTecnicoVista === 'asignado' ? activo : inactivo);
+            }
+
+            const titulo = document.getElementById('titulo-inventario-tecnico');
+            const subtitulo = document.getElementById('subtitulo-inventario-tecnico');
+            if (titulo) titulo.textContent = inventarioTecnicoVista === 'general' ? 'Inventario General' : 'Mi Inventario Asignado';
+            if (subtitulo) subtitulo.textContent = inventarioTecnicoVista === 'general'
+                ? 'Existencias disponibles en el inventario de la empresa'
+                : 'Materiales actualmente asignados a tu stock de técnico';
+
+            renderInventarioTecnico();
+        }
+
+        function obtenerInventarioGeneralTecnico() {
+            return (Array.isArray(catalogoInventario) ? catalogoInventario : []).map(m => ({
+                id: m.id || m.codigo,
+                codigo: m.codigo || '',
+                nombre: m.nombre || 'Insumo',
+                categoria: m.categoria || 'Sin categoría',
+                existencia: Number(m.existencia || 0),
+                ubicacion: m.ubicacion || null,
+                proveedor: m.proveedor || null,
+                costo: Number(m.costo || 0)
+            })).filter(x => x.existencia > 0);
+        }
+
+        function escaparInventarioTecnico(valor) {
+            if (typeof escaparHtmlCotTecnico === 'function') return escaparHtmlCotTecnico(valor);
+            return String(valor ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
+        }
+
+        function renderInventarioTecnico() {
+            const container = document.getElementById('lista-inventario-tecnico');
+            if (!container) return;
+
+            const input = document.getElementById('search-inventario-tecnico');
+            const busqueda = normalizarHeaderMalla(String(input?.value || '').trim());
+
+            const fuente = inventarioTecnicoVista === 'general'
+                ? obtenerInventarioGeneralTecnico()
+                : stockTecnicoMovil;
+
+            const items = fuente.filter(m =>
+                !busqueda || normalizarHeaderMalla(`${m.codigo} ${m.nombre} ${m.categoria} ${m.ubicacion || ''}`).includes(busqueda)
+            );
+
+            const total = fuente.length;
+            if (items.length === 0) {
+                const mensaje = inventarioTecnicoVista === 'general'
+                    ? (total ? 'No se encontraron insumos con esa búsqueda.' : 'No hay existencias disponibles en el inventario general.')
+                    : (total ? 'No se encontraron insumos con esa búsqueda.' : 'No tienes insumos asignados actualmente.');
+                container.innerHTML = `<p class="text-[11px] text-slate-500 italic text-center py-8">${mensaje}</p>`;
+                return;
+            }
+
+            container.innerHTML = items.map(m => {
+                const cantidad = Number(m.existencia || 0);
+                const esGeneral = inventarioTecnicoVista === 'general';
+                const badge = esGeneral
+                    ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+                const estado = esGeneral ? 'GENERAL' : 'ASIGNADO';
+                const detalle = m.ubicacion ? ` · ${escaparInventarioTecnico(m.ubicacion)}` : '';
+
+                return `
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 space-y-2">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="text-xs font-bold text-white truncate">${escaparInventarioTecnico(m.nombre)}</p>
+                                <p class="text-[9px] text-slate-500">${escaparInventarioTecnico(m.codigo)} · ${escaparInventarioTecnico(m.categoria)}${detalle}</p>
+                            </div>
+                            <span class="px-1.5 py-0.5 rounded text-[8px] font-bold border shrink-0 ${badge}">${estado}</span>
+                        </div>
+                        <div class="flex items-end justify-between">
+                            <span class="text-[9px] text-slate-500 uppercase tracking-wide">${esGeneral ? 'Existencia empresa' : 'Cantidad asignada'}</span>
+                            <span class="text-base font-black text-white">${cantidad}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
 
         async function cargarStockTecnicoMovil() {
             const container = document.getElementById('lista-inventario-tecnico');
             if (!container || !currentUser?.tecnicoId || !supabaseClient) return [];
 
-            container.innerHTML = '<p class="text-[11px] text-slate-500 italic text-center py-8"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Consultando tu stock...</p>';
-
             const tecnicoId = String(currentUser.tecnicoId).trim();
             const tenantId = currentUser.tenant_id || currentUser.tenantId || null;
 
+            // El inventario general ya está cargado desde la tabla inventario.
+            // Mientras consultamos el stock asignado, mantenemos disponible la pestaña general.
+            renderInventarioTecnico();
+
             try {
-                // 1) Fuente oficial: stock individual del técnico.
                 let stockResult = supabaseClient
                     .from('inventario_stock_tecnicos')
                     .select('id,tecnico_id,insumo_id,existencia,updated_at')
@@ -4799,14 +4902,14 @@
                         };
                     }).filter(x => x.existencia > 0);
 
-                    renderInventarioTecnico();
+                    if (inventarioTecnicoVista === 'asignado') renderInventarioTecnico();
                     return stockTecnicoMovil;
                 }
 
                 console.warn('[Alarvix Inventario Técnico] inventario_stock_tecnicos no disponible:', stockResponse.error.message);
 
-                // 2) Compatibilidad con la implementación anterior: si el stock técnico
-                // ya está guardado en la tabla legacy inventario, lo leemos desde allí.
+                // Compatibilidad con instalaciones anteriores donde el stock del técnico
+                // pudo quedar registrado directamente en la tabla inventario.
                 let legacyQuery = supabaseClient
                     .from('inventario')
                     .select('*')
@@ -4828,54 +4931,23 @@
                         updated_at: row.updated_at || null
                     })).filter(x => x.existencia > 0);
 
-                    renderInventarioTecnico();
+                    if (inventarioTecnicoVista === 'asignado') renderInventarioTecnico();
                     return stockTecnicoMovil;
                 }
 
                 throw new Error(
-                    'No se pudo consultar el stock técnico. ' +
-                    'Nuevo: ' + (stockResponse.error?.message || 'sin detalle') +
+                    'No se pudo consultar el stock técnico. Nuevo: ' +
+                    (stockResponse.error?.message || 'sin detalle') +
                     ' | Legacy: ' + (legacyResponse.error?.message || 'sin detalle')
                 );
             } catch (error) {
-                console.error('[Alarvix Inventario Técnico] No se pudo cargar el stock del técnico:', error);
+                console.error('[Alarvix Inventario Técnico] No se pudo cargar el stock asignado:', error);
                 stockTecnicoMovil = [];
-                container.innerHTML = '<p class="text-[11px] text-rose-400 text-center py-8">No fue posible consultar tu stock asignado. Intenta nuevamente.</p>';
+                if (inventarioTecnicoVista === 'asignado') {
+                    container.innerHTML = '<p class="text-[11px] text-rose-400 text-center py-8">No fue posible consultar tu stock asignado. Intenta nuevamente.</p>';
+                }
                 return [];
             }
-        }
-        function renderInventarioTecnico() {
-            const container = document.getElementById('lista-inventario-tecnico');
-            if (!container) return;
-
-            const busqueda = normalizarHeaderMalla(document.getElementById('search-inventario-tecnico').value.trim());
-            const items = stockTecnicoMovil.filter(m =>
-                !busqueda || normalizarHeaderMalla(`${m.codigo} ${m.nombre} ${m.categoria}`).includes(busqueda)
-            );
-
-            if (items.length === 0) {
-                container.innerHTML = `<p class="text-[11px] text-slate-500 italic text-center py-8">${stockTecnicoMovil.length ? 'No se encontraron insumos en tu stock.' : 'No tienes insumos asignados actualmente.'}</p>`;
-                return;
-            }
-
-            container.innerHTML = items.map(m => {
-                const cantidad = Number(m.existencia || 0);
-                const badge = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-                const estado = 'DISPONIBLE';
-
-                return `
-                    <div class="bg-slate-950 border border-slate-800 rounded-lg p-3 flex items-center justify-between gap-2">
-                        <div class="min-w-0">
-                            <p class="text-xs font-bold text-white truncate">${escaparHtmlCotTecnico(m.nombre)}</p>
-                            <p class="text-[9px] text-slate-500">${escaparHtmlCotTecnico(m.codigo)} · ${escaparHtmlCotTecnico(m.categoria)}</p>
-                        </div>
-                        <div class="text-right shrink-0">
-                            <p class="text-sm font-black text-white">${cantidad}</p>
-                            <span class="px-1.5 py-0.5 rounded text-[8px] font-bold border ${badge}">${estado}</span>
-                        </div>
-                    </div>
-                `;
-            }).join('');
         }
 
         function openChatTecnicoModal() {
