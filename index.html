@@ -14681,124 +14681,47 @@ function renderBurbujasChat(containerId, mensajes) {
       };
     </script>
     <script>
-      // Refuerzo definitivo de interacción del encabezado global.
-      // Este bloque no depende de que otros listeners o funciones del dashboard hayan cargado correctamente.
-      (function () {
-        'use strict';
-
-        function abrirModalBusquedaGlobal() {
-          console.log('[Alarvix] abrirModalBusquedaGlobal()');
-          const modal =
-            document.getElementById('modal-global-search') ||
-            document.querySelector('.modal-search');
-          if (!modal) {
-            console.error('[Alarvix] No se encontró el modal de búsqueda en el DOM');
-            return false;
-          }
+      // Alias globales definitivos para los onclick inline del encabezado.
+      // Los botones existentes llaman openGlobalSearch() y openCopilotAI().
+      window.openGlobalSearch = function () {
+        console.log('[Header] Click Buscar');
+        const modal = document.getElementById('modal-global-search');
+        if (modal) {
           modal.classList.remove('hidden');
           modal.style.display = 'flex';
           const input = document.getElementById('input-global-search');
-          if (input) {
-            input.value = '';
-            setTimeout(function () { try { input.focus(); } catch (_) {} }, 50);
-          }
-          return true;
+          if (input) setTimeout(function () { try { input.focus(); } catch (_) {} }, 50);
+        } else {
+          console.error('[Alarvix] No existe #modal-global-search');
         }
+      };
 
-        function abrirCopilotoIA() {
-          console.log('[Alarvix] abrirCopilotoIA()');
-          const cop =
-            document.getElementById('modal-copilot-ai') ||
-            document.getElementById('modal-copiloto-ia') ||
-            document.querySelector('.copiloto-drawer');
-          if (!cop) {
-            console.error('[Alarvix] No se encontró el contenedor de Copiloto IA');
-            return false;
-          }
-          cop.classList.remove('hidden');
-          cop.style.display = 'flex';
+      window.openCopilotAI = function () {
+        console.log('[Header] Click Copiloto');
+        const modal = document.getElementById('modal-copilot-ai');
+        if (modal) {
+          modal.classList.remove('hidden');
+          modal.style.display = 'flex';
           const input = document.getElementById('input-chat-ai');
           if (input) {
             requestAnimationFrame(function () {
               try { input.focus({ preventScroll: true }); } catch (_) {}
             });
           }
-          return true;
+        } else {
+          console.error('[Alarvix] No existe #modal-copilot-ai');
         }
+      };
 
-        // API global explícita solicitada para evitar depender de onclick/closures.
-        window.abrirModalBusquedaGlobal = abrirModalBusquedaGlobal;
-        window.abrirCopilotoIA = abrirCopilotoIA;
+      // Alias de compatibilidad para cualquier código que use los nombres en español.
+      window.abrirModalBusquedaGlobal = window.openGlobalSearch;
+      window.abrirCopilotoIA = window.openCopilotAI;
 
-        // Mantener compatibilidad con las funciones antiguas del sistema.
-        window.openGlobalSearch = abrirModalBusquedaGlobal;
-        window.openCopilotAI = abrirCopilotoIA;
-
-        function instalarListenersHeader() {
-          const search = document.getElementById('btn-global-search');
-          const copilot = document.getElementById('btn-open-copilot');
-
-          if (!search || !copilot) {
-            console.error('[Alarvix Header] Botones no encontrados', {
-              search: !!search,
-              copilot: !!copilot
-            });
-            return;
-          }
-
-          // Evita listeners duplicados después de re-renderizados.
-          if (!search.dataset.alarvixDefinitiveBound) {
-            search.dataset.alarvixDefinitiveBound = '1';
-            search.addEventListener('click', function () {
-              console.log('[Header] Click Buscar');
-            }, true);
-          }
-
-          if (!copilot.dataset.alarvixDefinitiveBound) {
-            copilot.dataset.alarvixDefinitiveBound = '1';
-            copilot.addEventListener('click', function () {
-              console.log('[Header] Click Copiloto');
-            }, true);
-          }
-
-          // Captura desde window: se ejecuta antes que listeners de contenedores/document.
-          if (!window.__alarvixHeaderClickShield) {
-            window.__alarvixHeaderClickShield = true;
-            window.addEventListener('click', function (event) {
-              const path = typeof event.composedPath === 'function'
-                ? event.composedPath()
-                : [];
-              let target = event.target && event.target.closest
-                ? event.target.closest('#btn-global-search, #btn-open-copilot')
-                : null;
-
-              if (!target && path.length) {
-                target = path.find(function (node) {
-                  return node && node.nodeType === 1 &&
-                    (node.id === 'btn-global-search' || node.id === 'btn-open-copilot');
-                });
-              }
-
-              if (!target) return;
-
-              if (target.id === 'btn-global-search') {
-                console.log('[Header] Click Buscar');
-                event.preventDefault();
-                abrirModalBusquedaGlobal();
-              } else if (target.id === 'btn-open-copilot') {
-                console.log('[Header] Click Copiloto');
-                event.preventDefault();
-                abrirCopilotoIA();
-              }
-            }, true);
-          }
-        }
-
-        // CSS de respaldo: iconos/textos no pueden convertirse en event sinks.
-        function blindarElementosHijos() {
-          const styleId = 'alarvix-header-click-fix';
-          if (document.getElementById(styleId)) return;
-          const style = document.createElement('style');
+      // Blindaje contra iconos/textos internos que puedan capturar el clic.
+      (function () {
+        var styleId = 'alarvix-header-click-fix';
+        if (!document.getElementById(styleId)) {
+          var style = document.createElement('style');
           style.id = styleId;
           style.textContent =
             '#btn-global-search *, #btn-open-copilot * { pointer-events: none !important; }' +
@@ -14806,24 +14729,12 @@ function renderBurbujasChat(containerId, mensajes) {
           document.head.appendChild(style);
         }
 
-        function init() {
-          blindarElementosHijos();
-          instalarListenersHeader();
-
-          // Diagnóstico real de existencia de los destinos.
-          console.log('[Alarvix Header] DOM:', {
-            btnBuscar: !!document.getElementById('btn-global-search'),
-            btnCopiloto: !!document.getElementById('btn-open-copilot'),
-            modalBusqueda: !!document.getElementById('modal-global-search'),
-            modalCopiloto: !!document.getElementById('modal-copilot-ai')
-          });
-        }
-
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', init, { once: true });
-        } else {
-          init();
-        }
+        console.log('[Alarvix Header] DOM:', {
+          btnBuscar: !!document.getElementById('btn-global-search'),
+          btnCopiloto: !!document.getElementById('btn-open-copilot'),
+          modalBusqueda: !!document.getElementById('modal-global-search'),
+          modalCopiloto: !!document.getElementById('modal-copilot-ai')
+        });
       })();
     </script>
 </body>
