@@ -10206,9 +10206,15 @@ function renderBurbujasChat(containerId, mensajes) {
             // Solo conserva el popup si estaba abierto al comenzar una actualización automática.
             // Si el usuario acaba de cerrarlo, no se vuelve a abrir en el siguiente refresco GPS/realtime.
             const popupAbierto = mapInstance._popup;
-            if (popupAbierto && popupAbierto._source && popupAbierto._source._alarvixPinId) {
+            // Si el usuario cerró el popup manualmente, NO lo volvemos a seleccionar
+            // aunque una actualización GPS/realtime ocurra justo después del cierre.
+            if (
+                popupAbierto &&
+                popupAbierto._source &&
+                popupAbierto._source._alarvixPinId &&
+                !mapaPopupCierreManual
+            ) {
                 mapaPinSeleccionado = popupAbierto._source._alarvixPinId;
-                mapaPopupCierreManual = false;
             }
 
             mapaRenderizandoPins = true;
