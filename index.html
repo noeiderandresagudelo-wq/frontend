@@ -14689,67 +14689,118 @@ function renderBurbujasChat(containerId, mensajes) {
       };
     </script>
     <script>
-      // Alias globales definitivos para los onclick inline del encabezado.
-      // Los botones existentes llaman openGlobalSearch() y openCopilotAI().
-      window.openGlobalSearch = function () {
-        console.log('[Header] Click Buscar');
-        const modal = document.getElementById('modal-global-search');
-        if (modal) {
-          modal.classList.remove('hidden', 'pointer-events-none');
-          modal.style.cssText = 'display: flex !important; opacity: 1 !important; visibility: visible !important; z-index: 999999 !important; position: fixed !important; inset: 0 !important;';
-        } else {
-          console.error('No se encontró #modal-global-search en el DOM');
-        }
-      };
-
-      window.openCopilotAI = function () {
-        console.log('[Header] Click Copiloto');
-        const modal = document.getElementById('modal-copilot-ai');
-        if (modal) {
-          modal.classList.remove('hidden', 'pointer-events-none');
-          modal.style.cssText = 'display: flex !important; opacity: 1 !important; visibility: visible !important; z-index: 999999 !important; position: fixed !important; inset: 0 !important;';
-        } else {
-          console.error('No se encontró #modal-copilot-ai en el DOM');
-        }
-      };
-
-      window.closeGlobalSearch = function () {
-        const modal = document.getElementById('modal-global-search');
-        if (modal) {
-          modal.style.cssText = 'display: none !important;';
-          modal.classList.add('hidden');
-        }
-      };
-
-      window.closeCopilotAI = function () {
-        const modal = document.getElementById('modal-copilot-ai');
-        if (modal) {
-          modal.style.cssText = 'display: none !important;';
-          modal.classList.add('hidden');
-        }
-      };
-
-      window.abrirModalBusquedaGlobal = window.openGlobalSearch;
-      window.abrirCopilotoIA = window.openCopilotAI;
-
+      // FIX DEFINITIVO DE MODALES DEL ENCABEZADO.
+      // Se usa una clase con selector por ID + !important para ganar incluso
+      // contra la clase Tailwind "hidden" (display:none !important).
       (function () {
-        var styleId = 'alarvix-header-click-fix';
+        const styleId = 'alarvix-header-modal-fix';
+
         if (!document.getElementById(styleId)) {
-          var style = document.createElement('style');
+          const style = document.createElement('style');
           style.id = styleId;
-          style.textContent =
-            '#btn-global-search *, #btn-open-copilot * { pointer-events: none !important; }' +
-            '#btn-global-search, #btn-open-copilot { pointer-events: auto !important; cursor: pointer !important; }';
+          style.textContent = [
+            '#modal-global-search.alarvix-modal-open, #modal-copilot-ai.alarvix-modal-open {',
+            '  display: flex !important;',
+            '  visibility: visible !important;',
+            '  opacity: 1 !important;',
+            '  position: fixed !important;',
+            '  inset: 0 !important;',
+            '  z-index: 999999 !important;',
+            '  pointer-events: auto !important;',
+            '}',
+            '#modal-global-search.alarvix-modal-open > *, #modal-copilot-ai.alarvix-modal-open > * {',
+            '  pointer-events: auto !important;',
+            '}'
+          ].join('');
           document.head.appendChild(style);
         }
 
-        console.log('[Alarvix Header] DOM:', {
-          btnBuscar: !!document.getElementById('btn-global-search'),
-          btnCopiloto: !!document.getElementById('btn-open-copilot'),
-          modalBusqueda: !!document.getElementById('modal-global-search'),
+        function mostrarModalHeader(id) {
+          const modal = document.getElementById(id);
+          if (!modal) {
+            console.error('[Alarvix Header] No existe #' + id);
+            return false;
+          }
+
+          // Quitamos cualquier estado de ocultación y aplicamos una clase
+          // que gana por especificidad contra Tailwind.
+          modal.classList.remove('hidden', 'pointer-events-none');
+          modal.classList.add('alarvix-modal-open');
+
+          // Respaldo adicional mediante atributo style.
+          modal.setAttribute(
+            'style',
+            'display:flex !important;visibility:visible !important;opacity:1 !important;position:fixed !important;inset:0 !important;z-index:999999 !important;pointer-events:auto !important;'
+          );
+
+          // Si algún código vuelve a añadir "hidden", lo quitamos en el siguiente frame.
+          requestAnimationFrame(function () {
+            if (modal.classList.contains('hidden')) {
+              modal.classList.remove('hidden');
+            }
+            modal.classList.add('alarvix-modal-open');
+          });
+
+          console.log('[Alarvix Header] Modal abierto:', id);
+          return true;
+        }
+
+        function ocultarModalHeader(id) {
+          const modal = document.getElementById(id);
+          if (!modal) return;
+
+          modal.classList.remove('alarvix-modal-open');
+          modal.classList.add('hidden');
+          modal.setAttribute('style', 'display:none !important;');
+        }
+
+        window.openGlobalSearch = function () {
+          console.log('[Header] Click Buscar');
+          if (mostrarModalHeader('modal-global-search')) {
+            const input = document.getElementById('input-global-search');
+            const results = document.getElementById('global-search-results');
+            if (input) {
+              input.value = '';
+              setTimeout(function () {
+                try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); }
+              }, 0);
+            }
+            if (results) {
+              results.innerHTML = '<p class="text-[11px] text-slate-500 italic text-center py-8">Escribí al menos 2 letras para buscar en todo el sistema.</p>';
+            }
+          }
+        };
+
+        window.openCopilotAI = function () {
+          console.log('[Header] Click Copiloto');
+          if (mostrarModalHeader('modal-copilot-ai')) {
+            const input = document.getElementById('input-chat-ai');
+            if (input) {
+              requestAnimationFrame(function () {
+                try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); }
+              });
+            }
+          }
+        };
+
+        window.closeGlobalSearch = function () {
+          ocultarModalHeader('modal-global-search');
+        };
+
+        window.closeCopilotAI = function () {
+          ocultarModalHeader('modal-copilot-ai');
+        };
+
+        window.abrirModalBusquedaGlobal = window.openGlobalSearch;
+        window.abrirCopilotoIA = window.openCopilotAI;
+
+        console.log('[Alarvix Header] FIX MODALES CARGADO', {
+          buscar: !!document.getElementById('btn-global-search'),
+          copiloto: !!document.getElementById('btn-open-copilot'),
+          modalBuscar: !!document.getElementById('modal-global-search'),
           modalCopiloto: !!document.getElementById('modal-copilot-ai')
         });
       })();
-    </script>
+    </script>ipt>
 </body>
 </html>
