@@ -1378,10 +1378,10 @@
                     <span class="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider">Monitoreo Activo</span>
                     <span class="text-[10px] text-slate-500 font-mono" id="live-clock">21:33:44</span>
                 </div>
-                <button onclick="openGlobalSearch()" class="alarvix-header-icon text-slate-500 hover:text-blue-700 p-2 bg-slate-50 border border-slate-200 rounded-lg" title="Buscar en todo el sistema" aria-label="Buscar en todo el sistema">
+                <button type="button" id="btn-global-search" onclick="openGlobalSearch()" class="alarvix-header-icon text-slate-500 hover:text-blue-700 p-2 bg-slate-50 border border-slate-200 rounded-lg" title="Buscar en todo el sistema" aria-label="Buscar en todo el sistema">
                     <i class="fa-solid fa-magnifying-glass text-sm"></i>
                 </button>
-                <button onclick="openCopilotAI()" class="alarvix-header-copilot bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm" aria-label="Abrir Copiloto IA">
+                <button type="button" id="btn-open-copilot" onclick="openCopilotAI()" class="alarvix-header-copilot bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm" aria-label="Abrir Copiloto IA">
                     <i class="fa-solid fa-wand-magic-sparkles text-xs"></i> <span class="hidden sm:inline">Copiloto IA</span>
                 </button>
                 <div class="h-7 w-px bg-slate-200 hidden sm:block"></div>
@@ -8415,7 +8415,35 @@
         }
 
         function closeCopilotAI() {
-            document.getElementById('modal-copilot-ai').classList.add('hidden');
+            const modal = document.getElementById('modal-copilot-ai');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        // Refuerzo de los botones globales del encabezado: evita depender únicamente
+        // del atributo inline y garantiza que funcionen aunque el encabezado se re-renderice.
+        function inicializarAccionesHeader() {
+            const btnSearch = document.getElementById('btn-global-search');
+            const btnCopilot = document.getElementById('btn-open-copilot');
+            if (btnSearch && !btnSearch.dataset.alarvixBound) {
+                btnSearch.dataset.alarvixBound = '1';
+                btnSearch.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    try { openGlobalSearch(); } catch (error) { console.error('[Alarvix] Error abriendo búsqueda global:', error); }
+                });
+            }
+            if (btnCopilot && !btnCopilot.dataset.alarvixBound) {
+                btnCopilot.dataset.alarvixBound = '1';
+                btnCopilot.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    try { openCopilotAI(); } catch (error) { console.error('[Alarvix] Error abriendo Copiloto IA:', error); }
+                });
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', inicializarAccionesHeader, { once: true });
+        } else {
+            inicializarAccionesHeader();
         }
 
         function appendChatMessageAI(role, html) {
