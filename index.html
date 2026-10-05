@@ -14716,10 +14716,17 @@ function renderBurbujasChat(containerId, mensajes) {
         }
 
         function mostrarModalHeader(id) {
-          const modal = document.getElementById(id);
+          let modal = document.getElementById(id);
           if (!modal) {
             console.error('[Alarvix Header] No existe #' + id);
             return false;
+          }
+
+          // Los modales del encabezado estaban dentro del árbol principal de la app.
+          // Si un contenedor padre está oculto, ningún z-index/display del modal puede
+          // hacerlo visible. Lo sacamos directamente al BODY para aislarlo del layout.
+          if (modal.parentElement !== document.body) {
+            document.body.appendChild(modal);
           }
 
           // Quitamos cualquier estado de ocultación y aplicamos una clase
