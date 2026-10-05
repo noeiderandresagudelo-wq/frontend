@@ -3664,6 +3664,10 @@
         } else {
             console.error("[Alarvix] Supabase no está configurado. Verifica VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY en Vercel.");
         }
+
+        // Compatibilidad con módulos legacy que consultan window.supabaseClient.
+        window.supabaseClient = supabaseClient;
+
         let mapInstance = null;
         let markersGroup = null;
         // Conserva el pin/popup seleccionado durante las actualizaciones periódicas del mapa.
@@ -6039,7 +6043,7 @@
 
         async function cargarInventarioInsumosTecnicoCotizacion() {
             try {
-                if (!window.supabaseClient) throw new Error('Supabase no disponible');
+                if (!supabaseClient) throw new Error('Supabase no disponible');
 
                 const tenantId = currentUser?.tenant_id || currentUser?.tenantId || currentUser?.empresa_id || currentUser?.empresaId || null;
 
@@ -6097,16 +6101,10 @@
         }
 
         // Carga DINÁMICA del catálogo desde public.inventario_insumos, sin filtrar por stock.
+        // La misma fuente alimenta el inventario del técnico y la cotización.
         async function poblarSelectorInsumosCotizacion() {
             try {
-                if (!window.supabaseClient) throw new Error('Supabase no disponible');
-                const { data: insumos, error } = await supabaseClient
-                    .from('inventario_insumos')
-                    .select('id, codigo, nombre')
-                    .order('nombre', { ascending: true });
-                if (error) throw error;
-
-                const catalogo = Array.isArray(insumos) ? insumos : [];
+                const catalogo = await cargarInventarioInsumosTecnicoCotizacion();
                 const selects = document.querySelectorAll(
                     '#opr-requerimientos-cotizacion-list select[id*="codigo"], ' +
                     '#opr-requerimientos-cotizacion-list select[name*="codigo"], ' +
@@ -6116,37 +6114,33 @@
                 selects.forEach(select => {
                     const valorActual = select.value;
                     select.innerHTML = '';
+
                     const sinCodigo = document.createElement('option');
                     sinCodigo.value = '';
-                    sinCodigo.textContent = 'Sin código';
+                    sinCodigo.textContent = 'Seleccione un equipo / insumo';
                     select.appendChild(sinCodigo);
 
                     catalogo.forEach(item => {
+                        const codigo = String(item.codigo || '').trim();
+                        const nombre = String(item.nombre || '').trim();
+                        if (!codigo && !nombre) return;
+
                         const option = document.createElement('option');
-                        option.value = item.codigo || item.id;
-                        option.dataset.nombre = item.nombre || '';
-                        option.textContent = item.codigo
-                            ? '[' + item.codigo + '] ' + (item.nombre || '')
-                            : (item.nombre || 'Sin nombre');
+                        option.value = codigo || item.id;
+                        option.dataset.nombre = nombre;
+                        option.textContent = codigo ? '[' + codigo + '] ' + nombre : nombre;
                         if (String(option.value) === String(valorActual)) option.selected = true;
                         select.appendChild(option);
                     });
                 });
 
-                inventarioInsumosTecnicoCotizacion = catalogo.map(item => ({
-                    id: item.id, codigo: String(item.codigo || '').trim(),
-                    nombre: String(item.nombre || '').trim(), categoria: '',
-                    existencia: 0, costo_unitario: 0, proveedor: '', ubicacion: ''
-                })).filter(item => item.codigo || item.nombre);
-
                 console.log('[Alarvix Cotización Técnico] Selector poblado desde public.inventario_insumos:', catalogo.length);
                 return catalogo;
             } catch (error) {
-                console.error('Error al cargar insumos para cotizar:', error);
+                console.error('[Alarvix Cotización Técnico] Error al poblar selector:', error);
                 return [];
             }
         }
-
         document.addEventListener('change', (e) => {
             const select = e.target;
             if (!(select instanceof HTMLSelectElement)) return;
@@ -11810,27 +11804,57 @@ function renderBurbujasChat(containerId, mensajes) {
             container.innerHTML = html;
         }
 
-        function loadCotizacionForm() {
+        function renderOpcionesMaterialesCotizacion() {
             const selectMaterial = document.getElementById('cot-add-material');
+            if (!selectMaterial) return;
 
-            renderCotizacionServicioOptions('');
+            selectMaterial.innerHTML = '';
+            const catalogo = Array.isArray(inventarioInsumosTecnicoCotizacion)
+                ? inventarioInsumosTecnicoCotizacion
+                : [];
 
-            if (selectMaterial) {
-                selectMaterial.innerHTML = '';
-                catalogoInventario.forEach(m => {
-                    const opt = document.createElement('option');
-                    opt.value = m.codigo;
-                    opt.innerText = `${m.nombre} ($${m.costo.toLocaleString()})`;
-                    selectMaterial.appendChild(opt);
-                });
+            if (!catalogo.length) {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.innerText = 'No hay insumos en inventario';
+                selectMaterial.appendChild(opt);
+                return;
             }
+
+            catalogo.forEach(m => {
+                const codigo = String(m.codigo || '').trim();
+                const nombre = String(m.nombre || '').trim();
+                if (!codigo && !nombre) return;
+
+                const costo = Number(m.costo_unitario ?? m.costo ?? 0);
+                const opt = document.createElement('option');
+                opt.value = codigo || m.id;
+                opt.innerText = codigo
+                    ? '[' + codigo + '] ' + nombre + ' ($' + costo.toLocaleString() + ')'
+                    : nombre + ' ($' + costo.toLocaleString() + ')';
+                selectMaterial.appendChild(opt);
+            });
+        }
+
+        function loadCotizacionForm() {
+            renderCotizacionServicioOptions('');
+            renderOpcionesMaterialesCotizacion();
+
+            // El Cotizador Integral usa exactamente el mismo catálogo de
+            // public.inventario_insumos que utiliza el técnico.
+            void cargarInventarioInsumosTecnicoCotizacion().then(() => {
+                renderOpcionesMaterialesCotizacion();
+                const selectServicio = document.getElementById('cot-select-servicio');
+                if (selectServicio && selectServicio.value) {
+                    void onCotServicioChange(selectServicio.value);
+                }
+            });
 
             const selectServicio = document.getElementById('cot-select-servicio');
             if (selectServicio && selectServicio.value) {
-                onCotServicioChange(selectServicio.value);
+                void onCotServicioChange(selectServicio.value);
             }
         }
-
         /**
          * Construye las opciones del selector de servicios para cotizar, mostrando cliente/puesto/abonado
          * y priorizando los que están en estado "Cotización" (pendientes de presupuestar).
@@ -11922,7 +11946,13 @@ function renderBurbujasChat(containerId, mensajes) {
 
         let tempCotMateriales = [];
 
-        function onCotServicioChange(consecutivo) {
+        async function onCotServicioChange(consecutivo) {
+            // Asegurar que los equipos seleccionados por el técnico se resuelvan
+            // contra public.inventario_insumos antes de construir la cotización.
+            if (!Array.isArray(inventarioInsumosTecnicoCotizacion) || !inventarioInsumosTecnicoCotizacion.length) {
+                await cargarInventarioInsumosTecnicoCotizacion();
+                renderOpcionesMaterialesCotizacion();
+            }
             const s = incidentesServicios.find(i => i.consecutivo === consecutivo);
             const diagPanel = document.getElementById('cot-diagnostico-tecnico');
             if (!s) { if (diagPanel) diagPanel.classList.add('hidden'); return; }
@@ -12025,9 +12055,36 @@ function renderBurbujasChat(containerId, mensajes) {
             const editando = document.getElementById('cot-editing-codigo').value;
             if (!editando) {
                 tempCotMateriales = [];
+
+                // Fuente de verdad: public.inventario_insumos. El inventario legacy
+                // queda únicamente como respaldo para registros antiguos.
+                const catalogoCotizacion = Array.isArray(inventarioInsumosTecnicoCotizacion)
+                    ? inventarioInsumosTecnicoCotizacion
+                    : [];
+
                 (s.insumosUsados || []).forEach(it => {
-                    const mat = catalogoInventario.find(x => x.codigo === it.codigo);
-                    if (mat) tempCotMateriales.push({ codigo: it.codigo, nombre: mat.nombre, costo: mat.costo, qty: it.cantidad });
+                    const codigoBuscado = String(it.codigo || '').trim();
+                    const mat = catalogoCotizacion.find(x =>
+                        String(x.codigo || '').trim() === codigoBuscado
+                    ) || catalogoInventario.find(x =>
+                        String(x.codigo || '').trim() === codigoBuscado
+                    );
+
+                    if (mat) {
+                        tempCotMateriales.push({
+                            codigo: codigoBuscado || String(mat.id || ''),
+                            nombre: mat.nombre || it.nombre || it.descripcion || 'Insumo',
+                            costo: Number(mat.costo_unitario ?? mat.costo ?? 0),
+                            qty: Math.max(1, Number(it.cantidad || it.qty || 1))
+                        });
+                    } else if (codigoBuscado || it.descripcion || it.nombre) {
+                        tempCotMateriales.push({
+                            codigo: codigoBuscado,
+                            nombre: it.descripcion || it.nombre || 'Insumo solicitado',
+                            costo: Number(it.costo || 0),
+                            qty: Math.max(1, Number(it.cantidad || it.qty || 1))
+                        });
+                    }
                 });
             }
             calculateCotizacionPreview();
