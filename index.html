@@ -1359,7 +1359,7 @@
     <!-- CONTENEDOR PRINCIPAL DE LA APLICACIÓN -->
     <main class="flex-grow flex flex-col min-w-0 min-h-0 h-screen overflow-hidden bg-slate-950 text-slate-100">
         <!-- HEADER OPERATIVO GLOBAL -->
-        <header id="alarvix-global-header" class="h-16 border-b border-slate-200 bg-white px-3 sm:px-6 flex items-center justify-between sticky top-0 z-30">
+        <header id="alarvix-global-header" class="relative h-16 border-b border-slate-200 bg-white px-3 sm:px-6 flex items-center justify-between sticky top-0 z-[100] pointer-events-auto">
             <div class="flex items-center gap-2 sm:gap-3 min-w-0">
                 <button onclick="toggleMobileSidebar()" class="md:hidden text-slate-300 hover:text-white p-1.5 -ml-1 shrink-0" aria-label="Abrir menú">
                     <i class="fa-solid fa-bars text-base"></i>
@@ -1372,16 +1372,16 @@
             </div>
 
             <!-- Barra de Herramientas del Header -->
-            <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+            <div id="alarvix-header-actions" class="relative z-[110] flex items-center gap-2 sm:gap-3 shrink-0 pointer-events-auto">
                 <div class="hidden lg:flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1.5" aria-label="Estado del sistema: monitoreo activo">
                     <span class="w-2 h-2 rounded-full bg-emerald-500 live-pulse-green"></span>
                     <span class="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider">Monitoreo Activo</span>
                     <span class="text-[10px] text-slate-500 font-mono" id="live-clock">21:33:44</span>
                 </div>
-                <button type="button" id="btn-global-search" onclick="openGlobalSearch()" class="alarvix-header-icon text-slate-500 hover:text-blue-700 p-2 bg-slate-50 border border-slate-200 rounded-lg" title="Buscar en todo el sistema" aria-label="Buscar en todo el sistema">
+                <button type="button" id="btn-global-search" data-alarvix-action="global-search" class="alarvix-header-icon relative z-[120] pointer-events-auto cursor-pointer text-slate-500 hover:text-blue-700 p-2 bg-slate-50 border border-slate-200 rounded-lg" title="Buscar en todo el sistema" aria-label="Buscar en todo el sistema">
                     <i class="fa-solid fa-magnifying-glass text-sm"></i>
                 </button>
-                <button type="button" id="btn-open-copilot" onclick="openCopilotAI()" class="alarvix-header-copilot bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm" aria-label="Abrir Copiloto IA">
+                <button type="button" id="btn-open-copilot" data-alarvix-action="copilot" class="alarvix-header-copilot relative z-[120] pointer-events-auto cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm" aria-label="Abrir Copiloto IA">
                     <i class="fa-solid fa-wand-magic-sparkles text-xs"></i> <span class="hidden sm:inline">Copiloto IA</span>
                 </button>
                 <div class="h-7 w-px bg-slate-200 hidden sm:block"></div>
@@ -8475,6 +8475,29 @@
                     event.preventDefault();
                     event.stopPropagation();
                     try { openCopilotAI(); } catch (error) { console.error('[Alarvix] Error abriendo Copiloto IA:', error); }
+                }, true);
+            }
+
+            // Capa de respaldo: captura los clics antes de cualquier contenedor o
+            // re-render del dashboard y garantiza que las acciones del header sigan activas.
+            if (!document.documentElement.dataset.alarvixHeaderDelegation) {
+                document.documentElement.dataset.alarvixHeaderDelegation = '1';
+                document.addEventListener('click', function(event) {
+                    const target = event.target && event.target.closest
+                        ? event.target.closest('[data-alarvix-action]')
+                        : null;
+                    if (!target) return;
+
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    const action = target.getAttribute('data-alarvix-action');
+                    try {
+                        if (action === 'global-search') openGlobalSearch();
+                        if (action === 'copilot') openCopilotAI();
+                    } catch (error) {
+                        console.error('[Alarvix] Error en acción del encabezado:', action, error);
+                    }
                 }, true);
             }
         }
