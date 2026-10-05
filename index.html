@@ -6181,8 +6181,11 @@
         }
 
         async function agregarRequerimientoCotizacionTecnico() {
+            // Garantizar que el catálogo esté actualizado antes de crear la fila.
+            await poblarSelectorInsumosCotizacion();
             requerimientosCotizacionTecnicoTemp.push({ id:'req-' + Date.now() + '-' + Math.random().toString(36).slice(2,7), tipo:'Material', codigo:'', descripcion:'', cantidad:1, unidad:'unidad', observaciones:'' });
             renderRequerimientosCotizacionTecnico();
+            // La fila es nueva, por lo que volvemos a poblar sus opciones.
             await poblarSelectorInsumosCotizacion();
         }
 
@@ -6218,10 +6221,10 @@
                 const opts='<option value="">Sin código</option>'+(Array.isArray(inventarioInsumosTecnicoCotizacion)?inventarioInsumosTecnicoCotizacion.map(mat=>'<option value="'+escaparHtmlCotTecnico(mat.codigo)+'" '+(String(mat.codigo)===String(item.codigo)?'selected':'')+'>'+escaparHtmlCotTecnico(mat.codigo+' · '+mat.nombre)+'</option>').join(''):'');
                 row.innerHTML=`
                     <div class="grid grid-cols-2 gap-2">
-                        <select class="select-insumo-codigo bg-slate-950 border border-slate-800 rounded-md p-2 text-[9px] text-white" onchange="actualizarRequerimientoCotizacionTecnico('${escaparHtmlCotTecnico(item.id)}','tipo',this.value)">
+                        <select class="bg-slate-950 border border-slate-800 rounded-md p-2 text-[9px] text-white" onchange="actualizarRequerimientoCotizacionTecnico('${escaparHtmlCotTecnico(item.id)}','tipo',this.value)">
                             <option value="Material" ${item.tipo==='Material'?'selected':''}>Material</option><option value="Repuesto" ${item.tipo==='Repuesto'?'selected':''}>Repuesto</option><option value="Equipo" ${item.tipo==='Equipo'?'selected':''}>Equipo</option><option value="Mano de obra" ${item.tipo==='Mano de obra'?'selected':''}>Mano de obra</option>
                         </select>
-                        <select class="bg-slate-950 border border-slate-800 rounded-md p-2 text-[9px] text-white" onchange="actualizarRequerimientoCotizacionTecnico('${escaparHtmlCotTecnico(item.id)}','codigo',this.value); const m=inventarioInsumosTecnicoCotizacion.find(x=>x.codigo===this.value); if(m){actualizarRequerimientoCotizacionTecnico('${escaparHtmlCotTecnico(item.id)}','descripcion',m.nombre); renderRequerimientosCotizacionTecnico();}">
+                        <select id="codigo-insumo-${escaparHtmlCotTecnico(item.id)}" name="codigo" class="select-insumo-codigo bg-slate-950 border border-slate-800 rounded-md p-2 text-[9px] text-white" onchange="actualizarRequerimientoCotizacionTecnico('${escaparHtmlCotTecnico(item.id)}','codigo',this.value); const m=inventarioInsumosTecnicoCotizacion.find(x=>String(x.codigo)===String(this.value)); if(m){actualizarRequerimientoCotizacionTecnico('${escaparHtmlCotTecnico(item.id)}','descripcion',m.nombre); renderRequerimientosCotizacionTecnico();}">
                             ${opts}
                         </select>
                     </div>
