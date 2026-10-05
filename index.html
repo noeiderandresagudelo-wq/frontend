@@ -8275,15 +8275,19 @@
             const modal = document.getElementById('modal-global-search');
             const input = document.getElementById('input-global-search');
             const results = document.getElementById('global-search-results');
+
             if (!modal) {
-                console.error('[Alarvix] No existe el modal de búsqueda global.');
+                console.error('[Alarvix] No existe #modal-global-search en el DOM.');
                 return;
             }
-            modal.classList.remove('hidden');
-            modal.style.display = 'flex';
+
+            // "hidden" de Tailwind usa display:none !important; style.display normal no podía vencerlo.
+            modal.classList.remove('hidden', 'pointer-events-none');
+            modal.style.cssText = 'display: flex !important; opacity: 1 !important; visibility: visible !important; z-index: 999999 !important; position: fixed !important; inset: 0 !important;';
+
             if (input) {
                 input.value = '';
-                setTimeout(() => input.focus(), 50);
+                setTimeout(() => input.focus({ preventScroll: true }), 0);
             }
             if (results) {
                 results.innerHTML = '<p class="text-[11px] text-slate-500 italic text-center py-8">Escribí al menos 2 letras para buscar en todo el sistema.</p>';
@@ -8293,8 +8297,8 @@
         function closeGlobalSearch() {
             const modal = document.getElementById('modal-global-search');
             if (modal) {
+                modal.style.cssText = 'display: none !important;';
                 modal.classList.add('hidden');
-                modal.style.display = 'none';
             }
         }
 
@@ -8427,12 +8431,16 @@
 
         function openCopilotAI() {
             const modal = document.getElementById('modal-copilot-ai');
+
             if (!modal) {
-                console.error('[Alarvix] No existe el modal del Copiloto IA.');
+                console.error('[Alarvix] No existe #modal-copilot-ai en el DOM.');
                 return;
             }
-            modal.classList.remove('hidden');
-            modal.style.display = 'flex';
+
+            // "hidden" de Tailwind usa display:none !important; style.display normal no podía vencerlo.
+            modal.classList.remove('hidden', 'pointer-events-none');
+            modal.style.cssText = 'display: flex !important; opacity: 1 !important; visibility: visible !important; z-index: 999999 !important; position: fixed !important; inset: 0 !important;';
+
             requestAnimationFrame(() => {
                 const input = document.getElementById('input-chat-ai');
                 if (input) input.focus({ preventScroll: true });
@@ -8442,8 +8450,8 @@
         function closeCopilotAI() {
             const modal = document.getElementById('modal-copilot-ai');
             if (modal) {
+                modal.style.cssText = 'display: none !important;';
                 modal.classList.add('hidden');
-                modal.style.display = 'none';
             }
         }
 
