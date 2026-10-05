@@ -14687,10 +14687,11 @@ function renderBurbujasChat(containerId, mensajes) {
         console.log('[Header] Click Buscar');
         const modal = document.getElementById('modal-global-search');
         if (modal) {
-          modal.classList.remove('hidden');
+          modal.classList.remove('hidden', 'pointer-events-none');
           modal.style.display = 'flex';
-          const input = document.getElementById('input-global-search');
-          if (input) setTimeout(function () { try { input.focus(); } catch (_) {} }, 50);
+          modal.style.zIndex = '99999';
+          modal.style.opacity = '1';
+          modal.style.visibility = 'visible';
         } else {
           console.error('[Alarvix] No existe #modal-global-search');
         }
@@ -14700,24 +14701,39 @@ function renderBurbujasChat(containerId, mensajes) {
         console.log('[Header] Click Copiloto');
         const modal = document.getElementById('modal-copilot-ai');
         if (modal) {
-          modal.classList.remove('hidden');
+          modal.classList.remove('hidden', 'pointer-events-none');
           modal.style.display = 'flex';
-          const input = document.getElementById('input-chat-ai');
-          if (input) {
-            requestAnimationFrame(function () {
-              try { input.focus({ preventScroll: true }); } catch (_) {}
-            });
-          }
+          modal.style.zIndex = '99999';
+          modal.style.opacity = '1';
+          modal.style.visibility = 'visible';
         } else {
           console.error('[Alarvix] No existe #modal-copilot-ai');
         }
       };
 
-      // Alias de compatibilidad para cualquier código que use los nombres en español.
+      window.closeGlobalSearch = function () {
+        const modal = document.getElementById('modal-global-search');
+        if (modal) {
+          modal.classList.add('hidden');
+          modal.style.display = 'none';
+          modal.style.opacity = '0';
+          modal.style.visibility = 'hidden';
+        }
+      };
+
+      window.closeCopilotAI = function () {
+        const modal = document.getElementById('modal-copilot-ai');
+        if (modal) {
+          modal.classList.add('hidden');
+          modal.style.display = 'none';
+          modal.style.opacity = '0';
+          modal.style.visibility = 'hidden';
+        }
+      };
+
       window.abrirModalBusquedaGlobal = window.openGlobalSearch;
       window.abrirCopilotoIA = window.openCopilotAI;
 
-      // Blindaje contra iconos/textos internos que puedan capturar el clic.
       (function () {
         var styleId = 'alarvix-header-click-fix';
         if (!document.getElementById(styleId)) {
@@ -14725,7 +14741,8 @@ function renderBurbujasChat(containerId, mensajes) {
           style.id = styleId;
           style.textContent =
             '#btn-global-search *, #btn-open-copilot * { pointer-events: none !important; }' +
-            '#btn-global-search, #btn-open-copilot { pointer-events: auto !important; cursor: pointer !important; }';
+            '#btn-global-search, #btn-open-copilot { pointer-events: auto !important; cursor: pointer !important; }' +
+            '#modal-global-search, #modal-copilot-ai { z-index: 99999 !important; }';
           document.head.appendChild(style);
         }
 
