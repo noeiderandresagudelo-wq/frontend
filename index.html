@@ -6096,6 +6096,73 @@
             }
         }
 
+        // Carga DINÁMICA del catálogo desde public.inventario_insumos, sin filtrar por stock.
+        async function poblarSelectorInsumosCotizacion() {
+            try {
+                if (!window.supabaseClient) throw new Error('Supabase no disponible');
+                const { data: insumos, error } = await supabaseClient
+                    .from('inventario_insumos')
+                    .select('id, codigo, nombre')
+                    .order('nombre', { ascending: true });
+                if (error) throw error;
+
+                const catalogo = Array.isArray(insumos) ? insumos : [];
+                const selects = document.querySelectorAll(
+                    '#opr-requerimientos-cotizacion-list select[id*="codigo"], ' +
+                    '#opr-requerimientos-cotizacion-list select[name*="codigo"], ' +
+                    '#opr-requerimientos-cotizacion-list select.select-insumo-codigo'
+                );
+
+                selects.forEach(select => {
+                    const valorActual = select.value;
+                    select.innerHTML = '';
+                    const sinCodigo = document.createElement('option');
+                    sinCodigo.value = '';
+                    sinCodigo.textContent = 'Sin código';
+                    select.appendChild(sinCodigo);
+
+                    catalogo.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.codigo || item.id;
+                        option.dataset.nombre = item.nombre || '';
+                        option.textContent = item.codigo
+                            ? '[' + item.codigo + '] ' + (item.nombre || '')
+                            : (item.nombre || 'Sin nombre');
+                        if (String(option.value) === String(valorActual)) option.selected = true;
+                        select.appendChild(option);
+                    });
+                });
+
+                inventarioInsumosTecnicoCotizacion = catalogo.map(item => ({
+                    id: item.id, codigo: String(item.codigo || '').trim(),
+                    nombre: String(item.nombre || '').trim(), categoria: '',
+                    existencia: 0, costo_unitario: 0, proveedor: '', ubicacion: ''
+                })).filter(item => item.codigo || item.nombre);
+
+                console.log('[Alarvix Cotización Técnico] Selector poblado desde public.inventario_insumos:', catalogo.length);
+                return catalogo;
+            } catch (error) {
+                console.error('Error al cargar insumos para cotizar:', error);
+                return [];
+            }
+        }
+
+        document.addEventListener('change', (e) => {
+            const select = e.target;
+            if (!(select instanceof HTMLSelectElement)) return;
+            if (!select.matches('select[id*="codigo"], select[name*="codigo"], .select-insumo-codigo')) return;
+
+            const selectedOption = select.options[select.selectedIndex];
+            const nombreInsumo = selectedOption?.dataset?.nombre || '';
+            const contenedor = select.closest('.grid, .flex, .row') || select.parentElement?.parentElement;
+            const inputQueNecesita = contenedor?.querySelector('input[placeholder*="Qué necesita"], input[name*="que_necesita"]');
+
+            if (nombreInsumo && inputQueNecesita) {
+                inputQueNecesita.value = nombreInsumo;
+                inputQueNecesita.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        });
+
         function escaparHtmlCotTecnico(valor) {
             return String(valor ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
         }
@@ -6113,9 +6180,10 @@
             renderRequerimientosCotizacionTecnico();
         }
 
-        function agregarRequerimientoCotizacionTecnico() {
+        async function agregarRequerimientoCotizacionTecnico() {
             requerimientosCotizacionTecnicoTemp.push({ id:'req-' + Date.now() + '-' + Math.random().toString(36).slice(2,7), tipo:'Material', codigo:'', descripcion:'', cantidad:1, unidad:'unidad', observaciones:'' });
             renderRequerimientosCotizacionTecnico();
+            await poblarSelectorInsumosCotizacion();
         }
 
         function actualizarRequerimientoCotizacionTecnico(id, campo, valor) {
@@ -6150,7 +6218,7 @@
                 const opts='<option value="">Sin código</option>'+(Array.isArray(inventarioInsumosTecnicoCotizacion)?inventarioInsumosTecnicoCotizacion.map(mat=>'<option value="'+escaparHtmlCotTecnico(mat.codigo)+'" '+(String(mat.codigo)===String(item.codigo)?'selected':'')+'>'+escaparHtmlCotTecnico(mat.codigo+' · '+mat.nombre)+'</option>').join(''):'');
                 row.innerHTML=`
                     <div class="grid grid-cols-2 gap-2">
-                        <select class="bg-slate-950 border border-slate-800 rounded-md p-2 text-[9px] text-white" onchange="actualizarRequerimientoCotizacionTecnico('${escaparHtmlCotTecnico(item.id)}','tipo',this.value)">
+                        <select class="select-insumo-codigo bg-slate-950 border border-slate-800 rounded-md p-2 text-[9px] text-white" onchange="actualizarRequerimientoCotizacionTecnico('${escaparHtmlCotTecnico(item.id)}','tipo',this.value)">
                             <option value="Material" ${item.tipo==='Material'?'selected':''}>Material</option><option value="Repuesto" ${item.tipo==='Repuesto'?'selected':''}>Repuesto</option><option value="Equipo" ${item.tipo==='Equipo'?'selected':''}>Equipo</option><option value="Mano de obra" ${item.tipo==='Mano de obra'?'selected':''}>Mano de obra</option>
                         </select>
                         <select class="bg-slate-950 border border-slate-800 rounded-md p-2 text-[9px] text-white" onchange="actualizarRequerimientoCotizacionTecnico('${escaparHtmlCotTecnico(item.id)}','codigo',this.value); const m=inventarioInsumosTecnicoCotizacion.find(x=>x.codigo===this.value); if(m){actualizarRequerimientoCotizacionTecnico('${escaparHtmlCotTecnico(item.id)}','descripcion',m.nombre); renderRequerimientosCotizacionTecnico();}">
@@ -6202,6 +6270,7 @@
                 // Si renderizamos antes, el selector solo contiene la opción estática "Sin código".
                 await cargarInventarioInsumosTecnicoCotizacion();
                 cargarRequerimientosCotizacionTecnico(Array.isArray(s.informeTecnico?.requerimientosCotizacionItems) ? s.informeTecnico.requerimientosCotizacionItems : (Array.isArray(s.insumosUsados) ? s.insumosUsados : []));
+                await poblarSelectorInsumosCotizacion();
 
                 // Preseleccionar el tipo de atención según el tipo de servicio original, si aplica
                 const tipoSelect = document.getElementById('opr-form-tipo-atencion');
