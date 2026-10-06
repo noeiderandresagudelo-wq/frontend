@@ -3569,7 +3569,7 @@
                 canManageUsers: false
             },
             SUPERVISOR: {
-                tabs: ['dashboard', 'estudios', 'supervision', 'clientes', 'mensajes', 'reportes'],
+                tabs: ['supervision', 'mensajes'],
                 canEdit: true,
                 canManageUsers: false
             },
@@ -4375,9 +4375,12 @@
                 // que al seleccionar Dashboard desde el menú. Esto evita que el primer
                 // render conserve una altura/scroll incorrectos hasta cambiar de módulo.
                 requestAnimationFrame(() => {
-                    switchModule('dashboard');
-                    const dashboardScroll = document.querySelector('#view-dashboard')?.closest('main');
-                    if (dashboardScroll) dashboardScroll.scrollTop = 0;
+                    const landingModule = String(currentUser?.rol || '').toUpperCase() === 'SUPERVISOR'
+                        ? 'supervision'
+                        : 'dashboard';
+                    switchModule(landingModule);
+                    const landingScroll = document.querySelector('#view-' + landingModule)?.closest('main');
+                    if (landingScroll) landingScroll.scrollTop = 0;
                     window.scrollTo(0, 0);
                     document.documentElement.scrollTop = 0;
                     document.body.scrollTop = 0;
