@@ -247,7 +247,43 @@ export default function App() {
       {tokenOpen && <section className="panel token-panel"><div className="panel-header"><div><p className="eyebrow">Supabase</p><h3>Conexión directa</h3></div></div><p className="helper-text">El frontend consulta PostgreSQL directamente con RLS. Usa un access token válido de Supabase. La service_role nunca se expone aquí.</p><form className="token-form" onSubmit={connect}><label>Access token<textarea required value={tokenDraft} onChange={e => setTokenDraft(e.target.value)} /></label><div className="topbar-actions"><button className="primary-button">Conectar</button>{token && <button type="button" className="ghost-button" onClick={disconnect}>Desconectar</button>}</div></form></section>}
       {error && <div className="feedback error-feedback">{error}</div>}
       {notice && <div className="feedback success-feedback">{notice}</div>}
-      {!token ? <section className="panel disconnected-state"><h3>Conecta tu sesión</h3><p>Configura un access token de Supabase para consultar el tenant autorizado.</p></section> : loading ? <section className="panel loading-state">Cargando datos…</section> : page === 'dashboard' ? <Dashboard customers={customers} services={services} activeServices={activeServices} technicianLocations={technicianLocations} locationSharing={locationSharing} locationError={locationError} /> : page === 'clientes' ? <Customers customers={customers} canWrite={canWrite(auth?.role)} editing={editingCustomer} setEditing={setEditingCustomer} onSave={saveCustomer} onDelete={removeCustomer} /> : page === 'servicios' ? <Services services={services} canWrite={canWrite(auth?.role)} editing={editingService} setEditing={setEditingService} onSave={saveService} onDelete={removeService} /> : <SupervisionModule token={token} tenantId={auth!.tenantId} role={auth!.role} />
+      {!token ? (
+        <section className="panel disconnected-state">
+          <h3>Conecta tu sesión</h3>
+          <p>Configura un access token de Supabase para consultar el tenant autorizado.</p>
+        </section>
+      ) : loading ? (
+        <section className="panel loading-state">Cargando datos…</section>
+      ) : page === 'dashboard' ? (
+        <Dashboard
+          customers={customers}
+          services={services}
+          activeServices={activeServices}
+          technicianLocations={technicianLocations}
+          locationSharing={locationSharing}
+          locationError={locationError}
+        />
+      ) : page === 'clientes' ? (
+        <Customers
+          customers={customers}
+          canWrite={canWrite(auth?.role)}
+          editing={editingCustomer}
+          setEditing={setEditingCustomer}
+          onSave={saveCustomer}
+          onDelete={removeCustomer}
+        />
+      ) : page === 'servicios' ? (
+        <Services
+          services={services}
+          canWrite={canWrite(auth?.role)}
+          editing={editingService}
+          setEditing={setEditingService}
+          onSave={saveService}
+          onDelete={removeService}
+        />
+      ) : auth ? (
+        <SupervisionModule token={token} tenantId={auth.tenantId} role={auth.role} />
+      ) : null}
     </main>
   </div>;
 }
