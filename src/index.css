@@ -718,3 +718,17 @@ code {
   border-radius: 12px;
   font-family: inherit;
 }
+
+
+.supervision-shell{display:flex;flex-direction:column;gap:20px}
+.supervision-head{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.supervision-actions{display:flex;gap:10px;align-items:center}
+.supervision-tabs{display:flex;gap:8px;flex-wrap:wrap}
+.supervision-tabs button{border:1px solid rgba(148,163,184,.16);background:rgba(148,163,184,.06);color:#aebed6;border-radius:10px;padding:10px 15px;font-weight:700}
+.supervision-tabs button.active{background:rgba(59,130,246,.2);border-color:rgba(96,165,250,.45);color:#eaf4ff}
+.supervision-wide{grid-column:1/-1}
+.supervision-select{text-align:left;width:100%;cursor:pointer;color:inherit}
+.supervision-select.selected{border-color:rgba(96,165,250,.5);background:rgba(59,130,246,.12)}
+.supervision-modal{position:fixed;inset:0;z-index:1000;background:rgba(2,6,23,.76);backdrop-filter:blur(5px);display:grid;place-items:center;padding:20px}
+.supervision-modal .panel{width:min(100%,700px);max-height:calc(100vh - 40px);overflow:auto}
+@media(max-width:620px){.supervision-head{align-items:stretch;flex-direction:column}.supervision-actions{width:100%}.supervision-actions>*{flex:1}.supervision-modal{padding:10px}.supervision-modal .panel{max-height:calc(100vh - 20px)}}
