@@ -20,7 +20,7 @@ export default function SupervisionModule({token,tenantId,role}:Props){
  const [reviews,setReviews]=useState<Review[]>([]);
  const [loading,setLoading]=useState(true); const [error,setError]=useState(''); const [notice,setNotice]=useState('');
  const [selectedInstallation,setSelectedInstallation]=useState('');
- const [showInstall,setShowInstall]=useState(false); const [showTicket,setShowTicket]=useState(false); const [showReview,setShowReview]=useState(false);
+ const [showInstall,setShowInstall]=useState(false); const [showTicket,setShowTicket]=useState(false);
  const [gpsBusy,setGpsBusy]=useState(false);
 
  const refresh=useCallback(async()=>{
