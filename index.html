@@ -1265,6 +1265,15 @@
                     <i class="fa-solid fa-clipboard-check text-sm w-4 text-center text-teal-400"></i>
                     <span class="sidebar-text">Supervisión Física</span>
                 </button>
+                <div id="supervision-submodules" class="hidden ml-7 mt-1 mb-2 pl-3 border-l border-slate-700/80 space-y-0.5">
+                    <button onclick="openSupervisionSubmodule('resumen')" data-supervision-tab="resumen" class="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-semibold text-slate-400 hover:text-white hover:bg-slate-800/60 text-left transition">Resumen operativo</button>
+                    <button onclick="openSupervisionSubmodule('novedades')" data-supervision-tab="novedades" class="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-semibold text-slate-400 hover:text-white hover:bg-slate-800/60 text-left transition">Novedades</button>
+                    <button onclick="openSupervisionSubmodule('revistas')" data-supervision-tab="revistas" class="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-semibold text-slate-400 hover:text-white hover:bg-slate-800/60 text-left transition">Revistas y check-in</button>
+                    <button onclick="openSupervisionSubmodule('evidencias')" data-supervision-tab="evidencias" class="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-semibold text-slate-400 hover:text-white hover:bg-slate-800/60 text-left transition">Evidencias</button>
+                    <button onclick="openSupervisionSubmodule('anomalias')" data-supervision-tab="anomalias" class="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-semibold text-slate-400 hover:text-white hover:bg-slate-800/60 text-left transition">Anomalías</button>
+                    <button onclick="openSupervisionSubmodule('auditoria')" data-supervision-tab="auditoria" class="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-semibold text-slate-400 hover:text-white hover:bg-slate-800/60 text-left transition">Auditoría</button>
+                    <button onclick="openSupervisionSubmodule('configuracion')" data-supervision-tab="configuracion" class="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-semibold text-slate-400 hover:text-white hover:bg-slate-800/60 text-left transition">Configuración</button>
+                </div>
 
                 <button onclick="switchModule('estudios')" id="btn-mod-estudios" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-bold transition text-left text-slate-400 hover:text-white hover:bg-slate-800/60">
                     <i class="fa-solid fa-shield-halved text-sm w-4 text-center text-violet-400"></i>
@@ -7395,6 +7404,9 @@
                   
                 currentActiveTab = modId;
 
+                const supervisionSubmodules = document.getElementById('supervision-submodules');
+                if (supervisionSubmodules) supervisionSubmodules.classList.toggle('hidden', modId !== 'supervision');
+
                 if (modId === 'config') setTimeout(() => cargarLogoEmpresaTenant(), 0);
 
                 if (modId === 'estudios') renderEstudiosSeguridad();
@@ -7444,7 +7456,7 @@
                         }
                     }, 200);
                 } else if (modId === 'supervision') {
-                    switchSupervisionTab('malla');
+                    // La navegación de Supervisión se controla desde el submenú lateral.
                 } else if (modId === 'central') {
                     renderMonitoreoTable(incidentesServicios);
                 } else if (modId === 'servicios') {
@@ -14979,6 +14991,27 @@ function renderBurbujasChat(containerId, mensajes) {
         });
       })();
     </script>ipt>
+    <script>
+      (function () {
+        const submenu = document.getElementById('supervision-submodules');
+        const button = document.getElementById('btn-mod-supervision');
+        window.openSupervisionSubmodule = function (tab) {
+          if (typeof window.switchModule === 'function') window.switchModule('supervision');
+          window.dispatchEvent(new CustomEvent('alarvix-supervision-submodule', { detail: tab }));
+          submenu?.querySelectorAll('[data-supervision-tab]').forEach(el => {
+            const active = el.getAttribute('data-supervision-tab') === tab;
+            el.classList.toggle('bg-slate-800', active);
+            el.classList.toggle('text-white', active);
+          });
+        };
+        if (button && submenu) {
+          const observer = new MutationObserver(() => {
+            submenu.classList.toggle('hidden', !button.classList.contains('bg-teal-600'));
+          });
+          observer.observe(button, { attributes: true, attributeFilter: ['class'] });
+        }
+      })();
+    </script>
     <script type="module" src="/src/SupervisionStandalone.tsx"></script>
 </body>
 </html>
