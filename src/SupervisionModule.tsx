@@ -100,13 +100,6 @@ export default function SupervisionModule({token,tenantId,role}:Props){
  const unreadNotifications=notifications.filter(n=>!n.leida).length;
  const anomaliesOpen=anomalies.filter(a=>a.estado==='Pendiente').length;
  const activeMaintenances=maintenances.filter(m=>!m.fecha_fin).length;
- const setTicketStatus=async(id:string,status:string)=>{
-   const patch:any={estado_ticket:status};
-   if(status==='En proceso') patch.fecha_inicio=new Date().toISOString();
-   if(status==='Cerrado'){const t=tickets.find(x=>x.id===id);if(!t)return;const causa=prompt('Causa raíz obligatoria para cerrar:');if(!causa?.trim())return;const solucion=prompt('Solución aplicada obligatoria:');if(!solucion?.trim())return;patch.causa_raiz=causa.trim();patch.solucion=solucion.trim();patch.fecha_cierre=new Date().toISOString();}
-   const {error}=await db.from('supervision_novedades').update(patch).eq('id',id);
-   if(error)setError(error.message);else{setNotice('Estado actualizado.');void refresh();}
- };
  const markNotification=async(id:string)=>{
    const {error}=await db.from('supervision_notificaciones').update({leida:true}).eq('id',id);
    if(error)setError(error.message);else void refresh(true);
