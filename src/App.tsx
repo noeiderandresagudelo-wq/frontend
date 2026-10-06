@@ -65,12 +65,12 @@ export default function App() {
 
   useEffect(() => {
     if (!token) return;
-    try { setAuth(decodeToken(token)); } catch { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(TOKEN_KEY); setToken(''); }
+    try { setAuth(decodeToken(token)); } catch { localStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(TOKEN_KEY); setToken(''); }
   }, [token]);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (silent = false) => {
     if (!token) return;
-    setLoading(true); setError('');
+    if (!silent) { setLoading(true); setError(''); }
     try {
       const [c, s, locations] = await Promise.all([
         api.listCustomers(token),
@@ -79,7 +79,7 @@ export default function App() {
       ]);
       setCustomers(c); setServices(s); setTechnicianLocations(locations);
     } catch (e) { setError(message(e)); }
-    finally { setLoading(false); }
+    finally { if (!silent) setLoading(false); }
   }, [token]);
 
   useEffect(() => { void refresh(); }, [refresh]);
@@ -89,11 +89,11 @@ export default function App() {
     supabase.realtime.setAuth(token);
     const channel = supabase
       .channel('alarvix-live-data')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes', filter: `tenant_id=eq.${auth.tenantId}` }, () => { void refresh(); })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'servicios', filter: `tenant_id=eq.${auth.tenantId}` }, () => { void refresh(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes', filter: `tenant_id=eq.${auth.tenantId}` }, () => { void refresh(true); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'servicios', filter: `tenant_id=eq.${auth.tenantId}` }, () => { void refresh(true); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tecnicos_ubicaciones', filter: `tenant_id=eq.${auth.tenantId}` }, () => { void api.listTechnicianLocations(token).then(setTechnicianLocations).catch(() => undefined); })
       .subscribe();
-    const timer = window.setInterval(() => { void refresh(); }, 15000);
+    const timer = window.setInterval(() => { void refresh(true); }, 15000);
     return () => { window.clearInterval(timer); void supabase.removeChannel(channel); };
   }, [token, auth, refresh]);
 
@@ -158,12 +158,13 @@ export default function App() {
   }
 
   function disconnect() {
-    sessionStorage.removeItem(TOKEN_KEY); setToken(''); setTokenDraft(''); setAuth(null); setCustomers([]); setServices([]); setTokenOpen(true);
+    localStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(TOKEN_KEY); setToken(''); setTokenDraft(''); setAuth(null); setCustomers([]); setServices([]); setTokenOpen(true);
   }
 
   async function saveCustomer(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); if (!auth || !token) return;
-    const fd = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const fd = new FormData(form);
     const input = {
       tenant_id: auth.tenantId, id: String(fd.get('id') || '').trim(),
       nombre: String(fd.get('nombre') || '').trim(),
@@ -184,13 +185,14 @@ export default function App() {
         const created = await api.createCustomer(token, input);
         setCustomers(v => [created, ...v]);
       }
-      setEditingCustomer(null); setNotice('Cliente guardado.'); e.currentTarget.reset();
-    } catch (e) { setError(message(e)); }
+      setEditingCustomer(null); setNotice('Cliente guardado.'); form.reset();
+    } catch (err) { setError(message(err)); }
   }
 
   async function saveService(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); if (!auth || !token) return;
-    const fd = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const fd = new FormData(form);
     const input = {
       tenant_id: auth.tenantId,
       consecutivo: String(fd.get('consecutivo') || '').trim(),
@@ -214,7 +216,7 @@ export default function App() {
         const created = await api.createService(token, input);
         setServices(v => [created, ...v]);
       }
-      setEditingService(null); setNotice('Servicio guardado.'); e.currentTarget.reset();
+      setEditingService(null); setNotice('Servicio guardado.'); form.reset();
     } catch (e) { setError(message(e)); }
   }
 
