@@ -247,45 +247,45 @@ export default function App() {
       {tokenOpen && <section className="panel token-panel"><div className="panel-header"><div><p className="eyebrow">Supabase</p><h3>Conexión directa</h3></div></div><p className="helper-text">El frontend consulta PostgreSQL directamente con RLS. Usa un access token válido de Supabase. La service_role nunca se expone aquí.</p><form className="token-form" onSubmit={connect}><label>Access token<textarea required value={tokenDraft} onChange={e => setTokenDraft(e.target.value)} /></label><div className="topbar-actions"><button className="primary-button">Conectar</button>{token && <button type="button" className="ghost-button" onClick={disconnect}>Desconectar</button>}</div></form></section>}
       {error && <div className="feedback error-feedback">{error}</div>}
       {notice && <div className="feedback success-feedback">{notice}</div>}
-      {!token ? (
-        <section className="panel disconnected-state">
-          <h3>Conecta tu sesión</h3>
-          <p>Configura un access token de Supabase para consultar el tenant autorizado.</p>
-        </section>
-      ) : loading ? (
-        <section className="panel loading-state">Cargando datos…</section>
-      ) : page === 'dashboard' ? (
-        <Dashboard
-          customers={customers}
-          services={services}
-          activeServices={activeServices}
-          technicianLocations={technicianLocations}
-          locationSharing={locationSharing}
-          locationError={locationError}
-        />
-      ) : page === 'clientes' ? (
-        <Customers
-          customers={customers}
-          canWrite={canWrite(auth?.role)}
-          editing={editingCustomer}
-          setEditing={setEditingCustomer}
-          onSave={saveCustomer}
-          onDelete={removeCustomer}
-        />
-      ) : page === 'servicios' ? (
-        <Services
-          services={services}
-          canWrite={canWrite(auth?.role)}
-          editing={editingService}
-          setEditing={setEditingService}
-          onSave={saveService}
-          onDelete={removeService}
-        />
-      ) : auth ? (
-        <SupervisionModule token={token} tenantId={auth.tenantId} role={auth.role} />
-      ) : null}
+      {renderMainContent({ token, loading, page, auth, customers, services, activeServices, technicianLocations, locationSharing, locationError, canWrite, editingCustomer, setEditingCustomer, saveCustomer, removeCustomer, editingService, setEditingService, saveService, removeService })}
     </main>
   </div>;
+}
+
+
+function renderMainContent({
+  token, loading, page, auth, customers, services, activeServices, technicianLocations,
+  locationSharing, locationError, canWrite, editingCustomer, setEditingCustomer, saveCustomer,
+  removeCustomer, editingService, setEditingService, saveService, removeService,
+}: {
+  token: string;
+  loading: boolean;
+  page: Page;
+  auth: Auth | null;
+  customers: Customer[];
+  services: Service[];
+  activeServices: number;
+  technicianLocations: TechnicianLocation[];
+  locationSharing: boolean;
+  locationError: string;
+  canWrite: (role?: UserRole) => boolean;
+  editingCustomer: Customer | null;
+  setEditingCustomer: (customer: Customer | null) => void;
+  saveCustomer: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  removeCustomer: (id: string) => void | Promise<void>;
+  editingService: Service | null;
+  setEditingService: (service: Service | null) => void;
+  saveService: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  removeService: (id: string) => void | Promise<void>;
+}) {
+  if (!token) {
+    return <section className="panel disconnected-state"><h3>Conecta tu sesión</h3><p>Configura un access token de Supabase para consultar el tenant autorizado.</p></section>;
+  }
+  if (loading) return <section className="panel loading-state">Cargando datos…</section>;
+  if (page === 'dashboard') return <Dashboard customers={customers} services={services} activeServices={activeServices} technicianLocations={technicianLocations} locationSharing={locationSharing} locationError={locationError} />;
+  if (page === 'clientes') return <Customers customers={customers} canWrite={canWrite(auth?.role)} editing={editingCustomer} setEditing={setEditingCustomer} onSave={saveCustomer} onDelete={removeCustomer} />;
+  if (page === 'servicios') return <Services services={services} canWrite={canWrite(auth?.role)} editing={editingService} setEditing={setEditingService} onSave={saveService} onDelete={removeService} />;
+  return auth ? <SupervisionModule token={token} tenantId={auth.tenantId} role={auth.role} /> : null;
 }
 
 function Dashboard({ customers, services, activeServices, technicianLocations, locationSharing, locationError }: {
