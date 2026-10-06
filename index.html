@@ -7642,13 +7642,11 @@
         }
 
         function toggleVehicleFields() {
-            const role = document.getElementById('manage-rol').value;
+            const role = document.getElementById('manage-rol')?.value || '';
             const container = document.getElementById('vehicle-fields-container');
-            if (role === 'TECNICO') {
-                container.classList.remove('hidden');
-            } else {
-                container.classList.add('hidden');
-            }
+            const hint = document.getElementById('supervisor-role-hint');
+            if (container) container.classList.toggle('hidden', role !== 'TECNICO');
+            if (hint) hint.classList.toggle('hidden', role !== 'SUPERVISOR');
         }
 
         function renderPersonalTable() {
@@ -7656,51 +7654,65 @@
             if (!container) return;
             container.innerHTML = '';
 
-            document.getElementById('lbl-total-personal').innerText = `${appUsers.length} Colaboradores`;
+            const total = appUsers.length;
+            const active = appUsers.filter(u => u.activo !== false).length;
+            const supervisors = appUsers.filter(u => String(u.rol || '').toUpperCase() === 'SUPERVISOR').length;
+            const technicians = appUsers.filter(u => String(u.rol || '').toUpperCase() === 'TECNICO').length;
+
+            document.getElementById('lbl-total-personal').innerText = `${total} ${total === 1 ? 'colaborador' : 'colaboradores'}`;
+            const kpis = {
+                'personal-kpi-total': total,
+                'personal-kpi-active': active,
+                'personal-kpi-supervisors': supervisors,
+                'personal-kpi-technicians': technicians
+            };
+            Object.entries(kpis).forEach(([id,value]) => { const el=document.getElementById(id); if(el) el.innerText=String(value); });
+
+            const roleMeta = {
+                ADMIN: ['Administrador', 'bg-rose-400/10 text-rose-300 border-rose-400/20', 'fa-user-lock'],
+                SUPERVISOR: ['Supervisor', 'bg-violet-400/10 text-violet-300 border-violet-400/20', 'fa-user-shield'],
+                DESPACHADOR: ['Despachador', 'bg-blue-400/10 text-blue-300 border-blue-400/20', 'fa-tower-broadcast'],
+                TECNICO: ['Técnico', 'bg-cyan-400/10 text-cyan-300 border-cyan-400/20', 'fa-helmet-safety'],
+                COTIZADOR: ['Cotizador', 'bg-amber-400/10 text-amber-300 border-amber-400/20', 'fa-file-invoice-dollar'],
+                CLIENTE: ['Cliente', 'bg-slate-400/10 text-slate-300 border-slate-400/20', 'fa-user']
+            };
 
             appUsers.forEach(user => {
                 const tech = personalTecnicos.find(t => t.id === user.tecnicoId) || {};
-                const vehicle = tech.vehiculo || "-";
-                const phone = tech.celular || "S/D";
+                const role = String(user.rol || '').toUpperCase();
+                const meta = roleMeta[role] || [role || 'Sin rol', 'bg-slate-400/10 text-slate-300 border-slate-400/20', 'fa-user'];
+                const vehicle = tech.vehiculo || (role === 'SUPERVISOR' ? 'Supervisión' : '—');
+                const phone = tech.celular || user.celular || 'S/D';
                 const isCurrentUser = currentUser && currentUser.id === user.id;
 
                 const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-900/40 border-b border-slate-850/50 transition";
+                tr.className = "group hover:bg-slate-800/35 transition-colors";
                 tr.innerHTML = `
-                    <td class="p-3">
-                        <div class="flex items-center gap-2">
-                            <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center font-bold text-xs text-white">
-                                ${user.nombre.charAt(0)}
-                            </div>
-                            <div>
-                                <span class="font-extrabold text-white text-xs block">${user.nombre}</span>
-                                <span class="text-[10px] font-mono text-slate-500 block">@${user.username}</span>
+                    <td class="px-5 py-4">
+                        <div class="flex items-center gap-3">
+                            <div class="h-9 w-9 shrink-0 rounded-xl bg-gradient-to-br from-indigo-500/20 to-slate-800 border border-slate-700 flex items-center justify-center font-black text-xs text-indigo-200">${(user.nombre || '?').charAt(0).toUpperCase()}</div>
+                            <div class="min-w-0">
+                                <span class="font-bold text-white text-xs block truncate max-w-[220px]">${user.nombre || 'Sin nombre'}</span>
+                                <span class="text-[9px] font-mono text-slate-500 block truncate max-w-[220px]">${user.username || 'Sin usuario'}</span>
                             </div>
                         </div>
                     </td>
-                    <td class="p-3">
-                        <span class="px-2 py-0.5 rounded text-[9px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">${user.rol}</span>
+                    <td class="px-4 py-4">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[9px] font-black uppercase ${meta[1]}"><i class="fa-solid ${meta[2]}"></i>${meta[0]}</span>
                     </td>
-                    <td class="p-3 text-slate-300 font-mono text-xs">${phone}</td>
-                    <td class="p-3 text-slate-300 font-bold">${vehicle}</td>
-                    <td class="py-4 px-4 text-center">
-                        <span class="px-2 py-0.5 rounded text-[8px] font-bold ${user.activo ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}">
-                            ${user.activo ? 'ACTIVO' : 'INACTIVO'}
+                    <td class="px-4 py-4"><span class="text-[10px] font-mono text-slate-300">${phone}</span></td>
+                    <td class="px-4 py-4"><span class="text-[10px] font-semibold text-slate-400">${vehicle}</span></td>
+                    <td class="px-4 py-4 text-center">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[8px] font-black ${user.activo !== false ? 'bg-emerald-400/10 text-emerald-300 border border-emerald-400/20' : 'bg-rose-400/10 text-rose-300 border border-rose-400/20'}">
+                            <span class="h-1.5 w-1.5 rounded-full ${user.activo !== false ? 'bg-emerald-400' : 'bg-rose-400'}"></span>${user.activo !== false ? 'ACTIVO' : 'INACTIVO'}
                         </span>
                     </td>
-                    <td class="py-4 px-4 text-center">
-                        <div class="flex gap-2 justify-center">
-                            <button onclick="editPersonalMember('${user.id}')" class="text-blue-400 hover:text-white transition text-xs font-bold" title="Editar Ficha">
-                                <i class="fa-solid fa-user-pen"></i> Editar
-                            </button>
-                            ${!isCurrentUser ? `
-                                <button onclick="deletePersonalMember('${user.id}')" class="text-rose-400 hover:text-rose-600 transition text-xs font-bold" title="Desactivar">
-                                    <i class="fa-solid fa-trash-can"></i>
-                                </button>
-                            ` : ''}
+                    <td class="px-4 py-4 text-right">
+                        <div class="flex items-center justify-end gap-1.5">
+                            <button onclick="editPersonalMember('${user.id}')" class="h-8 w-8 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:border-indigo-400 hover:text-indigo-300 transition" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                            ${!isCurrentUser ? `<button onclick="deletePersonalMember('${user.id}')" class="h-8 w-8 rounded-lg border border-slate-700 bg-slate-800 text-slate-400 hover:border-rose-400 hover:text-rose-300 transition" title="Activar / desactivar"><i class="fa-solid fa-power-off"></i></button>` : '<span class="px-2 text-[8px] font-bold text-slate-600">TU CUENTA</span>'}
                         </div>
-                    </td>
-                `;
+                    </td>`;
                 container.appendChild(tr);
             });
         }
