@@ -325,6 +325,19 @@ begin
   end loop;
 end $$;
 
-alter publication supabase_realtime add table public.supervision_novedades;
-alter publication supabase_realtime add table public.supervision_revistas;
-alter publication supabase_realtime add table public.supervision_notificaciones;
+do $
+declare t text;
+begin
+  foreach t in array ARRAY[
+    'supervision_novedades','supervision_revistas','supervision_notificaciones'
+  ] loop
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime'
+        and schemaname = 'public'
+        and tablename = t
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
+end $;
