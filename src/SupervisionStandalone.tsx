@@ -2,7 +2,6 @@ import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import SupervisionModule from './SupervisionModule';
 import type { UserRole } from './api';
-import { supabase } from './lib/supabase';
 import './supervision-standalone.css';
 
 function SupervisionStandalone() {
@@ -12,7 +11,22 @@ function SupervisionStandalone() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data, error: sessionError } = await supabase.auth.getSession();
+      const waitForLegacySupabase = async (): Promise<any> => {
+        for (let attempt = 0; attempt < 40; attempt += 1) {
+          const client = (window as Window & { supabaseClient?: any }).supabaseClient;
+          if (client?.auth?.getSession) return client;
+          await new Promise(resolve => window.setTimeout(resolve, 50));
+        }
+        return null;
+      };
+
+      const legacyClient = await waitForLegacySupabase();
+      if (!legacyClient) {
+        if (!cancelled) setError('No se encontró la conexión de Supabase de la sesión actual.');
+        return;
+      }
+
+      const { data, error: sessionError } = await legacyClient.auth.getSession();
       if (sessionError) {
         if (!cancelled) setError(sessionError.message);
         return;
@@ -22,9 +36,10 @@ function SupervisionStandalone() {
         if (!cancelled) setError('No hay una sesión de Supabase activa.');
         return;
       }
+      const legacyUser = (window as Window & { currentUser?: any }).currentUser;
       const metadata = session.user.app_metadata || {};
-      const rawRole = String(metadata.role || session.user.user_metadata?.role || '').trim().toLowerCase();
-      const tenantId = String(metadata.tenant_id || session.user.user_metadata?.tenant_id || '').trim();
+      const rawRole = String(metadata.role || session.user.user_metadata?.role || legacyUser?.rol || '').trim().toLowerCase();
+      const tenantId = String(metadata.tenant_id || session.user.user_metadata?.tenant_id || legacyUser?.tenant_id || legacyUser?.tenantId || '').trim();
       const allowed: UserRole[] = ['admin','manager','supervisor','technician','client','viewer'];
       const role = allowed.includes(rawRole as UserRole) ? rawRole as UserRole : 'viewer';
       if (!tenantId) {
