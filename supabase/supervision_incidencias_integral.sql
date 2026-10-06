@@ -237,3 +237,94 @@ begin
     execute format('create policy "sup_update_tenant" on public.%I for update to authenticated using (tenant_id = (auth.jwt() -> ''app_metadata'' ->> ''tenant_id'')) with check (tenant_id = (auth.jwt() -> ''app_metadata'' ->> ''tenant_id''))',t);
   end loop;
 end $$;
+
+-- 20. POLÍTICAS SLA CONFIGURABLES
+create table if not exists public.supervision_sla_politicas (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id text not null,
+  nombre text not null,
+  criticidad text not null check (criticidad in ('Baja','Media','Alta','Crítica')),
+  minutos_respuesta integer not null check (minutos_respuesta >= 0),
+  minutos_resolucion integer not null check (minutos_resolucion > 0),
+  activo boolean not null default true,
+  created_at timestamptz not null default now(),
+  unique (tenant_id, nombre, criticidad)
+);
+
+-- 21. NOTIFICACIONES INTERNAS
+create table if not exists public.supervision_notificaciones (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id text not null,
+  usuario_id uuid not null,
+  tipo text not null,
+  titulo text not null,
+  mensaje text not null,
+  entidad text,
+  entidad_id uuid,
+  leida boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+-- 22. CHECKLISTS DE REVISTA
+create table if not exists public.supervision_checklists (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id text not null,
+  nombre text not null,
+  activo boolean not null default true,
+  created_at timestamptz not null default now(),
+  unique (tenant_id, nombre)
+);
+
+create table if not exists public.supervision_checklist_items (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id text not null,
+  checklist_id uuid not null references public.supervision_checklists(id) on delete cascade,
+  texto text not null,
+  obligatorio boolean not null default true,
+  orden integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.supervision_revista_respuestas (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id text not null,
+  revista_id uuid not null references public.supervision_revistas(id) on delete cascade,
+  item_id uuid not null references public.supervision_checklist_items(id) on delete restrict,
+  resultado text not null check (resultado in ('Cumple','No cumple','No aplica')),
+  observacion text,
+  evidencia_id uuid references public.supervision_evidencias(id) on delete restrict,
+  created_at timestamptz not null default now(),
+  unique (revista_id, item_id)
+);
+
+create index if not exists idx_sup_sla_tenant on public.supervision_sla_politicas(tenant_id, activo, criticidad);
+create index if not exists idx_sup_notif_user on public.supervision_notificaciones(tenant_id, usuario_id, leida, created_at desc);
+create index if not exists idx_sup_checklist_tenant on public.supervision_checklists(tenant_id, activo);
+create index if not exists idx_sup_check_items on public.supervision_checklist_items(checklist_id, orden);
+create index if not exists idx_sup_review_answers on public.supervision_revista_respuestas(revista_id);
+
+alter table public.supervision_sla_politicas enable row level security;
+alter table public.supervision_notificaciones enable row level security;
+alter table public.supervision_checklists enable row level security;
+alter table public.supervision_checklist_items enable row level security;
+alter table public.supervision_revista_respuestas enable row level security;
+
+do $$
+declare t text;
+begin
+  foreach t in array ARRAY[
+    'supervision_sla_politicas','supervision_notificaciones','supervision_checklists',
+    'supervision_checklist_items','supervision_revista_respuestas'
+  ] loop
+    execute format('drop policy if exists "sup_select_tenant" on public.%I',t);
+    execute format('create policy "sup_select_tenant" on public.%I for select to authenticated using (tenant_id = (auth.jwt() -> ''app_metadata'' ->> ''tenant_id''))',t);
+    execute format('drop policy if exists "sup_insert_tenant" on public.%I',t);
+    execute format('create policy "sup_insert_tenant" on public.%I for insert to authenticated with check (tenant_id = (auth.jwt() -> ''app_metadata'' ->> ''tenant_id''))',t);
+    execute format('drop policy if exists "sup_update_tenant" on public.%I',t);
+    execute format('create policy "sup_update_tenant" on public.%I for update to authenticated using (tenant_id = (auth.jwt() -> ''app_metadata'' ->> ''tenant_id'')) with check (tenant_id = (auth.jwt() -> ''app_metadata'' ->> ''tenant_id''))',t);
+  end loop;
+end $$;
+
+alter publication supabase_realtime add table public.supervision_novedades;
+alter publication supabase_realtime add table public.supervision_revistas;
+alter publication supabase_realtime add table public.supervision_notificaciones;
