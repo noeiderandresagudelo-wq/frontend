@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ApiError, createApiClient, type Customer, type Service, type UserRole } from './api';
 import { supabase } from './lib/supabase';
+import SupervisionModule from './SupervisionModule';
 
-type Page = 'dashboard' | 'clientes' | 'servicios';
+type Page = 'dashboard' | 'clientes' | 'servicios' | 'supervision';
 type Auth = { role: UserRole; tenantId: string; branchId?: string };
 
 const TOKEN_KEY = 'alarvix.dev-access-token';
@@ -234,6 +235,7 @@ export default function App() {
         <button className={page === 'dashboard' ? 'nav-item active' : 'nav-item'} onClick={() => setPage('dashboard')}>Dashboard</button>
         <button className={page === 'clientes' ? 'nav-item active' : 'nav-item'} onClick={() => setPage('clientes')}>Clientes</button>
         <button className={page === 'servicios' ? 'nav-item active' : 'nav-item'} onClick={() => setPage('servicios')}>Servicios</button>
+        <button className={page === 'supervision' ? 'nav-item active' : 'nav-item'} onClick={() => setPage('supervision')}>Supervisión e Incidencias</button>
       </nav>
       <div className={auth ? 'mini-card' : 'mini-card warning'}><span className={auth ? 'dot green' : 'dot yellow'} /><div><strong>{auth ? `Rol: ${auth.role}` : 'Sin conexión'}</strong><small>{auth ? 'Supabase directo' : 'Configura el token'}</small></div></div>
     </aside>
@@ -245,7 +247,7 @@ export default function App() {
       {tokenOpen && <section className="panel token-panel"><div className="panel-header"><div><p className="eyebrow">Supabase</p><h3>Conexión directa</h3></div></div><p className="helper-text">El frontend consulta PostgreSQL directamente con RLS. Usa un access token válido de Supabase. La service_role nunca se expone aquí.</p><form className="token-form" onSubmit={connect}><label>Access token<textarea required value={tokenDraft} onChange={e => setTokenDraft(e.target.value)} /></label><div className="topbar-actions"><button className="primary-button">Conectar</button>{token && <button type="button" className="ghost-button" onClick={disconnect}>Desconectar</button>}</div></form></section>}
       {error && <div className="feedback error-feedback">{error}</div>}
       {notice && <div className="feedback success-feedback">{notice}</div>}
-      {!token ? <section className="panel disconnected-state"><h3>Conecta tu sesión</h3><p>Configura un access token de Supabase para consultar el tenant autorizado.</p></section> : loading ? <section className="panel loading-state">Cargando datos…</section> : page === 'dashboard' ? <Dashboard customers={customers} services={services} activeServices={activeServices} technicianLocations={technicianLocations} locationSharing={locationSharing} locationError={locationError} /> : page === 'clientes' ? <Customers customers={customers} canWrite={canWrite(auth?.role)} editing={editingCustomer} setEditing={setEditingCustomer} onSave={saveCustomer} onDelete={removeCustomer} /> : <Services services={services} canWrite={canWrite(auth?.role)} editing={editingService} setEditing={setEditingService} onSave={saveService} onDelete={removeService} />}
+      {!token ? <section className="panel disconnected-state"><h3>Conecta tu sesión</h3><p>Configura un access token de Supabase para consultar el tenant autorizado.</p></section> : loading ? <section className="panel loading-state">Cargando datos…</section> : page === 'dashboard' ? <Dashboard customers={customers} services={services} activeServices={activeServices} technicianLocations={technicianLocations} locationSharing={locationSharing} locationError={locationError} /> : page === 'clientes' ? <Customers customers={customers} canWrite={canWrite(auth?.role)} editing={editingCustomer} setEditing={setEditingCustomer} onSave={saveCustomer} onDelete={removeCustomer} /> : page === 'servicios' ? <Services services={services} canWrite={canWrite(auth?.role)} editing={editingService} setEditing={setEditingService} onSave={saveService} onDelete={removeService} /> : <SupervisionModule token={token} tenantId={auth!.tenantId} role={auth!.role} />
     </main>
   </div>;
 }
