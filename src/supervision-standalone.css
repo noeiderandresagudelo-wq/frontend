@@ -1,0 +1,48 @@
+#supervision-react-mount{color:#e2e8f0;font-family:Inter,ui-sans-serif,system-ui,sans-serif}
+#supervision-react-mount *{box-sizing:border-box}
+#supervision-react-mount .supervision-shell{display:flex;flex-direction:column;gap:20px}
+#supervision-react-mount .supervision-head{display:flex;align-items:center;justify-content:space-between;gap:16px}
+#supervision-react-mount .supervision-actions{display:flex;gap:10px;align-items:center}
+#supervision-react-mount .supervision-tabs{display:flex;gap:8px;flex-wrap:wrap}
+#supervision-react-mount .supervision-tabs button{border:1px solid #243044;background:#182235;color:#cbd5e1;border-radius:10px;padding:10px 15px;font-weight:700;cursor:pointer}
+#supervision-react-mount .supervision-tabs button.active{background:#1d4ed8;border-color:#3b82f6;color:#fff}
+#supervision-react-mount .panel{background:#111827;border:1px solid #243044;border-radius:12px;padding:16px}
+#supervision-react-mount .panel-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+#supervision-react-mount .panel-header h3{margin:3px 0 0;font-size:14px;color:#f8fafc}
+#supervision-react-mount .eyebrow{margin:0;color:#64748b;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+#supervision-react-mount .helper-text{margin:5px 0 0;color:#94a3b8;font-size:12px}
+#supervision-react-mount .supervision-wide{grid-column:1/-1}
+#supervision-react-mount .stats-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+#supervision-react-mount .stat-card{background:#111827;border:1px solid #243044;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:5px}
+#supervision-react-mount .stat-card span{font-size:10px;color:#94a3b8;text-transform:uppercase;font-weight:700}
+#supervision-react-mount .stat-card strong{font-size:30px;color:#60a5fa}
+#supervision-react-mount .stat-card em{font-style:normal;font-size:9px;color:#64748b}
+#supervision-react-mount .content-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(320px,1fr);gap:16px}
+#supervision-react-mount .data-list{display:flex;flex-direction:column;gap:8px}
+#supervision-react-mount .data-item{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;background:#0f172a;border:1px solid #243044;border-radius:10px;padding:12px;text-align:left;color:#e2e8f0}
+#supervision-react-mount button.data-item{cursor:pointer}
+#supervision-react-mount .data-item h3{margin:3px 0;font-size:13px;color:#f8fafc}
+#supervision-react-mount .data-item p{margin:0;font-size:10px;color:#94a3b8}
+#supervision-react-mount .code{font-family:ui-monospace,monospace;font-size:9px;color:#60a5fa}
+#supervision-react-mount .supervision-select.selected{border-color:#3b82f6;background:#172554}
+#supervision-react-mount .form-panel{display:grid;gap:12px;margin-bottom:16px}
+#supervision-react-mount .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#supervision-react-mount label{display:grid;gap:5px;color:#cbd5e1;font-size:10px;font-weight:700}
+#supervision-react-mount input,#supervision-react-mount select,#supervision-react-mount textarea{width:100%;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#f8fafc;padding:9px;font-size:11px}
+#supervision-react-mount textarea{min-height:90px;resize:vertical}
+#supervision-react-mount .primary-button,#supervision-react-mount .ghost-button{border-radius:8px;padding:9px 13px;font-size:10px;font-weight:800;cursor:pointer}
+#supervision-react-mount .primary-button{border:1px solid #3b82f6;background:#2563eb;color:#fff}
+#supervision-react-mount .ghost-button{border:1px solid #334155;background:#182235;color:#cbd5e1}
+#supervision-react-mount .primary-button:disabled{opacity:.5;cursor:not-allowed}
+#supervision-react-mount .text-button{border:0;background:transparent;color:#60a5fa;font-size:10px;font-weight:700;cursor:pointer}
+#supervision-react-mount .text-button.danger{color:#fb7185}
+#supervision-react-mount .feedback{padding:10px 12px;border-radius:8px;font-size:11px;display:flex;justify-content:space-between;gap:10px}
+#supervision-react-mount .error-feedback{background:#450a0a;border:1px solid #7f1d1d;color:#fecaca}
+#supervision-react-mount .success-feedback{background:#052e16;border:1px solid #166534;color:#bbf7d0}
+#supervision-react-mount .loading-state,#supervision-react-mount .supervision-standalone-loading{padding:32px;text-align:center;color:#94a3b8}
+#supervision-react-mount .supervision-standalone-error{display:flex;flex-direction:column;gap:8px;background:#450a0a;border:1px solid #7f1d1d;border-radius:10px;padding:16px;color:#fecaca;font-size:12px}
+#supervision-react-mount .item-actions{display:flex;gap:10px}
+#supervision-react-mount .supervision-modal{position:fixed;inset:0;z-index:10000;background:rgba(2,6,23,.82);backdrop-filter:blur(5px);display:grid;place-items:center;padding:20px}
+#supervision-react-mount .supervision-modal .panel{width:min(100%,700px);max-height:calc(100vh - 40px);overflow:auto}
+@media(max-width:900px){#supervision-react-mount .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#supervision-react-mount .content-grid{grid-template-columns:1fr}}
+@media(max-width:620px){#supervision-react-mount .supervision-head{align-items:stretch;flex-direction:column}#supervision-react-mount .supervision-actions{width:100%}#supervision-react-mount .supervision-actions>*{flex:1}#supervision-react-mount .field-row{grid-template-columns:1fr}#supervision-react-mount .stats-grid{grid-template-columns:1fr 1fr}#supervision-react-mount .supervision-modal{padding:10px}}
