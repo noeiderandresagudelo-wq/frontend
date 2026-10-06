@@ -1421,117 +1421,72 @@
         <!-- CONTENEDOR DE MODULOS / PANELES -->
     <main class="flex-grow flex flex-col min-w-0 min-h-0 overflow-y-auto bg-slate-950 text-slate-100 p-3 sm:p-6">
             
-            <section id="view-personal" class="space-y-6 hidden">
-                <div class="flex items-center justify-between flex-wrap gap-4 bg-slate-900 border border-slate-800 p-4 rounded-xl">
-                    <div>
-                        <h2 class="text-sm font-extrabold text-white uppercase tracking-wider font-heading">Gestión Operativa de Plantilla y Accesos</h2>
-                        <p class="text-xs text-slate-400 mt-1">Control de accesos centrales, credenciales críticas, modificación de placas de soporte y teléfonos móviles.</p>
+            <section id="view-personal" class="space-y-5 hidden">
+                <div class="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/40 p-5 shadow-xl">
+                    <div class="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-indigo-500/10 blur-3xl"></div>
+                    <div class="relative flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                        <div class="flex items-start gap-4 min-w-0">
+                            <div class="h-12 w-12 shrink-0 rounded-2xl bg-indigo-500/15 border border-indigo-400/20 flex items-center justify-center text-indigo-300"><i class="fa-solid fa-users-gear text-xl"></i></div>
+                            <div class="min-w-0">
+                                <div class="flex flex-wrap items-center gap-2 mb-1"><span class="text-[9px] font-black uppercase tracking-[0.18em] text-indigo-300">Administración interna</span><span class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[9px] font-bold text-emerald-300">Control de acceso</span></div>
+                                <h2 class="text-lg sm:text-xl font-black text-white tracking-tight">Gestión de Personal</h2>
+                                <p class="mt-1 max-w-3xl text-xs leading-relaxed text-slate-400">Administra colaboradores, roles operativos, credenciales, información de contacto y asignaciones de campo desde un único directorio.</p>
+                            </div>
+                        </div>
+                        <button onclick="prepareCreatePersonal()" class="permission-edit-only shrink-0 inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 px-4 py-2.5 text-xs font-black text-white transition shadow-lg shadow-indigo-600/20"><i class="fa-solid fa-user-plus"></i> Nuevo colaborador</button>
                     </div>
-                    <button onclick="prepareCreatePersonal()" class="permission-edit-only bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-blue-600/10">
-                        <i class="fa-solid fa-user-plus"></i> Crear Nuevo Colaborador
-                    </button>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    <!-- Directorio General de Personal -->
-                    <div class="lg:col-span-8 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col justify-between">
-                        <div>
-                            <div class="p-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
-                                <h3 class="text-xs font-extrabold text-white uppercase tracking-wider font-heading">Plantilla Activa de Colaboradores</h3>
-                                <span id="lbl-total-personal" class="text-[10px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2.5 py-0.5 rounded-full font-bold">--</span>
-                            </div>
-                            <div class="overflow-x-auto custom-scrollbar">
-                                <table class="w-full text-left border-collapse min-w-[700px]">
-                                    <thead>
-                                        <tr class="bg-slate-950/50 border-b border-slate-800/60 text-[10px] text-slate-400 uppercase tracking-wider font-bold">
-                                            <th class="p-3">Nombre del Colaborador</th>
-                                            <th class="p-3">Usuario Acceso</th>
-                                            <th class="p-3">Rol / Permisos</th>
-                                            <th class="p-3">Celular</th>
-                                            <th class="p-3">Vehículo / Identificador</th>
-                                            <th class="p-3 text-center">Estatus</th>
-                                            <th class="p-3 text-center">Acciones Tácticas</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tbl-personal-body" class="divide-y divide-slate-800/50 text-xs text-slate-300">
-                                        <!-- Inyectado dinámicamente -->
-                                    </tbody>
-                                </table>
-                            </div>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div class="rounded-xl border border-slate-800 bg-slate-900/80 p-4"><div class="flex items-center justify-between"><span class="text-[9px] font-black uppercase tracking-wider text-slate-500">Colaboradores</span><i class="fa-solid fa-users text-indigo-400"></i></div><strong id="personal-kpi-total" class="mt-2 block text-2xl font-black text-white">0</strong><span class="text-[9px] text-slate-500">Registrados en el directorio</span></div>
+                    <div class="rounded-xl border border-slate-800 bg-slate-900/80 p-4"><div class="flex items-center justify-between"><span class="text-[9px] font-black uppercase tracking-wider text-slate-500">Activos</span><i class="fa-solid fa-circle-check text-emerald-400"></i></div><strong id="personal-kpi-active" class="mt-2 block text-2xl font-black text-emerald-400">0</strong><span class="text-[9px] text-slate-500">Con acceso operativo</span></div>
+                    <div class="rounded-xl border border-slate-800 bg-slate-900/80 p-4"><div class="flex items-center justify-between"><span class="text-[9px] font-black uppercase tracking-wider text-slate-500">Supervisores</span><i class="fa-solid fa-user-shield text-violet-400"></i></div><strong id="personal-kpi-supervisors" class="mt-2 block text-2xl font-black text-violet-400">0</strong><span class="text-[9px] text-slate-500">Acceso a Supervisión Física</span></div>
+                    <div class="rounded-xl border border-slate-800 bg-slate-900/80 p-4"><div class="flex items-center justify-between"><span class="text-[9px] font-black uppercase tracking-wider text-slate-500">Técnicos</span><i class="fa-solid fa-helmet-safety text-cyan-400"></i></div><strong id="personal-kpi-technicians" class="mt-2 block text-2xl font-black text-cyan-400">0</strong><span class="text-[9px] text-slate-500">Personal de campo</span></div>
+                </div>
+
+                <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_390px] gap-4 items-start">
+                    <div class="rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden shadow-lg">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-slate-800">
+                            <div><div class="flex items-center gap-2"><i class="fa-solid fa-address-book text-indigo-400"></i><h3 class="text-xs font-black uppercase tracking-wider text-white">Directorio de colaboradores</h3></div><p class="text-[10px] text-slate-500 mt-1">Estado, rol, contacto y acciones de administración.</p></div>
+                            <span id="lbl-total-personal" class="rounded-full border border-indigo-400/20 bg-indigo-400/10 px-3 py-1 text-[9px] font-black text-indigo-300">0 colaboradores</span>
                         </div>
+                        <div class="overflow-x-auto custom-scrollbar">
+                            <table class="w-full min-w-[850px] text-left border-collapse">
+                                <thead><tr class="bg-slate-950/70 border-b border-slate-800 text-[9px] text-slate-500 uppercase tracking-wider font-black">
+                                    <th class="px-5 py-3">Colaborador</th><th class="px-4 py-3">Rol operativo</th><th class="px-4 py-3">Contacto</th><th class="px-4 py-3">Identificador</th><th class="px-4 py-3 text-center">Estado</th><th class="px-4 py-3 text-right">Acciones</th>
+                                </tr></thead>
+                                <tbody id="tbl-personal-body" class="divide-y divide-slate-800/70 text-xs text-slate-300"></tbody>
+                            </table>
+                        </div>
+                        <div class="px-5 py-3 border-t border-slate-800 bg-slate-950/40 flex items-center justify-between gap-3"><span class="text-[9px] text-slate-500"><i class="fa-solid fa-shield-halved mr-1 text-indigo-400"></i>Los cambios de rol afectan el acceso operativo.</span><span class="text-[9px] text-slate-600">Directorio protegido</span></div>
                     </div>
 
-                    <!-- Ficha y Formulario Rápido de Edición / Alta -->
-                    <div class="lg:col-span-4 bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 flex flex-col justify-between">
-                        <div class="space-y-4">
-                            <div class="pb-3 border-b border-slate-800/60">
-                                <h3 id="form-personal-title" class="text-xs font-extrabold text-white uppercase tracking-wider font-heading">Ficha de Colaborador</h3>
-                                <p class="text-[10px] text-slate-400 mt-1">Completa los campos para añadir a un miembro o haz clic en "Editar" en la plantilla.</p>
-                            </div>
-
-                            <form id="form-personal-manage" onsubmit="savePersonalData(event)" class="space-y-3">
-                                <input type="hidden" id="manage-personal-id">
-                                <input type="hidden" id="manage-user-id">
-
-                                <div>
-                                    <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Nombre Completo</label>
-                                    <input type="text" id="manage-nombre" required placeholder="Ej: Mario Andrés Vargas" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
-                                </div>
-
-                                <div class="grid grid-cols-2 gap-4 border-t border-slate-800/60 pt-5">
-                                    <div>
-                                        <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Usuario Acceso</label>
-                                        <input type="email" id="manage-username" required placeholder="correo@empresa.com" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Contraseña</label>
-                                        <input type="text" id="manage-password" required placeholder="••••••••" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 font-mono">
-                                    </div>
-                                </div>
-
-                                <div class="grid grid-cols-2 gap-4 pt-5 border-t border-slate-800/60">
-                                    <div>
-                                        <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Rol Operativo</label>
-                                        <select id="manage-rol" onchange="toggleVehicleFields()" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none">
-                                            <option value="ADMIN">ADMIN (Acceso Total)</option>
-                                            <option value="DESPACHADOR">DESPACHADOR (Despacho)</option>
-                                            <option value="TECNICO">TECNICO (Campo)</option>
-                                            <option value="COTIZADOR">COTIZADOR (Presupuestos)</option>
-                                            <option value="CLIENTE">CLIENTE (Espectador)</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Celular Contacto</label>
-                                        <input type="tel" id="manage-celular" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" autocomplete="tel" placeholder="3001234567" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,10)" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none">
-                                    </div>
-                                </div>
-
-                                <!-- Contenedor Dinámico: Visibilidad condicional para Técnicos -->
-                                <div id="vehicle-fields-container" class="space-y-3 hidden">
-                                    <div class="grid grid-cols-2 gap-2 border-t border-slate-800/80 pt-3">
-                                        <div>
-                                            <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Placa / Vehículo</label>
-                                            <input type="text" id="manage-vehiculo" placeholder="MOTO-214 (SUP)" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none">
-                                        </div>
-                                        <div>
-                                            <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Ciudad Base</label>
-                                            <select id="manage-ciudad" class="w-full h-11 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none">
-                                                <option value="BARRANQUILLA">Barranquilla</option>
-                                                <option value="BOGOTA">Bogotá</option>
-                                                <option value="CALI">Cali</option>
-                                                <option value="MEDELLIN">Medellín</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="flex gap-2 justify-end pt-3 border-t border-slate-800/80">
-                                    <button type="button" onclick="resetPersonalForm()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3.5 py-2 rounded-lg text-xs font-bold transition">Limpiar</button>
-                                    <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg text-xs font-black transition uppercase">Guardar Cambios</button>
-                                </div>
-                            </form>
+                    <aside class="rounded-2xl border border-slate-800 bg-slate-900 shadow-lg overflow-hidden">
+                        <div class="px-5 py-4 border-b border-slate-800 bg-gradient-to-r from-slate-900 to-indigo-950/20">
+                            <div class="flex items-center gap-3"><span class="h-8 w-8 rounded-lg bg-indigo-500/15 border border-indigo-400/20 flex items-center justify-center text-indigo-300"><i class="fa-solid fa-id-card"></i></span><div><h3 id="form-personal-title" class="text-xs font-black uppercase tracking-wider text-white">Nuevo colaborador</h3><p class="text-[9px] text-slate-500 mt-0.5">Alta o edición de acceso</p></div></div>
                         </div>
-                    </div>
+                        <form id="form-personal-manage" onsubmit="savePersonalData(event)" class="p-5 space-y-4">
+                            <input type="hidden" id="manage-personal-id"><input type="hidden" id="manage-user-id">
+                            <div><label class="mb-1.5 block text-[9px] font-black uppercase tracking-wider text-slate-500">Nombre completo</label><input type="text" id="manage-nombre" required placeholder="Ej. Mario Andrés Vargas" class="w-full h-11 rounded-xl border border-slate-700 bg-slate-950 px-3.5 text-sm text-white placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none transition"></div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div><label class="mb-1.5 block text-[9px] font-black uppercase tracking-wider text-slate-500">Usuario de acceso</label><input type="email" id="manage-username" required placeholder="correo@empresa.com" class="w-full h-11 rounded-xl border border-slate-700 bg-slate-950 px-3.5 text-sm text-white placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none transition"></div>
+                                <div><label class="mb-1.5 block text-[9px] font-black uppercase tracking-wider text-slate-500">Contraseña</label><input type="text" id="manage-password" required placeholder="••••••••" class="w-full h-11 rounded-xl border border-slate-700 bg-slate-950 px-3.5 text-sm text-white placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none transition font-mono"></div>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div><label class="mb-1.5 block text-[9px] font-black uppercase tracking-wider text-slate-500">Rol operativo</label>
+                                    <select id="manage-rol" onchange="toggleVehicleFields()" class="w-full h-11 rounded-xl border border-slate-700 bg-slate-950 px-3.5 text-sm text-white focus:border-indigo-500 focus:outline-none transition">
+                                        <option value="ADMIN">ADMIN · Acceso total</option><option value="SUPERVISOR">SUPERVISOR · Supervisión física</option><option value="DESPACHADOR">DESPACHADOR · Central</option><option value="TECNICO">TECNICO · Campo</option><option value="COTIZADOR">COTIZADOR · Presupuestos</option><option value="CLIENTE">CLIENTE · Espectador</option>
+                                    </select>
+                                </div>
+                                <div><label class="mb-1.5 block text-[9px] font-black uppercase tracking-wider text-slate-500">Celular</label><input type="tel" id="manage-celular" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" autocomplete="tel" placeholder="3001234567" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,10)" class="w-full h-11 rounded-xl border border-slate-700 bg-slate-950 px-3.5 text-sm text-white placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none transition"></div>
+                            </div>
+                            <div id="vehicle-fields-container" class="hidden rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label class="mb-1.5 block text-[9px] font-black uppercase tracking-wider text-slate-500">Placa / identificador</label><input type="text" id="manage-vehiculo" placeholder="MOTO-214" class="w-full h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm text-white focus:border-indigo-500 focus:outline-none"></div><div><label class="mb-1.5 block text-[9px] font-black uppercase tracking-wider text-slate-500">Ciudad base</label><select id="manage-ciudad" class="w-full h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm text-white focus:border-indigo-500 focus:outline-none"><option value="BARRANQUILLA">Barranquilla</option><option value="BOGOTA">Bogotá</option><option value="CALI">Cali</option><option value="MEDELLIN">Medellín</option></select></div></div>
+                            </div>
+                            <div id="supervisor-role-hint" class="hidden rounded-xl border border-violet-400/20 bg-violet-400/5 p-3"><div class="flex items-start gap-2"><i class="fa-solid fa-user-shield mt-0.5 text-violet-300"></i><div><strong class="block text-[10px] font-black uppercase text-violet-200">Perfil Supervisor</strong><p class="mt-1 text-[9px] leading-relaxed text-slate-500">Acceso operativo al módulo de Supervisión Física y sus submódulos. No requiere vehículo para operar.</p></div></div></div>
+                            <div class="flex items-center justify-between gap-3 pt-3 border-t border-slate-800"><button type="button" onclick="resetPersonalForm()" class="rounded-xl border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-xs font-bold text-slate-300 hover:bg-slate-700 transition">Limpiar</button><button type="submit" class="rounded-xl bg-indigo-600 hover:bg-indigo-500 px-5 py-2.5 text-xs font-black uppercase text-white transition shadow-lg shadow-indigo-600/20"><i class="fa-solid fa-check mr-1.5"></i>Guardar colaborador</button></div>
+                        </form>
+                    </aside>
                 </div>
             </section>
 
