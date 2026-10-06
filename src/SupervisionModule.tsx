@@ -1,0 +1,91 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createAuthedSupabaseClient } from './lib/supabase';
+import type { UserRole } from './api';
+
+type Props = { token: string; tenantId: string; role: UserRole };
+type Installation = { id:string; nombre:string; direccion:string|null; ciudad:string|null; latitud:number|null; longitud:number|null; geocerca_radio_m:number; estado:string };
+type Asset = { id:string; instalacion_id:string; nombre_activo:string; codigo_activo:string|null; tipo_activo:string|null; estado:string; qr_codigo:string|null; nfc_codigo:string|null };
+type Ticket = { id:string; numero_ticket:number; instalacion_id:string; activo_id:string|null; tipo_novedad:string; criticidad:string; estado_ticket:string; descripcion:string; causa_raiz:string|null; solucion:string|null; responsable_nombre:string|null; sla_limite:string|null; created_at:string };
+type Review = { id:string; numero_revista:number; instalacion_id:string; supervisor_id:string; turno_id:string|null; estado:string; metodo_checkin:string|null; fecha_checkin:string|null; distancia_checkin_m:number|null; observaciones:string|null };
+
+const canManage=(r:UserRole)=>['admin','manager','supervisor'].includes(r);
+const distanceM=(a:number,b:number,c:number,d:number)=>{const R=6371000,p=Math.PI/180,x=(c-a)*p,y=(d-b)*p,q=Math.sin(x/2)**2+Math.cos(a*p)*Math.cos(c*p)*Math.sin(y/2)**2;return 2*R*Math.atan2(Math.sqrt(q),Math.sqrt(1-q));};
+
+export default function SupervisionModule({token,tenantId,role}:Props){
+ const db=useMemo(()=>createAuthedSupabaseClient(token),[token]);
+ const [tab,setTab]=useState<'resumen'|'instalaciones'|'novedades'|'revistas'>('resumen');
+ const [installations,setInstallations]=useState<Installation[]>([]);
+ const [assets,setAssets]=useState<Asset[]>([]);
+ const [tickets,setTickets]=useState<Ticket[]>([]);
+ const [reviews,setReviews]=useState<Review[]>([]);
+ const [loading,setLoading]=useState(true); const [error,setError]=useState(''); const [notice,setNotice]=useState('');
+ const [selectedInstallation,setSelectedInstallation]=useState('');
+ const [showInstall,setShowInstall]=useState(false); const [showTicket,setShowTicket]=useState(false); const [showReview,setShowReview]=useState(false);
+ const [gpsBusy,setGpsBusy]=useState(false);
+
+ const refresh=useCallback(async()=>{
+   setLoading(true); setError('');
+   const [i,a,n,r]=await Promise.all([
+     db.from('supervision_instalaciones').select('*').order('nombre'),
+     db.from('supervision_activos').select('*').order('nombre_activo'),
+     db.from('supervision_novedades').select('*').order('created_at',{ascending:false}).limit(200),
+     db.from('supervision_revistas').select('*').order('created_at',{ascending:false}).limit(100)
+   ]);
+   const e=i.error||a.error||n.error||r.error;
+   if(e) setError(e.message); else {setInstallations(i.data||[]);setAssets(a.data||[]);setTickets(n.data||[]);setReviews(r.data||[]);}
+   setLoading(false);
+ },[db]);
+
+ useEffect(()=>{void refresh();},[refresh]);
+ useEffect(()=>{const ch=db.channel('supervision-live').on('postgres_changes',{event:'*',schema:'public',table:'supervision_novedades',filter:'tenant_id=eq.'+tenantId},()=>void refresh()).on('postgres_changes',{event:'*',schema:'public',table:'supervision_revistas',filter:'tenant_id=eq.'+tenantId},()=>void refresh()).subscribe(); return()=>{void db.removeChannel(ch)}},[db,tenantId,refresh]);
+
+ const selected=installations.find(x=>x.id===selectedInstallation)||null;
+ const open=tickets.filter(x=>x.estado_ticket!=='Cerrado').length;
+ const critical=tickets.filter(x=>x.criticidad==='Crítica'&&x.estado_ticket!=='Cerrado').length;
+ const overdue=tickets.filter(x=>x.estado_ticket!=='Cerrado'&&x.sla_limite&&new Date(x.sla_limite).getTime()<Date.now()).length;
+
+ async function createInstallation(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);const {error}=await db.from('supervision_instalaciones').insert({tenant_id:tenantId,nombre:String(f.get('nombre')),direccion:String(f.get('direccion')||'')||null,ciudad:String(f.get('ciudad')||'')||null,latitud:f.get('latitud')?Number(f.get('latitud')):null,longitud:f.get('longitud')?Number(f.get('longitud')):null,geocerca_radio_m:Number(f.get('radio')||100)});if(error)setError(error.message);else{setNotice('Instalación creada.');setShowInstall(false);e.currentTarget.reset();void refresh();}}
+ async function createTicket(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);const {error}=await db.from('supervision_novedades').insert({tenant_id:tenantId,instalacion_id:String(f.get('instalacion_id')),activo_id:String(f.get('activo_id')||'')||null,tipo_novedad:String(f.get('tipo')),criticidad:String(f.get('criticidad')),descripcion:String(f.get('descripcion')),creado_por:(await db.auth.getUser()).data.user?.id||null,sla_limite:f.get('sla')?new Date(String(f.get('sla'))).toISOString():null});if(error)setError(error.message);else{setNotice('Novedad registrada y lista para asignación.');setShowTicket(false);e.currentTarget.reset();void refresh();}}
+ async function closeTicket(id:string){const t=tickets.find(x=>x.id===id);if(!t)return;const causa=prompt('Causa raíz obligatoria para cerrar:');if(!causa?.trim())return;const solucion=prompt('Solución aplicada obligatoria:');if(!solucion?.trim())return;const {error}=await db.from('supervision_novedades').update({estado_ticket:'Cerrado',causa_raiz:causa.trim(),solucion:solucion.trim(),fecha_cierre:new Date().toISOString()}).eq('id',id);if(error)setError(error.message);else{setNotice('Novedad cerrada con trazabilidad.');void refresh();}}
+ async function checkin(method:'GPS'|'QR'|'NFC'){
+   if(!selected){setError('Selecciona una instalación.');return}
+   setGpsBusy(true);setError('');
+   try{
+     if(method==='GPS'){
+       if(!navigator.geolocation)throw new Error('Este dispositivo no soporta GPS.');
+       const pos=await new Promise<GeolocationPosition>((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{enableHighAccuracy:true,timeout:15000,maximumAge:5000}));
+       if(selected.latitud==null||selected.longitud==null)throw new Error('La instalación no tiene coordenadas configuradas.');
+       const d=distanceM(selected.latitud,selected.longitud,pos.coords.latitude,pos.coords.longitude);
+       if(d>selected.geocerca_radio_m)throw new Error('Fuera de geocerca: '+Math.round(d)+' m. Radio permitido '+selected.geocerca_radio_m+' m.');
+       await saveReview('GPS',pos.coords.latitude,pos.coords.longitude,d);
+     } else {
+       const code=prompt(method==='QR'?'Ingresa/escanea el código QR de la instalación:':'Ingresa el identificador NFC de la instalación:');
+       if(!code?.trim())return;
+       const match=assets.find(a=>a.instalacion_id===selected.id&&(a.qr_codigo===code.trim()||a.nfc_codigo===code.trim()));
+       if(!match)throw new Error('Código no válido para esta instalación.');
+       await saveReview(method,null,null,0);
+     }
+   }catch(e){setError(e instanceof Error?e.message:'No fue posible realizar el check-in.')}finally{setGpsBusy(false)}
+ }
+ async function saveReview(method:string,lat:number|null,long:number|null,d:number){const user=(await db.auth.getUser()).data.user?.id;if(!user)throw new Error('Sesión no válida.');const {error}=await db.from('supervision_revistas').insert({tenant_id:tenantId,instalacion_id:selectedInstallation,supervisor_id:user,estado:'En curso',metodo_checkin:method,latitud_checkin:lat,longitud_checkin:long,distancia_checkin_m:d,fecha_checkin:new Date().toISOString()});if(error)throw new Error(error.message);setNotice('Check-in registrado correctamente.');setTab('revistas');void refresh();}
+ async function finishReview(id:string){const {error}=await db.from('supervision_revistas').update({estado:'Completada',fecha_cierre:new Date().toISOString()}).eq('id',id);if(error)setError(error.message);else{setNotice('Revista completada.');void refresh();}}
+
+ return <div className="supervision-shell">
+  <div className="supervision-head"><div><p className="eyebrow">Operación · Supervisión</p><h2>Supervisión e Incidencias</h2><p className="helper-text">Control por instalación, activo, novedad, revista y evidencia.</p></div><div className="supervision-actions"><button className="ghost-button" onClick={()=>void refresh()} disabled={loading}>↻ Actualizar</button>{canManage(role)&&<button className="primary-button" onClick={()=>setShowTicket(true)}>+ Nueva novedad</button>}</div></div>
+  {error&&<div className="feedback error-feedback">{error}<button className="text-button" onClick={()=>setError('')}>Cerrar</button></div>}{notice&&<div className="feedback success-feedback">{notice}<button className="text-button" onClick={()=>setNotice('')}>Cerrar</button></div>}
+  <div className="supervision-tabs">{[['resumen','Resumen'],['instalaciones','Instalaciones'],['novedades','Novedades'],['revistas','Revistas']].map(([k,l])=><button key={k} className={tab===k?'active':''} onClick={()=>setTab(k as typeof tab)}>{l}</button>)}</div>
+  {loading?<div className="panel loading-state">Cargando supervisión…</div>:tab==='resumen'?<section className="stats-grid">
+    <article className="stat-card"><span>Instalaciones</span><strong>{installations.length}</strong><em>configuradas</em></article>
+    <article className="stat-card"><span>Novedades abiertas</span><strong>{open}</strong><em>seguimiento activo</em></article>
+    <article className="stat-card"><span>Críticas abiertas</span><strong>{critical}</strong><em>atención prioritaria</em></article>
+    <article className="stat-card"><span>SLA vencido</span><strong>{overdue}</strong><em>requiere acción</em></article>
+    <div className="panel supervision-wide"><div className="panel-header"><div><p className="eyebrow">Control</p><h3>Instalaciones y activos</h3></div></div><div className="data-list">{installations.map(i=><button className="data-item supervision-select" key={i.id} onClick={()=>{setSelectedInstallation(i.id);setTab('instalaciones')}}><div><span className="code">{i.estado}</span><h3>{i.nombre}</h3><p>{i.direccion||'Sin dirección'} · {assets.filter(a=>a.instalacion_id===i.id).length} activos</p></div><span>›</span></button>)}</div></div>
+  </section>:tab==='instalaciones'?<section className="content-grid">
+    <div className="panel"><div className="panel-header"><div><p className="eyebrow">Maestro</p><h3>Instalaciones</h3></div>{canManage(role)&&<button className="primary-button compact" onClick={()=>setShowInstall(true)}>+ Instalar</button>}</div><div className="data-list">{installations.map(i=><button key={i.id} className={'data-item supervision-select '+(selectedInstallation===i.id?'selected':'')} onClick={()=>setSelectedInstallation(i.id)}><div><span className="code">{i.ciudad||'Sin ciudad'}</span><h3>{i.nombre}</h3><p>{i.direccion||'Sin dirección'}</p></div><span>{i.estado}</span></button>)}</div></div>
+    <div className="panel"><div className="panel-header"><div><p className="eyebrow">Activos</p><h3>{selected?.nombre||'Selecciona una instalación'}</h3></div></div>{selected?<><p className="helper-text">{selected.direccion||'Sin dirección'} · geocerca {selected.geocerca_radio_m} m</p><div className="data-list">{assets.filter(a=>a.instalacion_id===selected.id).map(a=><article className="data-item" key={a.id}><div><span className="code">{a.codigo_activo||'SIN CÓDIGO'}</span><h3>{a.nombre_activo}</h3><p>{a.tipo_activo||'Activo'} · {a.estado}</p></div></article>)}{assets.filter(a=>a.instalacion_id===selected.id).length===0&&<div className="empty-state">No hay activos registrados.</div>}</div><div className="item-actions"><button className="primary-button compact" onClick={()=>void checkin('GPS')} disabled={gpsBusy}>✓ Check-in GPS</button><button className="ghost-button compact" onClick={()=>void checkin('QR')}>QR</button><button className="ghost-button compact" onClick={()=>void checkin('NFC')}>NFC</button></div></>:<div className="empty-state">Selecciona una instalación.</div>}</div>
+  </section>:tab==='novedades'?<section className="panel"><div className="panel-header"><div><p className="eyebrow">Tickets</p><h3>Novedades operativas</h3></div><span>{tickets.length} registros</span></div><div className="data-list">{tickets.map(t=><article className="data-item" key={t.id}><div><span className="code">#{t.numero_ticket} · {t.criticidad}</span><h3>{t.tipo_novedad}</h3><p>{t.descripcion}</p><p>{installations.find(i=>i.id===t.instalacion_id)?.nombre||'Instalación'} · {t.responsable_nombre||'Sin responsable'}</p></div><div className="data-item-side"><span className="status status-in_progress">{t.estado_ticket}</span>{t.sla_limite&&<small>SLA: {new Date(t.sla_limite).toLocaleString('es-CO')}</small>}{t.estado_ticket!=='Cerrado'&&canManage(role)&&<button className="text-button danger" onClick={()=>void closeTicket(t.id)}>Cerrar</button>}</div></article>)}{tickets.length===0&&<div className="empty-state">No hay novedades.</div>}</div></section>
+  :<section className="panel"><div className="panel-header"><div><p className="eyebrow">Inspecciones</p><h3>Revistas y check-in</h3></div></div><div className="data-list">{reviews.map(r=><article className="data-item" key={r.id}><div><span className="code">REV-{r.numero_revista} · {r.metodo_checkin||'—'}</span><h3>{installations.find(i=>i.id===r.instalacion_id)?.nombre||'Instalación'}</h3><p>{r.fecha_checkin?new Date(r.fecha_checkin).toLocaleString('es-CO'):'Sin check-in'} · {r.distancia_checkin_m!=null?Math.round(r.distancia_checkin_m)+' m':''}</p></div><div className="data-item-side"><span className="status status-in_progress">{r.estado}</span>{r.estado==='En curso'&&canManage(role)&&<button className="text-button" onClick={()=>void finishReview(r.id)}>Completar</button>}</div></article>)}</div></section>}
+  {showInstall&&<div className="supervision-modal"><form className="panel form-panel" onSubmit={createInstallation}><div className="panel-header"><h3>Nueva instalación</h3><button type="button" className="text-button" onClick={()=>setShowInstall(false)}>✕</button></div><label>Nombre<input name="nombre" required placeholder="Nombre de la instalación"/></label><div className="field-row"><label>Dirección<input name="direccion"/></label><label>Ciudad<input name="ciudad"/></label></div><div className="field-row"><label>Latitud<input name="latitud" type="number" step="any"/></label><label>Longitud<input name="longitud" type="number" step="any"/></label></div><label>Radio geocerca (m)<input name="radio" type="number" min="10" defaultValue="100"/></label><button className="primary-button">Guardar instalación</button></form></div>}
+  {showTicket&&<div className="supervision-modal"><form className="panel form-panel" onSubmit={createTicket}><div className="panel-header"><h3>Nueva novedad</h3><button type="button" className="text-button" onClick={()=>setShowTicket(false)}>✕</button></div><label>Instalación<select name="instalacion_id" required defaultValue={selectedInstallation}>{installations.map(i=><option key={i.id} value={i.id}>{i.nombre}</option>)}</select></label><label>Activo<select name="activo_id"><option value="">Sin activo específico</option>{assets.map(a=><option key={a.id} value={a.id}>{a.codigo_activo||'SIN CÓDIGO'} · {a.nombre_activo}</option>)}</select></label><div className="field-row"><label>Tipo<select name="tipo" defaultValue="Falla técnica"><option>Falla técnica</option><option>Daño físico</option><option>Mantenimiento preventivo</option><option>Seguridad</option><option>Acceso</option><option>Otro</option></select></label><label>Criticidad<select name="criticidad" defaultValue="Media"><option>Baja</option><option>Media</option><option>Alta</option><option>Crítica</option></select></label></div><label>Descripción<textarea name="descripcion" required placeholder="Describe la novedad con suficiente detalle"/></label><label>Fecha límite SLA<input name="sla" type="datetime-local"/></label><button className="primary-button">Registrar novedad</button></form></div>}
+ </div>;
+}
