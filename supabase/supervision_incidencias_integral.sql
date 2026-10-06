@@ -325,7 +325,7 @@ begin
   end loop;
 end $$;
 
-do $
+do $$
 declare t text;
 begin
   foreach t in array ARRAY[
@@ -340,4 +340,4 @@ begin
       execute format('alter publication supabase_realtime add table public.%I', t);
     end if;
   end loop;
-end $;
+end $$;
