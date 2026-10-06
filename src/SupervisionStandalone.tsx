@@ -1,6 +1,7 @@
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import SupervisionModule from './SupervisionModule';
+import SupervisorMobile from './SupervisorMobile';
 import type { UserRole } from './api';
 import './supervision-standalone.css';
 
@@ -56,6 +57,9 @@ function SupervisionStandalone() {
   }
   if (!state) {
     return <div className="supervision-standalone-loading">Cargando módulo de Supervisión…</div>;
+  }
+  if (state.role === 'supervisor' && window.matchMedia('(max-width: 768px)').matches) {
+    return <SupervisorMobile {...state} />;
   }
   return <SupervisionModule {...state} />;
 }
