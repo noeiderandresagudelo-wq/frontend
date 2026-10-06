@@ -1261,6 +1261,11 @@
                     <span class="sidebar-text">Servicios Técnicos</span>
                 </button>
 
+                <button onclick="switchModule('supervision')" id="btn-mod-supervision" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-bold transition text-left text-slate-400 hover:text-white hover:bg-slate-800/60">
+                    <i class="fa-solid fa-clipboard-check text-sm w-4 text-center text-teal-400"></i>
+                    <span class="sidebar-text">Supervisión Física</span>
+                </button>
+
                 <button onclick="switchModule('estudios')" id="btn-mod-estudios" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-bold transition text-left text-slate-400 hover:text-white hover:bg-slate-800/60">
                     <i class="fa-solid fa-shield-halved text-sm w-4 text-center text-violet-400"></i>
                     <span class="sidebar-text">Estudios de Seguridad</span>
@@ -7576,12 +7581,6 @@
 
         function switchModule(modId) {
             try {
-            const modulosRetirados = ['supervision', 'rrhh'];
-            if (modulosRetirados.includes(modId)) {
-                showToast("Módulo no disponible", "Este módulo fue retirado temporalmente del menú.", true);
-                return;
-            }
-
                 // Verificar permisos antes de cambiar de sección
                 if (currentUser) {
                     const perms = obtenerPermisosRol(currentUser);
