@@ -72,8 +72,19 @@ export default function SupervisionModule({token,tenantId,role}:Props){
 
   const refresh=useCallback(async(silent=false)=>{
     if(!silent){setLoading(true);setError('');}
-    const q=await Promise.all([
-      db.rpc('listar_supervision_instalaciones'),
+
+    // El maestro de puestos es crítico para todo el módulo. Se carga de forma
+    // independiente para que un fallo secundario (auditoría, evidencias, etc.)
+    // jamás deje el catálogo de puestos vacío.
+    const installationResult=await db.rpc('listar_supervision_instalaciones');
+    if(installationResult.error){
+      setError(installationResult.error.message);
+      if(!silent)setLoading(false);
+      return;
+    }
+    setInstallations((installationResult.data||[]) as Installation[]);
+
+    const results=await Promise.all([
       db.from('supervision_activos').select('*').eq('tenant_id',tenantId).is('eliminado_at',null).order('nombre_activo'),
       db.from('supervision_novedades').select('*').eq('tenant_id',tenantId).is('eliminado_at',null).order('created_at',{ascending:false}).limit(200),
       db.from('supervision_revistas').select('*').eq('tenant_id',tenantId).is('eliminado_at',null).order('created_at',{ascending:false}).limit(200),
@@ -90,18 +101,30 @@ export default function SupervisionModule({token,tenantId,role}:Props){
       db.from('supervision_checklist_items').select('*').eq('tenant_id',tenantId).order('checklist_id').order('orden'),
       db.rpc('listar_supervision_usuarios')
     ]);
-    const e=q.find(x=>x.error)?.error;
-    if(e){setError(e.message);if(!silent)setLoading(false);return;}
-    const [i,a,n,r,ev,m,an,au,no,sl,nt,t,as,cl,ci,u]=q;
-    setInstallations((i.data||[]) as Installation[]);setAssets((a.data||[]) as Asset[]);setTickets((n.data||[]) as Ticket[]);
-    setReviews((r.data||[]) as Review[]);setEvidences((ev.data||[]) as Evidence[]);setMaintenances((m.data||[]) as Maintenance[]);
-    setAnomalies((an.data||[]) as Anomaly[]);setAudits((au.data||[]) as Audit[]);setNotifications((no.data||[]) as Notification[]);
-    setSlaPolicies((sl.data||[]) as SlaPolicy[]);setNoveltyTypes((nt.data||[]) as NoveltyType[]);setShifts((t.data||[]) as Shift[]);
-    setAssignments((as.data||[]) as Assignment[]);setChecklists((cl.data||[]) as Checklist[]);setCheckItems((ci.data||[]) as ChecklistItem[]);
+
+    const [a,n,r,ev,m,an,au,no,sl,nt,t,as,cl,ci,u]=results;
+    if(!silent && results.some(x=>x.error)) {
+      const firstSecondaryError=results.find(x=>x.error)?.error;
+      if(firstSecondaryError)setError('Puestos cargados. Algunas funciones de Supervisión no están disponibles todavía: '+firstSecondaryError.message);
+    }
+
+    setAssets((a.data||[]) as Asset[]);
+    setTickets((n.data||[]) as Ticket[]);
+    setReviews((r.data||[]) as Review[]);
+    setEvidences((ev.data||[]) as Evidence[]);
+    setMaintenances((m.data||[]) as Maintenance[]);
+    setAnomalies((an.data||[]) as Anomaly[]);
+    setAudits((au.data||[]) as Audit[]);
+    setNotifications((no.data||[]) as Notification[]);
+    setSlaPolicies((sl.data||[]) as SlaPolicy[]);
+    setNoveltyTypes((nt.data||[]) as NoveltyType[]);
+    setShifts((t.data||[]) as Shift[]);
+    setAssignments((as.data||[]) as Assignment[]);
+    setChecklists((cl.data||[]) as Checklist[]);
+    setCheckItems((ci.data||[]) as ChecklistItem[]);
     setUsers((u.data||[]) as SupervisionUser[]);
     if(!silent)setLoading(false);
   },[db,tenantId]);
-
   useEffect(()=>{void refresh();},[refresh]);
   useEffect(()=>{
     const handler=(event:Event)=>{const next=(event as CustomEvent<Tab>).detail;if(next in labels)setTab(next);};
