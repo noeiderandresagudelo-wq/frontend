@@ -46,40 +46,32 @@ function SupervisionStandalone() {
           return;
         }
 
-        const legacyUser = (window as Window & { currentUser?: any }).currentUser;
-        const metadata = session.user?.app_metadata || {};
-        const userMetadata = session.user?.user_metadata || {};
-        const rawRole = String(
-          metadata.role ||
-          userMetadata.role ||
-          metadata.rol ||
-          userMetadata.rol ||
-          legacyUser?.rol ||
-          ''
-        ).trim().toLowerCase();
+        // La identidad operativa se resuelve en PostgreSQL, no desde metadata
+        // editable/caducada del cliente. Esto mantiene tenant y rol alineados con
+        // el perfil real de Alarvix.
+        let context: any = null;
+        let contextError: any = null;
+        try {
+          const result = await legacyClient.rpc('supervision_context');
+          context = Array.isArray(result.data) ? result.data[0] : result.data;
+          contextError = result.error;
+        } catch (e) {
+          contextError = e;
+        }
 
-        const tenantId = String(
-          metadata.tenant_id ||
-          userMetadata.tenant_id ||
-          metadata.tenantId ||
-          userMetadata.tenantId ||
-          legacyUser?.tenant_id ||
-          legacyUser?.tenantId ||
-          ''
-        ).trim();
-
-        const allowed: UserRole[] = ['admin','manager','supervisor','technician','client','viewer'];
-        const role = allowed.includes(rawRole as UserRole) ? rawRole as UserRole : 'viewer';
-
-        if (!tenantId) {
+        if (contextError || !context?.tenant_id || !context?.role) {
           if (!cancelled) {
             setLoading(false);
-            setError('La sesión no tiene tenant_id en app_metadata.');
+            setError(contextError?.message || 'No fue posible resolver el perfil de Supervisión.');
           }
           return;
         }
 
-        if (!cancelled) {
+        const allowed: UserRole[] = ['admin','manager','supervisor','technician','client','viewer'];
+        const role = allowed.includes(String(context.role).toLowerCase() as UserRole)
+          ? String(context.role).toLowerCase() as UserRole
+          : 'viewer';
+        const tenantId = String(context.tenant_id).trim();        if (!cancelled) {
           setError('');
           setLoading(false);
           setState({token:session.access_token,tenantId,role});
