@@ -68,6 +68,7 @@ export default function SupervisionModule({token,tenantId,role}:Props){
   const [showPostForm,setShowPostForm]=useState(false);
   const [editingPost,setEditingPost]=useState<Installation|null>(null);
   const [showTicketForm,setShowTicketForm]=useState(false);
+  const externalNavigation=typeof document!=='undefined'&&document.getElementById('supervision-submodules')!==null;
 
   const refresh=useCallback(async(silent=false)=>{
     if(!silent){setLoading(true);setError('');}
@@ -237,12 +238,12 @@ export default function SupervisionModule({token,tenantId,role}:Props){
     </div>
     {(error||notice)&&<div className={'feedback '+(error?'error-feedback':'success-feedback')}><span>{error||notice}</span><button className="text-button" onClick={()=>{setError('');setNotice('')}}>Cerrar</button></div>}
 
-    <div className="supervision-layout">
-      <aside className="supervision-subnav">
+    <div className={"supervision-layout"+(externalNavigation?" no-subnav":"")}>
+      {!externalNavigation&&<aside className="supervision-subnav">
         <div className="subnav-heading"><span className="eyebrow">Módulo</span><strong>Supervisión Física</strong><small>Control operativo de puestos</small></div>
         <nav>{(Object.keys(labels) as Tab[]).map(t=><button key={t} className={tab===t?'active':''} onClick={()=>setTab(t)}><span className="subnav-icon">{icon[t]}</span><span>{labels[t]}</span>{t==='novedades'&&openTickets.length>0&&<b>{openTickets.length}</b>}{t==='anomalias'&&pendingAnomalies.length>0&&<b>{pendingAnomalies.length}</b>}</button>)}</nav>
         <div className="subnav-note"><span>Sesión</span><strong>{role}</strong><small>Tenant {tenantId.slice(0,8)}…</small></div>
-      </aside>
+      </aside>}
 
       <main className="supervision-content">
         <div className="content-title"><div><span className="eyebrow">Submódulo</span><h3>{labels[tab]}</h3></div>{tab!=='puestos'&&tab!=='resumen'&&<div className="installation-context"><label>Puesto operativo<select value={selectedId} onChange={e=>setSelectedId(e.target.value)}><option value="">Seleccionar…</option>{installations.map(i=><option key={i.id} value={i.id}>{i.codigo_puesto||'Puesto'} · {i.nombre}</option>)}</select></label></div>}</div>
