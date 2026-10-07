@@ -201,10 +201,12 @@ export default function SupervisionModule({token,tenantId,role}:Props){
   };
 
   const createTicket=async(e:FormEvent<HTMLFormElement>)=>{
-    e.preventDefault();if(!canStaff(role)||!selected)return;
+    e.preventDefault();if(!canStaff(role))return;
     const f=new FormData(e.currentTarget);const descripcion=String(f.get('descripcion')||'').trim();
+    const instalacion_id=String(f.get('instalacion_id')||'');
+    if(!instalacion_id){setError('Selecciona un puesto.');return;}
     if(!descripcion){setError('La descripción es obligatoria.');return;}
-    const {error:e1}=await db.from('supervision_novedades').insert({tenant_id:tenantId,instalacion_id:selected.id,
+    const {error:e1}=await db.from('supervision_novedades').insert({tenant_id:tenantId,instalacion_id,
       activo_id:String(f.get('activo_id')||'')||null,tipo_novedad:String(f.get('tipo_novedad')||'Seguridad'),
       criticidad:String(f.get('criticidad')||'Media'),descripcion,sla_limite:f.get('sla')?new Date(String(f.get('sla'))).toISOString():null});
     if(e1)setError(e1.message);else{setNotice('Novedad registrada.');setShowTicketForm(false);e.currentTarget.reset();await refresh(true);}
@@ -313,10 +315,10 @@ function PostModal({editing,role,onClose,onSave}:{editing:Installation|null;role
  </form></div>;
 }
 
-function TicketModal({installations,assets,selectedId,onClose,onSave,busy}:{installations:Installation[];assets:Asset[];selectedId:string;onClose:()=>void;onSave:(e:FormEvent<HTMLFormElement>)=>Promise<void>;busy:boolean}){
+function TicketModal({installations,assets,selectedId,onSelect,onClose,onSave,busy}:{installations:Installation[];assets:Asset[];selectedId:string;onSelect:(id:string)=>void;onClose:()=>void;onSave:(e:FormEvent<HTMLFormElement>)=>Promise<void>;busy:boolean}){
  const selectedAssets=assets.filter(a=>a.instalacion_id===selectedId);
  return <div className="supervision-modal"><form className="panel form-panel" onSubmit={onSave}><div className="panel-header"><div><p className="eyebrow">Gestión operativa</p><h3>Nueva novedad</h3></div><button type="button" className="text-button" onClick={onClose}>✕</button></div>
-  <label>Puesto<select name="instalacion_id" value={selectedId} readOnly><option value="">Seleccionar puesto…</option>{installations.map(i=><option key={i.id} value={i.id}>{i.codigo_puesto||'Puesto'} · {i.nombre}</option>)}</select></label>
+  <label>Puesto<select name="instalacion_id" value={selectedId} onChange={e=>onSelect(e.target.value)} required><option value="">Seleccionar puesto…</option>{installations.map(i=><option key={i.id} value={i.id}>{i.codigo_puesto||'Puesto'} · {i.nombre}</option>)}</select></label>
   <label>Activo<select name="activo_id"><option value="">Sin activo específico</option>{selectedAssets.map(a=><option key={a.id} value={a.id}>{a.codigo_activo||'SIN CÓDIGO'} · {a.nombre_activo}</option>)}</select></label>
   <div className="field-row"><label>Tipo<select name="tipo_novedad" defaultValue="Seguridad"><option>Seguridad</option><option>Infraestructura</option><option>Equipo</option><option>Personal</option><option>Acceso</option><option>Procedimiento</option><option>Otro</option></select></label><label>Criticidad<select name="criticidad" defaultValue="Media"><option>Baja</option><option>Media</option><option>Alta</option><option>Crítica</option></select></label></div>
   <label>Descripción<textarea name="descripcion" required placeholder="Describe la novedad…"/></label><label>SLA límite<input name="sla" type="datetime-local"/></label><button className="primary-button" disabled={busy||!selectedId}>{busy?'Registrando…':'Registrar novedad'}</button>
