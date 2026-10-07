@@ -3569,8 +3569,10 @@
                 canManageUsers: false
             },
             SUPERVISOR: {
-                tabs: ['supervision', 'mensajes'],
-                canEdit: true,
+                // Perfil operativo de campo: su interfaz es Supervisión móvil.
+                // No tiene acceso al ERP de escritorio ni a Gestión de Personal.
+                tabs: ['supervision'],
+                canEdit: false,
                 canManageUsers: false
             },
             COORDINADOR: {
