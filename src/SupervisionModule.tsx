@@ -84,10 +84,22 @@ export default function SupervisionModule({token,tenantId,role}:Props){
    };
    if(!payload.nombre){setError('El nombre del puesto es obligatorio.');return;}
    setLoading(true);setError('');
-   const query=editingInstallation
-     ? db.from('supervision_instalaciones').update(payload).eq('id',editingInstallation.id)
-     : db.from('supervision_instalaciones').insert({...payload,tenant_id:tenantId});
-   const {error:e}=await query;
+   let e;
+   if(editingInstallation){
+     const result=await db.from('supervision_instalaciones').update(payload).eq('id',editingInstallation.id);
+     e=result.error;
+   }else{
+     const result=await db.rpc('crear_supervision_instalacion',{
+       p_nombre:payload.nombre,
+       p_direccion:payload.direccion,
+       p_ciudad:payload.ciudad,
+       p_latitud:payload.latitud,
+       p_longitud:payload.longitud,
+       p_geocerca_radio_m:payload.geocerca_radio_m,
+       p_estado:payload.estado
+     });
+     e=result.error;
+   }
    if(e){setError(e.message);setLoading(false);return;}
    setNotice(editingInstallation?'Puesto actualizado correctamente.':'Puesto de supervisión creado correctamente.');
    setShowInstallationForm(false);setEditingInstallation(null);
