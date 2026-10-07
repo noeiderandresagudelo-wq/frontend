@@ -59,19 +59,49 @@ function SupervisionStandalone() {
           contextError = e;
         }
 
-        if (contextError || !context?.tenant_id || !context?.role) {
+        // El contexto de PostgreSQL es la fuente principal. Si el perfil
+        // histórico de usuarios no está enlazado todavía con auth.users, usamos
+        // exclusivamente los claims del JWT ya validado por Supabase como fallback.
+        const claims = (() => {
+          try {
+            const part = String(session.access_token || '').split('.')[1];
+            if (!part) return null;
+            return JSON.parse(atob(part.replace(/-/g, '+').replace(/_/g, '/'))) as {
+              app_metadata?: { role?: string; rol?: string; tenant_id?: string };
+              user_metadata?: { role?: string; rol?: string; tenant_id?: string };
+            };
+          } catch {
+            return null;
+          }
+        })();
+
+        const fallbackRole =
+          context?.role ||
+          claims?.app_metadata?.role ||
+          claims?.app_metadata?.rol ||
+          claims?.user_metadata?.role ||
+          claims?.user_metadata?.rol ||
+          '';
+        const fallbackTenant =
+          context?.tenant_id ||
+          claims?.app_metadata?.tenant_id ||
+          claims?.user_metadata?.tenant_id ||
+          '';
+
+        if (!fallbackTenant || !fallbackRole) {
           if (!cancelled) {
             setLoading(false);
-            setError(contextError?.message || 'No fue posible resolver el perfil de Supervisión.');
+            setError(contextError?.message || 'La sesión no contiene tenant y rol válidos para Supervisión.');
           }
           return;
         }
 
         const allowed: UserRole[] = ['admin','manager','supervisor','technician','client','viewer'];
-        const role = allowed.includes(String(context.role).toLowerCase() as UserRole)
-          ? String(context.role).toLowerCase() as UserRole
+        const normalizedRole = String(fallbackRole).toLowerCase();
+        const role = allowed.includes(normalizedRole as UserRole)
+          ? normalizedRole as UserRole
           : 'viewer';
-        const tenantId = String(context.tenant_id).trim();        if (!cancelled) {
+        const tenantId = String(fallbackTenant).trim();        if (!cancelled) {
           setError('');
           setLoading(false);
           setState({token:session.access_token,tenantId,role});
