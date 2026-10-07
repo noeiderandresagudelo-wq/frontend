@@ -117,3 +117,5 @@
 @media(max-width:1050px){#supervision-react-mount .detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#supervision-react-mount .mini-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:900px){#supervision-react-mount .supervision-subnav{margin-bottom:2px}#supervision-react-mount .detail-grid{grid-template-columns:1fr}#supervision-react-mount .supervision-actions{flex-wrap:wrap}#supervision-react-mount .supervision-actions>*{flex:0 1 auto}}
 @media(max-width:620px){#supervision-react-mount .supervision-head h2{font-size:19px}#supervision-react-mount .mini-kpi-grid{grid-template-columns:1fr 1fr}#supervision-react-mount .data-item{align-items:flex-start;flex-direction:column}#supervision-react-mount .data-item-side{width:100%;justify-content:flex-start}}
+
+#supervision-react-mount .supervision-layout.no-subnav{display:block}
