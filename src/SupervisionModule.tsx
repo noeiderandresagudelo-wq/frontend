@@ -264,7 +264,7 @@ export default function SupervisionModule({token,tenantId,role}:Props){
     </div>
 
     {showPostForm&&<PostModal editing={editingPost} role={role} onClose={()=>{setShowPostForm(false);setEditingPost(null)}} onSave={savePost}/>}
-    {showTicketForm&&<TicketModal installations={installations} assets={assets} selectedId={selectedId} onClose={()=>setShowTicketForm(false)} onSave={createTicket} busy={busy}/>}
+    {showTicketForm&&<TicketModal installations={installations} assets={assets} selectedId={selectedId} onSelect={setSelectedId} onClose={()=>setShowTicketForm(false)} onSave={createTicket} busy={busy}/>} 
   </div>;
 }
 
