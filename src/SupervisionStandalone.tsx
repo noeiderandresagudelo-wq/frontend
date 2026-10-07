@@ -58,7 +58,10 @@ function SupervisionStandalone() {
   if (!state) {
     return <div className="supervision-standalone-loading">Cargando módulo de Supervisión…</div>;
   }
-  if (state.role === 'supervisor' && window.matchMedia('(max-width: 768px)').matches) {
+  // El supervisor es un perfil de campo/móvil. No debe entrar al ERP de escritorio,
+  // independientemente del ancho de pantalla. Su experiencia operativa es la app móvil
+  // de Supervisión, equivalente al flujo móvil del técnico.
+  if (state.role === 'supervisor') {
     return <SupervisorMobile {...state} />;
   }
   return <SupervisionModule {...state} />;
