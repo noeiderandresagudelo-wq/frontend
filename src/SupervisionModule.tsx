@@ -43,7 +43,7 @@ export default function SupervisionModule({token,tenantId,role}:Props){
  const refresh=useCallback(async(silent=false)=>{
    if(!silent){setLoading(true); setError('');}
    const [i,a,n,r,au,ev,an,no,sl,nt]=await Promise.all([
-     db.from('supervision_instalaciones').select('*').order('nombre'),
+     db.rpc('listar_supervision_instalaciones'),
      db.from('supervision_activos').select('*').order('nombre_activo'),
      db.from('supervision_novedades').select('*').order('created_at',{ascending:false}).limit(200),
      db.from('supervision_revistas').select('*').order('created_at',{ascending:false}).limit(100),
