@@ -36,6 +36,8 @@ export default function SupervisionModule({token,tenantId,role}:Props){
  const [showTicket,setShowTicket]=useState(false);
  const [gpsBusy,setGpsBusy]=useState(false);
  const [ticketInst,setTicketInst]=useState('');
+ const [showInstallationForm,setShowInstallationForm]=useState(false);
+ const [editingInstallation,setEditingInstallation]=useState<Installation|null>(null);
  const offlineKey=`alarvix.supervision.queue.${tenantId}`;
 
  const refresh=useCallback(async(silent=false)=>{
@@ -66,6 +68,40 @@ export default function SupervisionModule({token,tenantId,role}:Props){
    window.addEventListener('alarvix-supervision-submodule',onSubmodule);
    return()=>window.removeEventListener('alarvix-supervision-submodule',onSubmodule);
  },[]);
+ const canManageInstallations=role==='admin';
+ const saveInstallation=async(event:FormEvent<HTMLFormElement>)=>{
+   event.preventDefault();
+   if(!canManageInstallations){setError('Solo un administrador puede crear o modificar puestos de supervisión.');return;}
+   const data=new FormData(event.currentTarget);
+   const payload={
+     nombre:String(data.get('nombre')||'').trim(),
+     direccion:String(data.get('direccion')||'').trim()||null,
+     ciudad:String(data.get('ciudad')||'').trim()||null,
+     latitud:data.get('latitud')?Number(data.get('latitud')):null,
+     longitud:data.get('longitud')?Number(data.get('longitud')):null,
+     geocerca_radio_m:Math.max(25,Number(data.get('geocerca_radio_m')||100)),
+     estado:String(data.get('estado')||'Activa')
+   };
+   if(!payload.nombre){setError('El nombre del puesto es obligatorio.');return;}
+   setLoading(true);setError('');
+   const query=editingInstallation
+     ? db.from('supervision_instalaciones').update(payload).eq('id',editingInstallation.id)
+     : db.from('supervision_instalaciones').insert({...payload,tenant_id:tenantId});
+   const {error:e}=await query;
+   if(e){setError(e.message);setLoading(false);return;}
+   setNotice(editingInstallation?'Puesto actualizado correctamente.':'Puesto de supervisión creado correctamente.');
+   setShowInstallationForm(false);setEditingInstallation(null);
+   await refresh(true);setLoading(false);
+ };
+ const archiveInstallation=async(id:string)=>{
+   if(!canManageInstallations)return;
+   if(!window.confirm('¿Archivar este puesto de supervisión? No se eliminará el historial operativo.'))return;
+   setLoading(true);
+   const {error:e}=await db.from('supervision_instalaciones').update({estado:'Inactiva',eliminado_at:new Date().toISOString()}).eq('id',id);
+   if(e)setError(e.message);else{setNotice('Puesto archivado.');await refresh(true);}
+   setLoading(false);
+ };
+
  const syncOffline=useCallback(async()=>{if(!navigator.onLine)return;const raw=localStorage.getItem(offlineKey);if(!raw)return;let queue: {table:string;payload:unknown}[]=[];try{queue=JSON.parse(raw)}catch{queue=[]}const remaining: typeof queue=[];for(const item of queue){const {error}=await db.from(item.table).insert(item.payload as Record<string, unknown>);if(error)remaining.push(item)}localStorage.setItem(offlineKey,JSON.stringify(remaining));if(remaining.length!==queue.length){setNotice('Se sincronizaron '+(queue.length-remaining.length)+' operación(es) pendientes.');void refresh()}},[db,offlineKey,refresh]);
  useEffect(()=>{window.addEventListener('online',syncOffline);void syncOffline();return()=>window.removeEventListener('online',syncOffline)},[syncOffline]);
  useEffect(()=>{const ch=db.channel('supervision-live').on('postgres_changes',{event:'*',schema:'public',table:'supervision_novedades',filter:'tenant_id=eq.'+tenantId},()=>void refresh(true)).on('postgres_changes',{event:'*',schema:'public',table:'supervision_revistas',filter:'tenant_id=eq.'+tenantId},()=>void refresh(true)).subscribe(); return()=>{void db.removeChannel(ch)}},[db,tenantId,refresh]);
@@ -121,7 +157,26 @@ export default function SupervisionModule({token,tenantId,role}:Props){
       tab==='evidencias'?<section className="panel"><div className="panel-header"><div><p className="eyebrow">Soportes</p><h3>Evidencias</h3></div><span>{evidences.length} registros</span></div><div className="data-list">{evidences.map(e=><article className="data-item" key={e.id}><div><span className="code">{e.mime_type||'archivo'}</span><h3>{e.nombre_archivo||e.storage_path}</h3><p>{e.captured_at?new Date(e.captured_at).toLocaleString('es-CO'):'Sin captura'} · {e.latitud!=null&&e.longitud!=null?e.latitud.toFixed(5)+', '+e.longitud.toFixed(5):'Sin GPS'}</p></div><span>{e.tamano_bytes?Math.round(e.tamano_bytes/1024)+' KB':''}</span></article>)}{evidences.length===0&&<div className="empty-state">No hay evidencias registradas.</div>}</div></section>:
       tab==='anomalias'?<section className="panel"><div className="panel-header"><div><p className="eyebrow">Control de excepciones</p><h3>Anomalías</h3></div><span>{anomaliesOpen} pendientes</span></div><div className="data-list">{anomalies.map(a=><article className="data-item" key={a.id}><div><span className="code">{a.severidad} · {a.tipo_anomalia}</span><h3>{a.descripcion}</h3><p>{a.created_at?new Date(a.created_at).toLocaleString('es-CO'):''}</p></div><span>{a.estado}</span></article>)}{anomalies.length===0&&<div className="empty-state">No hay anomalías registradas.</div>}</div></section>:
       tab==='auditoria'?<section className="panel"><div className="panel-header"><div><p className="eyebrow">Trazabilidad</p><h3>Auditoría y notificaciones</h3></div><span>{unreadNotifications} sin leer</span></div><div className="content-grid"><div className="data-list">{audits.map(a=><article className="data-item" key={a.id}><div><span className="code">{a.accion} · {a.entidad}</span><h3>{a.usuario_nombre||'Sistema'}</h3><p>{a.created_at?new Date(a.created_at).toLocaleString('es-CO'):''} · {a.entidad_id||'—'}</p></div></article>)}{audits.length===0&&<div className="empty-state">No hay eventos de auditoría.</div>}</div><div className="data-list">{notifications.map(n=><article className="data-item" key={n.id}><div><span className="code">{n.tipo}</span><h3>{n.titulo}</h3><p>{n.mensaje}</p></div>{!n.leida&&<button className="text-button" onClick={()=>void markNotification(n.id)}>Marcar leída</button>}</article>)}{notifications.length===0&&<div className="empty-state">No hay notificaciones.</div>}</div></div></section>:
-      <section className="content-grid"><div className="panel"><div className="panel-header"><div><p className="eyebrow">Catálogo operativo</p><h3>Tipos de novedad</h3></div></div><div className="data-list">{noveltyTypes.map(t=><article className="data-item" key={t.id}><div><span className="code">{t.activo?'ACTIVO':'INACTIVO'}</span><h3>{t.nombre}</h3><p>{t.descripcion||'Sin descripción'}</p></div></article>)}{noveltyTypes.length===0&&<div className="empty-state">No hay tipos configurados.</div>}</div></div><div className="panel"><div className="panel-header"><div><p className="eyebrow">SLA</p><h3>Políticas por criticidad</h3></div></div><div className="data-list">{slaPolicies.map(s=><article className="data-item" key={s.id}><div><span className="code">{s.criticidad}</span><h3>{s.nombre}</h3><p>Respuesta: {s.minutos_respuesta} min · Resolución: {s.minutos_resolucion} min</p></div><span>{s.activo?'Activo':'Inactivo'}</span></article>)}{slaPolicies.length===0&&<div className="empty-state">No hay políticas SLA configuradas.</div>}</div></div></section>}
+      <section className="content-grid">
+       <div className="panel supervision-wide">
+        <div className="panel-header"><div><p className="eyebrow">Maestro independiente</p><h3>Puestos de supervisión</h3><p className="helper-text">Este catálogo es exclusivo de Supervisión Física. No comparte instalaciones con Servicios Técnicos.</p></div>{canManageInstallations&&<button className="primary-button" onClick={()=>{setEditingInstallation(null);setShowInstallationForm(true)}}>+ Nuevo puesto</button>}</div>
+        <div className="data-list">{installations.map(i=><article className="data-item" key={i.id}>
+          <div><span className="code">{i.estado} · geocerca {i.geocerca_radio_m} m</span><h3>{i.nombre}</h3><p>{i.direccion||'Sin dirección'} · {i.ciudad||'Ciudad no definida'}</p><p>{i.latitud!=null&&i.longitud!=null?'GPS '+i.latitud.toFixed(6)+', '+i.longitud.toFixed(6):'Sin coordenadas GPS'}</p></div>
+          <div className="data-item-side">{canManageInstallations&&<><button className="text-button" onClick={()=>{setEditingInstallation(i);setShowInstallationForm(true)}}>Editar</button>{i.estado==='Activa'&&<button className="text-button danger" onClick={()=>void archiveInstallation(i.id)}>Archivar</button>}</div>
+        </article>)}{installations.length===0&&<div className="empty-state">No hay puestos de supervisión creados. Crea el primero desde «Nuevo puesto».</div>}</div>
+       </div>
+       <div className="panel"><div className="panel-header"><div><p className="eyebrow">Catálogo operativo</p><h3>Tipos de novedad</h3></div></div><div className="data-list">{noveltyTypes.map(t=><article className="data-item" key={t.id}><div><span className="code">{t.activo?'ACTIVO':'INACTIVO'}</span><h3>{t.nombre}</h3><p>{t.descripcion||'Sin descripción'}</p></div></article>)}</div></div>
+       <div className="panel"><div className="panel-header"><div><p className="eyebrow">SLA</p><h3>Políticas por criticidad</h3></div></div><div className="data-list">{slaPolicies.map(s=><article className="data-item" key={s.id}><div><span className="code">{s.criticidad}</span><h3>{s.nombre}</h3><p>Respuesta: {s.minutos_respuesta} min · Resolución: {s.minutos_resolucion} min</p></div><span>{s.activo?'Activo':'Inactivo'}</span></article>)}</div></div>
+      </section>
+      {showInstallationForm&&<div className="supervision-modal"><form className="panel form-panel" onSubmit={saveInstallation}>
+       <div className="panel-header"><div><p className="eyebrow">Maestro de puestos</p><h3>{editingInstallation?'Editar puesto de supervisión':'Nuevo puesto de supervisión'}</h3><p className="helper-text">Registro independiente del módulo de Servicios Técnicos.</p></div><button type="button" className="text-button" onClick={()=>{setShowInstallationForm(false);setEditingInstallation(null)}}>✕</button></div>
+       <div className="field-row"><label>Nombre del puesto<input name="nombre" required defaultValue={editingInstallation?.nombre||''} placeholder="Ej. Torres del Norte · Portería Principal"/></label><label>Ciudad<input name="ciudad" defaultValue={editingInstallation?.ciudad||''} placeholder="Barranquilla"/></label></div>
+       <label>Dirección<input name="direccion" defaultValue={editingInstallation?.direccion||''} placeholder="Dirección completa del puesto"/></label>
+       <div className="field-row"><label>Latitud<input name="latitud" type="number" step="any" defaultValue={editingInstallation?.latitud??''} placeholder="10.96854"/></label><label>Longitud<input name="longitud" type="number" step="any" defaultValue={editingInstallation?.longitud??''} placeholder="-74.78132"/></label></div>
+       <div className="field-row"><label>Radio de geocerca (m)<input name="geocerca_radio_m" type="number" min="25" max="1000" defaultValue={editingInstallation?.geocerca_radio_m||100}/></label><label>Estado<select name="estado" defaultValue={editingInstallation?.estado||'Activa'}><option>Activa</option><option>Inactiva</option></select></label></div>
+       <div className="context-card"><span className="code">CONTROL DE CALIDAD</span><strong>Ubicación + geocerca obligatorias para check-in GPS</strong><small>Usa coordenadas verificadas del puesto. El historial de revistas no se elimina al archivar.</small></div>
+       <button className="primary-button" type="submit">{editingInstallation?'Guardar cambios':'Crear puesto de supervisión'}</button>
+      </form></div>}
       {showTicket&&<div className="supervision-modal"><form className="panel form-panel" onSubmit={createTicket}><div className="panel-header"><div><p className="eyebrow">Gestión operativa</p><h3>Nueva novedad</h3></div><button type="button" className="text-button" onClick={()=>setShowTicket(false)}>✕</button></div><label>Instalación<select name="instalacion_id" required value={ticketInst||installations[0]?.id||''} onChange={e=>setTicketInst(e.target.value)}>{installations.map(i=><option key={i.id} value={i.id}>{i.nombre}</option>)}</select></label><label>Activo relacionado<select name="activo_id"><option value="">Sin activo específico</option>{assets.filter(a=>a.instalacion_id===(ticketInst||installations[0]?.id)).map(a=><option key={a.id} value={a.id}>{a.codigo_activo||'SIN CÓDIGO'} · {a.nombre_activo}</option>)}</select></label><div className="field-row"><label>Tipo<select name="tipo" defaultValue="Falla técnica"><option>Falla técnica</option><option>Daño físico</option><option>Mantenimiento preventivo</option><option>Seguridad</option><option>Acceso</option><option>Otro</option></select></label><label>Criticidad<select name="criticidad" defaultValue="Media"><option>Baja</option><option>Media</option><option>Alta</option><option>Crítica</option></select></label></div><label>Descripción<textarea name="descripcion" required placeholder="Describe la novedad con suficiente detalle"/></label><label>Fecha límite SLA<input name="sla" type="datetime-local"/></label><button className="primary-button">Registrar novedad</button></form></div>}
   </div>
  </div>;
