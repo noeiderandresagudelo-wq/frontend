@@ -205,13 +205,11 @@ export default function PuestoZonaDetail({
           <Contact title="Coordinador / administrador" name={installation.coordinador_nombre} phone={installation.telefono_contacto} />
           <Contact title="Central de monitoreo" name={null} phone={null} />
           <Contact title="Cliente" name={null} phone={null} />
-          <p className="pz-footnote">Los contactos de central y cliente se muestran como pendientes porque la ficha actual solo almacena el teléfono del contacto principal.</p>
         </section>
         <section className="pz-card">
           <CardHeading eyebrow="ATENCIÓN PRIORITARIA" title="Acciones rápidas" />
           <a className="pz-secondary pz-link-button" href={installation.telefono_contacto ? `tel:${installation.telefono_contacto.replace(/[^+\d]/g, '')}` : undefined} aria-disabled={!installation.telefono_contacto}>☎ Llamar al contacto principal</a>
           {mapsUrl && <a className="pz-secondary pz-link-button" href={mapsUrl} target="_blank" rel="noreferrer">⌖ Abrir ubicación del puesto</a>}
-          {!installation.telefono_contacto && <div className="pz-inline-alert">Registra un teléfono de contacto para habilitar la llamada directa.</div>}
         </section>
       </div>}
     </div>
@@ -220,9 +218,8 @@ export default function PuestoZonaDetail({
       <div className="pz-schedule-header"><div><p className="pz-eyebrow">COBERTURA OPERATIVA</p><h3>Programación de turnos</h3><p>Resumen de turnos activos y estado de las revistas asociadas al puesto.</p></div><button className="pz-primary" onClick={() => setActiveTab('rounds')}>⚙ Configurar programación</button></div>
       <div className="pz-schedule-stats"><div><span>Turnos activos disponibles</span><strong>{activeShifts.length}</strong></div><div><span>Revistas registradas</span><strong>{reviews.length}</strong></div><div><span>Check-ins registrados</span><strong>{reviews.filter(r => !!r.fecha_checkin).length}</strong></div><div><span>Alertas de estado</span><strong className={pendingReviews.length || activeShifts.length === 0 ? 'pz-number-warning' : 'pz-number-good'}>{pendingReviews.length + (activeShifts.length === 0 ? 1 : 0)}</strong></div></div>
       <div className="pz-table-wrap"><table className="pz-table"><thead><tr><th>Día</th><th>Cuadrante asignado</th><th>Horario</th><th>Frecuencia de revistas</th><th>Estado</th></tr></thead><tbody>
-        {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(day => <tr key={day}><td>{day}</td><td>{activeShifts.length ? 'Turno disponible, asignación por día pendiente' : 'Sin turno activo'}</td><td>{activeShifts.length ? activeShifts.map(s => `${s.hora_inicio}–${s.hora_fin}`).join(', ') : '—'}</td><td>{activeShifts.length ? activeShifts.map(s => s.frecuencia_revistas).join(', ') : '—'}</td><td><span className={`pz-state-pill ${activeShifts.length ? 'warning' : 'danger'}`}>{activeShifts.length ? 'Sin asignación diaria' : 'Sin programación'}</span></td></tr>)}
+        {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(day => <tr key={day}><td>{day}</td><td className="pz-schedule-muted">—</td><td className="pz-schedule-muted">—</td><td className="pz-schedule-muted">—</td><td><span className="pz-schedule-muted">{activeShifts.length ? 'Sin asignación' : 'Sin turno'}</span></td></tr>)}
       </tbody></table></div>
-      <p className="pz-footnote">Importante: los turnos que aparecen son los configurados globalmente. Esta interfaz no inventa asignaciones diarias ni ausencias; para persistir cuadrantes por día se necesita añadir el modelo de programación específica por puesto.</p>
     </section>
   </section>;
 }
