@@ -13,7 +13,8 @@ type Installation = {
 };
 type Asset = { id: string; instalacion_id: string; nombre_activo: string; codigo_activo: string | null; tipo_activo: string | null; ubicacion_detalle: string | null; estado: string; qr_codigo: string | null; nfc_codigo: string | null };
 type Ticket = { id: string; numero_ticket: number; instalacion_id: string; activo_id: string | null; tipo_novedad: string; criticidad: string; estado_ticket: string; descripcion: string; causa_raiz: string | null; solucion: string | null; responsable_nombre: string | null; sla_limite: string | null; created_at: string; updated_at: string };
-type Review = { id: string; numero_revista: number; instalacion_id: string; supervisor_id: string; turno_id: string | null; fecha_programada: string | null; fecha_checkin: string | null; fecha_cierre: string | null; estado: string; metodo_checkin: string | null; latitud_checkin: number | null; longitud_checkin: number | null; distancia_checkin_m: number | null; observaciones: string | null };
+type Review = { id: string; numero_revista: number; instalacion_id: string; supervisor_id: string; turno_id: string | null; fecha_programada: string | null; fecha_checkin: string | null; fecha_cierre: string | null; estado: string; metodo_checkin: string | null; latitud_checkin: number | null; longitud_checkin: number | null; distancia_checkin_m: number | null; observaciones: string | null; created_at?: string };
+type Anomaly = { id: string; instalacion_id: string | null; revista_id: string | null; tipo_anomalia: string; severidad: string; descripcion: string; estado: string; created_at: string };
 type Assignment = { id: string; instalacion_id: string; usuario_id: string; rol: string; activo: boolean };
 type SupervisionUser = { id: string; nombre: string; username: string; rol: string; activo: boolean };
 type Shift = { id: string; nombre: string; hora_inicio: string; hora_fin: string; frecuencia_revistas: number; activo: boolean };
@@ -35,10 +36,10 @@ const isAdmin = (role: UserRole) => role === 'admin' || role === 'manager';
 const dateTime = (value: string | null | undefined) => value ? new Date(value).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' }) : 'Sin registro';
 
 export default function PuestoZonaDetail({
-  installation, assets, tickets, reviews, assignments, users, shifts, supervisionRules, saveSupervisionRule, role, onEdit, assignUser, createAsset,
+  installation, assets, tickets, reviews, assignments, users, shifts, anomalies, supervisionRules, saveSupervisionRule, role, onEdit, assignUser, createAsset,
 }: {
   installation: Installation; assets: Asset[]; tickets: Ticket[]; reviews: Review[]; assignments: Assignment[];
-  users: SupervisionUser[]; shifts: Shift[]; supervisionRules: SupervisionRule[]; role: UserRole; onEdit: () => void;
+  users: SupervisionUser[]; shifts: Shift[]; anomalies: Anomaly[]; supervisionRules: SupervisionRule[]; role: UserRole; onEdit: () => void;
   saveSupervisionRule: (rule: Omit<SupervisionRule, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>) => Promise<boolean>;
   assignUser: (e: FormEvent<HTMLFormElement>) => Promise<void>;
   createAsset: (e: FormEvent<HTMLFormElement>) => Promise<void>;
@@ -224,7 +225,7 @@ export default function PuestoZonaDetail({
         <section className="pz-card">
           <div className="pz-history-header"><div><CardHeading eyebrow="TRAZABILIDAD OPERATIVA" title="Historial de revistas ejecutadas" /><p className="pz-muted">Registros reales de check-in y cierre asociados al puesto.</p></div><span className="pz-history-count">{reviews.length} registros</span></div>
           <div className="pz-table-wrap"><table className="pz-table"><thead><tr><th>Fecha / hora</th><th>Supervisor asignado</th><th>Método</th><th>Distancia GPS</th><th>Estado</th><th>Novedades / observaciones</th></tr></thead><tbody>
-            {[...reviews].sort((a, b) => new Date(b.fecha_checkin || b.fecha_programada || 0).getTime() - new Date(a.fecha_checkin || a.fecha_programada || 0).getTime()).map(review => <tr key={review.id}><td>{dateTime(review.fecha_checkin || review.fecha_programada)}</td><td>{users.find(user => user.id === review.supervisor_id)?.nombre || 'Supervisor sin nombre disponible'}</td><td>{review.metodo_checkin || '—'}</td><td>{review.distancia_checkin_m != null ? `${Math.round(review.distancia_checkin_m)} m` : '—'}</td><td><span className={`pz-state-pill ${review.estado === 'Completada' ? 'good' : review.estado === 'Incidencia' ? 'warning' : 'neutral'}`}>{review.estado}</span></td><td>{review.observaciones || '—'}</td></tr>)}
+            {[...reviews].sort((a, b) => new Date(b.fecha_checkin || b.fecha_programada || 0).getTime() - new Date(a.fecha_checkin || a.fecha_programada || 0).getTime()).map(review => <tr key={review.id}><td>{dateTime(review.fecha_checkin || review.fecha_programada || review.created_at)}</td><td>{users.find(user => user.id === review.supervisor_id)?.nombre || 'Supervisor sin nombre disponible'}</td><td>{review.metodo_checkin || '—'}</td><td>{review.distancia_checkin_m != null ? `${Math.round(review.distancia_checkin_m)} m` : '—'}</td><td><span className={`pz-state-pill ${review.estado === 'Completada' ? 'good' : review.estado === 'Incidencia' ? 'warning' : 'neutral'}`}>{review.estado}</span></td><td>{[review.observaciones, ...anomalies.filter(item => item.revista_id === review.id).map(item => `${item.tipo_anomalia}: ${item.descripcion}`)].filter(Boolean).join(' · ') || '—'}</td></tr>)}
           </tbody></table></div>
           {!reviews.length && <Empty text="Todavía no hay revistas registradas para este puesto. Las nuevas revistas aparecerán aquí con su fecha, método, distancia y observaciones." />}
         </section>
