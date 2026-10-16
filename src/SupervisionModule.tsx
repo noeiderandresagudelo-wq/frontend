@@ -152,10 +152,17 @@ export default function SupervisionModule({token,tenantId,role}:Props){
   const savePost=async(e:FormEvent<HTMLFormElement>)=>{
     e.preventDefault();if(!canAdmin(role)){setError('No tienes permisos para administrar puestos.');return;}
     const f=new FormData(e.currentTarget);
-    const latRaw=String(f.get('latitud')||'').trim(),lngRaw=String(f.get('longitud')||'').trim();
-    const lat=latRaw?Number(latRaw):null,lng=lngRaw?Number(lngRaw):null;
-    if(lat!==null&&(!Number.isFinite(lat)||lat<-90||lat>90)){setError('Latitud inválida.');return;}
-    if(lng!==null&&(!Number.isFinite(lng)||lng<-180||lng>180)){setError('Longitud inválida.');return;}
+    const coordinatesRaw=String(f.get('coordenadas')||'').trim();
+    let lat:number|null=null,lng:number|null=null;
+    if(coordinatesRaw){
+      const coordinates=coordinatesRaw.split(',').map(value=>value.trim());
+      if(coordinates.length!==2||!coordinates[0]||!coordinates[1]){
+        setError('Escribe la ubicación en un solo campo con el formato: latitud, longitud.');return;
+      }
+      lat=Number(coordinates[0]);lng=Number(coordinates[1]);
+      if(!Number.isFinite(lat)||lat<-90||lat>90){setError('La latitud debe estar entre -90 y 90.');return;}
+      if(!Number.isFinite(lng)||lng<-180||lng>180){setError('La longitud debe estar entre -180 y 180.');return;}
+    }
     const payload={nombre:String(f.get('nombre')||'').trim(),direccion:String(f.get('direccion')||'').trim()||null,ciudad:String(f.get('ciudad')||'').trim()||null,
       latitud:lat,longitud:lng,geocerca_radio_m:Math.min(5000,Math.max(25,Number(f.get('geocerca_radio_m')||100))),estado:String(f.get('estado')||'Activa'),
       codigo_puesto:String(f.get('codigo_puesto')||'').trim()||null,tipo_puesto:String(f.get('tipo_puesto')||'Fijo'),
@@ -376,7 +383,7 @@ function PostModal({editing,role,onClose,onSave}:{editing:Installation|null;role
  return <div className="supervision-modal"><form className="panel form-panel installation-form" onSubmit={onSave}><div className="panel-header"><div><p className="eyebrow">Maestro de puestos</p><h3>{editing?'Editar puesto':'Nuevo puesto de supervisión'}</h3></div><button type="button" className="text-button" onClick={onClose}>✕</button></div>
    <div className="form-section-title">Identificación</div><div className="field-row"><label>Código<input name="codigo_puesto" defaultValue={editing?.codigo_puesto||''} placeholder="P-0001"/></label><label>Nombre<input name="nombre" required defaultValue={editing?.nombre||''}/></label></div><div className="field-row"><label>Tipo<select name="tipo_puesto" defaultValue={editing?.tipo_puesto||'Fijo'}><option>Fijo</option><option>Residencial</option><option>Comercial</option><option>Industrial</option><option>Educativo</option><option>Otro</option></select></label><label>Sector<input name="sector" defaultValue={editing?.sector||''}/></label></div>
    <div className="form-section-title">Responsable</div><div className="field-row"><label>Coordinador<input name="coordinador_nombre" defaultValue={editing?.coordinador_nombre||''}/></label><label>Teléfono<input name="telefono_contacto" defaultValue={editing?.telefono_contacto||''}/></label></div>
-   <div className="form-section-title">Ubicación</div><div className="field-row"><label>Ciudad<input name="ciudad" defaultValue={editing?.ciudad||''}/></label><label>Dirección<input name="direccion" defaultValue={editing?.direccion||''}/></label></div><div className="field-row"><label>Latitud<input name="latitud" type="number" step="any" defaultValue={editing?.latitud??''}/></label><label>Longitud<input name="longitud" type="number" step="any" defaultValue={editing?.longitud??''}/></label></div><div className="field-row"><label>Radio geocerca (m)<input name="geocerca_radio_m" type="number" min="25" max="5000" defaultValue={editing?.geocerca_radio_m||100}/></label><label>Estado<select name="estado" defaultValue={editing?.estado||'Activa'}><option>Activa</option><option>Inactiva</option></select></label></div>
+   <div className="form-section-title">Ubicación</div><div className="field-row"><label>Ciudad<input name="ciudad" defaultValue={editing?.ciudad||''}/></label><label>Dirección<input name="direccion" defaultValue={editing?.direccion||''}/></label></div><label>Ubicación (latitud, longitud)<input name="coordenadas" type="text" inputMode="decimal" autoComplete="off" placeholder="10.994866764770233, -74.78713279687763" defaultValue={editing?.latitud!=null&&editing?.longitud!=null?`${editing.latitud}, ${editing.longitud}`:''}/><small className="helper-text">Escribe ambas coordenadas en el mismo campo, separadas por una coma.</small></label><div className="field-row"><label>Radio geocerca (m)<input name="geocerca_radio_m" type="number" min="25" max="5000" defaultValue={editing?.geocerca_radio_m||100}/></label><label>Estado<select name="estado" defaultValue={editing?.estado||'Activa'}><option>Activa</option><option>Inactiva</option></select></label></div>
    <div className="form-section-title">Control operativo</div><div className="field-row"><label>Dotación<select name="dotacion_estado" defaultValue={editing?.dotacion_estado||'Pendiente'}><option>Completa</option><option>Incompleta</option><option>Pendiente</option></select></label><label>Equipamiento<select name="equipamiento_estado" defaultValue={editing?.equipamiento_estado||'Operativo'}><option>Operativo</option><option>Con novedades</option><option>Pendiente</option></select></label></div><label>Fecha estudio de seguridad<input name="estudio_seguridad_fecha" type="date" defaultValue={editing?.estudio_seguridad_fecha||''}/></label><label>Observaciones<textarea name="observaciones" defaultValue={editing?.observaciones||''}/></label>
    <div className="context-card"><span className="code">VALIDACIÓN</span><strong>La sesión define el tenant y el rol.</strong><small>Las coordenadas y geocerca se validan también en PostgreSQL.</small></div><button className="primary-button" disabled={!canAdmin(role)}>{editing?'Guardar cambios':'Crear puesto'}</button>
  </form></div>;
