@@ -326,7 +326,7 @@ export default function SupervisionModule({token,tenantId,role}:Props){
 
         {loading?<div className="panel loading-state">Cargando Supervisión Física…</div>:
         tab==='resumen'?<Dashboard installations={installations} openTickets={openTickets} critical={critical} overdue={overdue} anomalies={pendingAnomalies} unread={unread} reviews={reviews} onTab={setTab} selected={selected} onSelect={setSelectedId}/>:
-        tab==='puestos'?<PostsView installations={installations} selected={selected} assets={assets} tickets={tickets} reviews={reviews} assignments={assignments} users={users} shifts={shifts} supervisionRules={supervisionRules} saveSupervisionRule={saveSupervisionRule} role={role} onRefresh={()=>void refresh()} onSelect={setSelectedId} onNew={()=>{setEditingPost(null);setShowPostForm(true)}} onEdit={p=>{setEditingPost(p);setShowPostForm(true)}} onArchive={archivePost} assignUser={assignUser} createAsset={createAsset}/>:
+        tab==='puestos'?<PostsView installations={installations} selected={selected} assets={assets} tickets={tickets} reviews={reviews} assignments={assignments} users={users} shifts={shifts} anomalies={anomalies} supervisionRules={supervisionRules} saveSupervisionRule={saveSupervisionRule} role={role} onRefresh={()=>void refresh()} onSelect={setSelectedId} onNew={()=>{setEditingPost(null);setShowPostForm(true)}} onEdit={p=>{setEditingPost(p);setShowPostForm(true)}} onArchive={archivePost} assignUser={assignUser} createAsset={createAsset}/>:
         tab==='turnos'?<ShiftsView shifts={shifts} role={role} createShift={createShift} toggleShift={toggleShift}/>:
         tab==='activos'?<AssetsView assets={assets} installations={installations} selectedId={selectedId} role={role} createAsset={createAsset}/>:
         tab==='revistas'?<ReviewsView reviews={reviews} installations={installations} selectedId={selectedId} gpsBusy={gpsBusy} onSelect={setSelectedId} checkin={checkin} onFinish={finishReview}/>:
@@ -369,11 +369,12 @@ function Dashboard({installations,openTickets,critical,overdue,anomalies,unread,
 }
 function Stat({title,value,meta,tone='blue'}:{title:string;value:number|string;meta:string;tone?:'green'|'blue'|'violet'|'amber'}){return <article className={`stat-card tone-${tone}`}><span>{title}</span><strong>{value}</strong><em>{meta}</em></article>}
 
-function PostsView({installations,selected,assets,tickets,reviews,assignments,users,shifts,supervisionRules,saveSupervisionRule,role,onRefresh,onSelect,onNew,onEdit,onArchive,assignUser,createAsset}:{installations:Installation[];selected:Installation|null;assets:Asset[];tickets:Ticket[];reviews:Review[];assignments:Assignment[];users:SupervisionUser[];shifts:Shift[];supervisionRules:SupervisionRule[];saveSupervisionRule:(rule:Omit<SupervisionRule,'id'|'tenant_id'|'created_at'|'updated_at'>)=>Promise<boolean>;role:UserRole;onRefresh:()=>void;onSelect:(id:string)=>void;onNew:()=>void;onEdit:(p:Installation)=>void;onArchive:(id:string)=>Promise<void>;assignUser:(e:FormEvent<HTMLFormElement>)=>Promise<void>;createAsset:(e:FormEvent<HTMLFormElement>)=>Promise<void>}){
+function PostsView({installations,selected,assets,tickets,reviews,assignments,users,shifts,anomalies,supervisionRules,saveSupervisionRule,role,onRefresh,onSelect,onNew,onEdit,onArchive,assignUser,createAsset}:{installations:Installation[];selected:Installation|null;assets:Asset[];tickets:Ticket[];reviews:Review[];assignments:Assignment[];users:SupervisionUser[];shifts:Shift[];anomalies:Anomaly[];supervisionRules:SupervisionRule[];saveSupervisionRule:(rule:Omit<SupervisionRule,'id'|'tenant_id'|'created_at'|'updated_at'>)=>Promise<boolean>;role:UserRole;onRefresh:()=>void;onSelect:(id:string)=>void;onNew:()=>void;onEdit:(p:Installation)=>void;onArchive:(id:string)=>Promise<void>;assignUser:(e:FormEvent<HTMLFormElement>)=>Promise<void>;createAsset:(e:FormEvent<HTMLFormElement>)=>Promise<void>}){
   const selectedAssets=selected?assets.filter(a=>a.instalacion_id===selected.id):[];
   const selectedTickets=selected?tickets.filter(t=>t.instalacion_id===selected.id):[];
   const selectedReviews=selected?reviews.filter(r=>r.instalacion_id===selected.id):[];
   const selectedAssignments=selected?assignments.filter(a=>a.instalacion_id===selected.id):[];
+  const selectedAnomalies=selected?anomalies.filter(a=>a.instalacion_id===selected.id):[];
   return <section className="content-grid"><div className="panel supervision-wide"><div className="panel-header"><div><p className="eyebrow">Maestro operativo</p><h3>Todos los puestos</h3></div>{canAdmin(role)&&<button className="primary-button" onClick={onNew}>+ Nuevo puesto</button>}</div>
     {installations.length ? <div className="posts-table-wrap"><table className="posts-table">
       <thead><tr><th>Puesto</th><th>Estado operativo</th><th>Ubicación / geocerca</th><th>Última revista</th><th>Próximo turno</th><th>Acciones</th></tr></thead>
@@ -393,7 +394,7 @@ function PostsView({installations,selected,assets,tickets,reviews,assignments,us
       })}</tbody>
     </table></div> : <div className="posts-empty-state"><span>⌖</span><h4>Aún no hay puestos</h4><p>Crea el primer puesto para empezar a organizar la operación.</p><div><button className="ghost-button" onClick={onRefresh} type="button">↻ Actualizar lista</button>{canAdmin(role)&&<button className="primary-button" onClick={onNew} type="button">+ Nuevo puesto</button>}</div></div>}
   </div>
-  {selected&&<PuestoZonaDetail installation={selected} assets={selectedAssets} tickets={selectedTickets} reviews={selectedReviews} assignments={selectedAssignments} users={users} shifts={shifts} supervisionRules={supervisionRules} saveSupervisionRule={saveSupervisionRule} role={role} onEdit={()=>onEdit(selected)} assignUser={assignUser} createAsset={createAsset}/>} 
+  {selected&&<PuestoZonaDetail installation={selected} assets={selectedAssets} tickets={selectedTickets} reviews={selectedReviews} assignments={selectedAssignments} users={users} shifts={shifts} anomalies={selectedAnomalies} supervisionRules={supervisionRules} saveSupervisionRule={saveSupervisionRule} role={role} onEdit={()=>onEdit(selected)} assignUser={assignUser} createAsset={createAsset}/>} 
 
   </section>;
 }
