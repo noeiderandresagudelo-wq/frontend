@@ -19,6 +19,8 @@ type Installation = {
 type Asset = { id:string; instalacion_id:string; nombre_activo:string; codigo_activo:string|null; tipo_activo:string|null; ubicacion_detalle:string|null; estado:string; qr_codigo:string|null; nfc_codigo:string|null };
 type Ticket = { id:string; numero_ticket:number; instalacion_id:string; activo_id:string|null; tipo_novedad:string; criticidad:string; estado_ticket:string; descripcion:string; causa_raiz:string|null; solucion:string|null; responsable_nombre:string|null; sla_limite:string|null; created_at:string; updated_at:string };
 type Review = { id:string; numero_revista:number; instalacion_id:string; supervisor_id:string; turno_id:string|null; fecha_programada:string|null; fecha_checkin:string|null; fecha_cierre:string|null; estado:string; metodo_checkin:string|null; latitud_checkin:number|null; longitud_checkin:number|null; distancia_checkin_m:number|null; observaciones:string|null };
+type SupervisionWindow = { inicio:string; fin:string };
+type SupervisionRule = { id:string; tenant_id:string; instalacion_id:string; revistas_requeridas:number; periodo_objetivo:'dia'|'turno'; ventanas_horarias:SupervisionWindow[]; requerir_qr:boolean; requerir_gps:boolean; requerir_firma:boolean; tolerancia_omision_min:number; activo:boolean; created_at:string; updated_at:string };
 type Evidence = { id:string; novedad_id:string|null; revista_id:string|null; activo_id:string|null; storage_path:string; nombre_archivo:string|null; mime_type:string|null; tamano_bytes:number|null; captured_at:string|null; created_at:string };
 type Maintenance = { id:string; activo_id:string; novedad_id:string|null; tipo_mantenimiento:string; descripcion:string|null; tecnico_id:string|null; fecha_inicio:string|null; fecha_fin:string|null; resultado:string|null };
 type Anomaly = { id:string; instalacion_id:string|null; revista_id:string|null; tipo_anomalia:string; severidad:string; descripcion:string; estado:string; created_at:string };
@@ -48,6 +50,7 @@ export default function SupervisionModule({token,tenantId,role}:Props){
   const [assets,setAssets]=useState<Asset[]>([]);
   const [tickets,setTickets]=useState<Ticket[]>([]);
   const [reviews,setReviews]=useState<Review[]>([]);
+  const [supervisionRules,setSupervisionRules]=useState<SupervisionRule[]>([]);
   const [evidences,setEvidences]=useState<Evidence[]>([]);
   const [maintenances,setMaintenances]=useState<Maintenance[]>([]);
   const [anomalies,setAnomalies]=useState<Anomaly[]>([]);
@@ -101,10 +104,11 @@ export default function SupervisionModule({token,tenantId,role}:Props){
       db.from('supervision_instalacion_usuarios').select('*').eq('tenant_id',tenantId).eq('activo',true),
       db.from('supervision_checklists').select('*').eq('tenant_id',tenantId).order('nombre'),
       db.from('supervision_checklist_items').select('*').eq('tenant_id',tenantId).order('checklist_id').order('orden'),
+      db.from('supervision_reglas_revista').select('*').eq('tenant_id',tenantId),
       db.rpc('listar_supervision_usuarios')
     ]);
 
-    const [a,n,r,ev,m,an,au,no,sl,nt,t,as,cl,ci,u]=results;
+    const [a,n,r,ev,m,an,au,no,sl,nt,t,as,cl,ci,sr,u]=results;
     if(!silent && results.some(x=>x.error)) {
       const firstSecondaryError=results.find(x=>x.error)?.error;
       if(firstSecondaryError)setError('Puestos cargados. Algunas funciones de Supervisión no están disponibles todavía: '+firstSecondaryError.message);
@@ -124,6 +128,7 @@ export default function SupervisionModule({token,tenantId,role}:Props){
     setAssignments((as.data||[]) as Assignment[]);
     setChecklists((cl.data||[]) as Checklist[]);
     setCheckItems((ci.data||[]) as ChecklistItem[]);
+    setSupervisionRules((sr.data||[]) as SupervisionRule[]);
     setUsers((u.data||[]) as SupervisionUser[]);
     if(!silent)setLoading(false);
     return loadedInstallations;
@@ -148,6 +153,19 @@ export default function SupervisionModule({token,tenantId,role}:Props){
   const overdue=useMemo(()=>openTickets.filter(t=>t.sla_limite&&new Date(t.sla_limite).getTime()<Date.now()),[openTickets]);
   const pendingAnomalies=useMemo(()=>anomalies.filter(a=>a.estado==='Pendiente'),[anomalies]);
   const unread=useMemo(()=>notifications.filter(n=>!n.leida),[notifications]);
+
+  const saveSupervisionRule=async(rule:Omit<SupervisionRule,'id'|'tenant_id'|'created_at'|'updated_at'>):Promise<boolean>=>{
+    if(!canAdmin(role)){setError('Solo administración puede modificar las reglas de inspección.');return false;}
+    const payload={...rule,tenant_id:tenantId,updated_at:new Date().toISOString()};
+    const {data,error:ruleError}=await db.from('supervision_reglas_revista')
+      .upsert(payload,{onConflict:'tenant_id,instalacion_id'}).select('*').single();
+    if(ruleError){setError('No fue posible guardar las reglas de revista: '+ruleError.message);return false;}
+    const saved=data as SupervisionRule;
+    setSupervisionRules(current=>[...current.filter(item=>item.instalacion_id!==saved.instalacion_id),saved]);
+    setError('');
+    setNotice('Parámetros de revista guardados y sincronizados.');
+    return true;
+  };
 
   const savePost=async(e:FormEvent<HTMLFormElement>)=>{
     e.preventDefault();if(!canAdmin(role)){setError('No tienes permisos para administrar puestos.');return;}
@@ -308,7 +326,7 @@ export default function SupervisionModule({token,tenantId,role}:Props){
 
         {loading?<div className="panel loading-state">Cargando Supervisión Física…</div>:
         tab==='resumen'?<Dashboard installations={installations} openTickets={openTickets} critical={critical} overdue={overdue} anomalies={pendingAnomalies} unread={unread} reviews={reviews} onTab={setTab} selected={selected} onSelect={setSelectedId}/>:
-        tab==='puestos'?<PostsView installations={installations} selected={selected} assets={assets} tickets={tickets} reviews={reviews} assignments={assignments} users={users} shifts={shifts} role={role} onRefresh={()=>void refresh()} onSelect={setSelectedId} onNew={()=>{setEditingPost(null);setShowPostForm(true)}} onEdit={p=>{setEditingPost(p);setShowPostForm(true)}} onArchive={archivePost} assignUser={assignUser} createAsset={createAsset}/>:
+        tab==='puestos'?<PostsView installations={installations} selected={selected} assets={assets} tickets={tickets} reviews={reviews} assignments={assignments} users={users} shifts={shifts} supervisionRules={supervisionRules} saveSupervisionRule={saveSupervisionRule} role={role} onRefresh={()=>void refresh()} onSelect={setSelectedId} onNew={()=>{setEditingPost(null);setShowPostForm(true)}} onEdit={p=>{setEditingPost(p);setShowPostForm(true)}} onArchive={archivePost} assignUser={assignUser} createAsset={createAsset}/>:
         tab==='turnos'?<ShiftsView shifts={shifts} role={role} createShift={createShift} toggleShift={toggleShift}/>:
         tab==='activos'?<AssetsView assets={assets} installations={installations} selectedId={selectedId} role={role} createAsset={createAsset}/>:
         tab==='revistas'?<ReviewsView reviews={reviews} installations={installations} selectedId={selectedId} gpsBusy={gpsBusy} onSelect={setSelectedId} checkin={checkin} onFinish={finishReview}/>:
@@ -351,7 +369,7 @@ function Dashboard({installations,openTickets,critical,overdue,anomalies,unread,
 }
 function Stat({title,value,meta,tone='blue'}:{title:string;value:number|string;meta:string;tone?:'green'|'blue'|'violet'|'amber'}){return <article className={`stat-card tone-${tone}`}><span>{title}</span><strong>{value}</strong><em>{meta}</em></article>}
 
-function PostsView({installations,selected,assets,tickets,reviews,assignments,users,shifts,role,onRefresh,onSelect,onNew,onEdit,onArchive,assignUser,createAsset}:{installations:Installation[];selected:Installation|null;assets:Asset[];tickets:Ticket[];reviews:Review[];assignments:Assignment[];users:SupervisionUser[];shifts:Shift[];role:UserRole;onRefresh:()=>void;onSelect:(id:string)=>void;onNew:()=>void;onEdit:(p:Installation)=>void;onArchive:(id:string)=>Promise<void>;assignUser:(e:FormEvent<HTMLFormElement>)=>Promise<void>;createAsset:(e:FormEvent<HTMLFormElement>)=>Promise<void>}){
+function PostsView({installations,selected,assets,tickets,reviews,assignments,users,shifts,supervisionRules,saveSupervisionRule,role,onRefresh,onSelect,onNew,onEdit,onArchive,assignUser,createAsset}:{installations:Installation[];selected:Installation|null;assets:Asset[];tickets:Ticket[];reviews:Review[];assignments:Assignment[];users:SupervisionUser[];shifts:Shift[];supervisionRules:SupervisionRule[];saveSupervisionRule:(rule:Omit<SupervisionRule,'id'|'tenant_id'|'created_at'|'updated_at'>)=>Promise<boolean>;role:UserRole;onRefresh:()=>void;onSelect:(id:string)=>void;onNew:()=>void;onEdit:(p:Installation)=>void;onArchive:(id:string)=>Promise<void>;assignUser:(e:FormEvent<HTMLFormElement>)=>Promise<void>;createAsset:(e:FormEvent<HTMLFormElement>)=>Promise<void>}){
   const selectedAssets=selected?assets.filter(a=>a.instalacion_id===selected.id):[];
   const selectedTickets=selected?tickets.filter(t=>t.instalacion_id===selected.id):[];
   const selectedReviews=selected?reviews.filter(r=>r.instalacion_id===selected.id):[];
@@ -375,7 +393,7 @@ function PostsView({installations,selected,assets,tickets,reviews,assignments,us
       })}</tbody>
     </table></div> : <div className="posts-empty-state"><span>⌖</span><h4>Aún no hay puestos</h4><p>Crea el primer puesto para empezar a organizar la operación.</p><div><button className="ghost-button" onClick={onRefresh} type="button">↻ Actualizar lista</button>{canAdmin(role)&&<button className="primary-button" onClick={onNew} type="button">+ Nuevo puesto</button>}</div></div>}
   </div>
-  {selected&&<PuestoZonaDetail installation={selected} assets={selectedAssets} tickets={selectedTickets} reviews={selectedReviews} assignments={selectedAssignments} users={users} shifts={shifts} role={role} onEdit={()=>onEdit(selected)} assignUser={assignUser} createAsset={createAsset}/>} 
+  {selected&&<PuestoZonaDetail installation={selected} assets={selectedAssets} tickets={selectedTickets} reviews={selectedReviews} assignments={selectedAssignments} users={users} shifts={shifts} supervisionRules={supervisionRules} saveSupervisionRule={saveSupervisionRule} role={role} onEdit={()=>onEdit(selected)} assignUser={assignUser} createAsset={createAsset}/>} 
 
   </section>;
 }
