@@ -336,7 +336,7 @@ export default function SupervisionModule({token,tenantId,role}:Props){
         tab==='mantenimientos'?<MaintenanceView maintenances={maintenances} assets={assets}/>:
         tab==='anomalias'?<AnomaliesView anomalies={anomalies} installations={installations}/>:
         tab==='auditoria'?<AuditView audits={audits} notifications={notifications} unread={unread} markNotification={markNotification}/>:
-        tab==='reportes'?<SupervisionReports token={token} tenantId={tenantId} installations={installations} rules={supervisionRules} users={users} shifts={shifts}/>:
+        tab==='reportes'?<SupervisionReports token={token} tenantId={tenantId} installations={installations} assets={assets} rules={supervisionRules} users={users} shifts={shifts}/>:
         <ConfigurationView noveltyTypes={noveltyTypes} slaPolicies={slaPolicies} checklists={checklists} checkItems={checkItems} role={role}/>
         }
       </main>
