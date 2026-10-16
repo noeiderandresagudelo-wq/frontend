@@ -46,12 +46,6 @@ export default function PuestoZonaDetail({
   const pendingReviews = reviews.filter(r => ['pendiente', 'programada', 'atrasada', 'ausente'].includes(r.estado.toLowerCase()));
   const hasGps = installation.latitud !== null && installation.longitud !== null;
   const mapsUrl = hasGps ? `https://www.google.com/maps?q=${installation.latitud},${installation.longitud}` : null;
-  const alerts = [
-    ...(installation.estado.toLowerCase() !== 'activa' ? [{ tone: 'danger', text: 'Puesto inhabilitado' }] : []),
-    ...(activeShifts.length === 0 ? [{ tone: 'warning', text: 'Sin programación de turnos activa' }] : []),
-    ...(reviews.length === 0 ? [{ tone: 'warning', text: 'Sin marcaciones de revistas registradas' }] : []),
-    ...(!hasGps ? [{ tone: 'muted', text: 'Geolocalización sin configurar' }] : []),
-  ];
 
   return <section className="pz-detail">
     <header className="pz-hero">
@@ -62,8 +56,7 @@ export default function PuestoZonaDetail({
           <button className="pz-primary" onClick={onEdit}>✎ Editar puesto</button>
         </div>
         <div className="pz-alerts" aria-live="polite">
-          <span className={`pz-badge ${installation.estado.toLowerCase() === 'activa' ? 'is-good' : 'is-danger'}`}><i />{installation.estado.toLowerCase() === 'activa' ? 'Puesto habilitado' : 'Puesto inhabilitado'}</span>
-          {alerts.map((a, i) => <span key={i} className={`pz-badge is-${a.tone}`}><i />{a.text}</span>)}
+          <span className={`pz-badge ${installation.estado.toLowerCase() === 'activa' ? 'is-good' : 'is-danger'}`}><i />{installation.estado.toLowerCase() === 'activa' ? 'Activo' : 'Inhabilitado'}</span>
         </div>
       </div>
       <div className="pz-quick-grid">
@@ -130,8 +123,7 @@ export default function PuestoZonaDetail({
           <CardHeading eyebrow="VALIDACIÓN DE PRESENCIA" title="Geocerca del puesto" />
           <div className="pz-geofence-visual"><div className="pz-ring pz-ring-outer"><div className="pz-ring pz-ring-inner"><span className="pz-map-pin">⌖</span></div></div><span className="pz-map-caption">RADIO CONFIGURADO · {installation.geocerca_radio_m} M</span></div>
           <div className="pz-map-meta"><div><span>Latitud</span><strong>{installation.latitud?.toFixed(6) ?? 'No configurada'}</strong></div><div><span>Longitud</span><strong>{installation.longitud?.toFixed(6) ?? 'No configurada'}</strong></div><div><span>Radio permitido</span><strong>{installation.geocerca_radio_m} m</strong></div></div>
-          {mapsUrl ? <a className="pz-primary pz-link-button" href={mapsUrl} target="_blank" rel="noreferrer">↗ Abrir ubicación en Google Maps</a> : <div className="pz-inline-alert">Agrega las coordenadas GPS al editar el puesto para habilitar la ubicación en el mapa.</div>}
-          <p className="pz-footnote">La vista circular representa el radio configurado; no es un polígono cartográfico. La validación efectiva depende de la ubicación capturada por el dispositivo durante el check-in.</p>
+          {mapsUrl && <a className="pz-primary pz-link-button" href={mapsUrl} target="_blank" rel="noreferrer">↗ Abrir ubicación en Google Maps</a>}
         </section>
         <section className="pz-card">
           <CardHeading eyebrow="REGLAS DE UBICACIÓN" title="Validación GPS" />
@@ -172,14 +164,12 @@ export default function PuestoZonaDetail({
           <CardHeading eyebrow="RUTAS Y FRECUENCIAS" title="Configuración de rondas" />
           {activeShifts.map(s => <article className="pz-shift-card" key={s.id}><div><span className="pz-state-pill good">Activo</span><h4>{s.nombre}</h4><p>{s.hora_inicio} – {s.hora_fin}</p></div><div className="pz-shift-frequency"><strong>{s.frecuencia_revistas}</strong><small>revista(s)</small></div></article>)}
           {!activeShifts.length && <Empty text="No hay turnos activos configurados en el módulo. Configura turnos desde la sección Turnos." />}
-          <div className="pz-inline-alert">La configuración actual de turnos es global. La asignación de rutas, días y tolerancias por puesto requiere una programación específica que aún no está representada en el modelo de datos conectado.</div>
         </section>
         <section className="pz-card">
           <CardHeading eyebrow="CONTROL DE CUMPLIMIENTO" title="Actividad de rondas" />
           <Metric label="Revistas registradas" value={reviews.length} icon="✓" />
           <Metric label="Pendientes / ausentes (según estado)" value={pendingReviews.length} icon="!" tone={pendingReviews.length ? 'warning' : 'good'} />
           <Metric label="Sin check-in GPS" value={reviews.filter(r => r.latitud_checkin === null || r.longitud_checkin === null).length} icon="⌖" tone="warning" />
-          <p className="pz-footnote">Los estados se muestran según los registros disponibles; la ausencia solo puede confirmarse cuando existe una programación esperada para ese horario.</p>
         </section>
       </div>}
 
@@ -196,7 +186,6 @@ export default function PuestoZonaDetail({
           {[...reviews].sort((a, b) => new Date(b.fecha_programada || b.fecha_checkin || 0).getTime() - new Date(a.fecha_programada || a.fecha_checkin || 0).getTime()).map(r => <tr key={r.id}><td>#{r.numero_revista}</td><td>{dateTime(r.fecha_programada)}</td><td>{dateTime(r.fecha_checkin)}</td><td>{r.metodo_checkin || '—'}</td><td>{r.distancia_checkin_m !== null ? `${Math.round(r.distancia_checkin_m)} m` : '—'}</td><td><span className={`pz-state-pill ${r.fecha_checkin ? 'good' : 'warning'}`}>{r.estado}</span></td><td>{r.observaciones || '—'}</td></tr>)}
         </tbody></table></div>
         {!reviews.length && <Empty text="Aún no hay revistas registradas para este puesto." />}
-        <div className="pz-inline-alert">Las lecturas QR/NFC obligatorias, los días de la semana y las tolerancias por supervisor no se pueden editar desde esta ficha todavía: no hay una configuración por puesto conectada a esta vista.</div>
       </section>}
 
       {activeTab === 'contacts' && <div className="pz-columns">
