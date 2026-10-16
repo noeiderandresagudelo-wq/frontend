@@ -320,6 +320,7 @@ function PostsView({installations,selected,assets,tickets,reviews,assignments,us
     <div className="data-list">{installations.map(i=><article className={'data-item '+(selected?.id===i.id?'supervision-select selected':'')} key={i.id}><div><span className="code">{i.codigo_puesto||'SIN CÓDIGO'} · {i.estado}</span><h3>{i.nombre}</h3><p>{i.tipo_puesto||'Fijo'} · {i.ciudad||'Sin ciudad'} · {i.sector||'Sin sector'}</p><p>{i.direccion||'Sin dirección'} · geocerca {i.geocerca_radio_m} m</p></div><div className="data-item-side"><button className="text-button" onClick={()=>onSelect(i.id)}>Ficha</button>{canAdmin(role)&&<button className="text-button" onClick={()=>onEdit(i)}>Editar</button>}{canAdmin(role)&&i.estado==='Activa'&&<button className="text-button danger" onClick={()=>void onArchive(i.id)}>Archivar</button>}</div></article>)}{!installations.length&&<div className="empty-state">No hay puestos registrados para este tenant.</div>}</div>
   </div>
   {selected&&<PuestoZonaDetail installation={selected} assets={selectedAssets} tickets={selectedTickets} reviews={selectedReviews} assignments={selectedAssignments} users={users} shifts={shifts} role={role} onEdit={()=>onEdit(selected)} assignUser={assignUser} createAsset={createAsset}/>} 
+
   </section>;
 }
 function PostModal({editing,role,onClose,onSave}:{editing:Installation|null;role:UserRole;onClose:()=>void;onSave:(e:FormEvent<HTMLFormElement>)=>Promise<void>}){
