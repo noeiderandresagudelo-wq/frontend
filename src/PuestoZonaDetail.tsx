@@ -100,6 +100,7 @@ export default function PuestoZonaDetail({
             <Info label="Dotación" value={installation.dotacion_estado} />
             <Info label="Equipamiento" value={installation.equipamiento_estado} />
             <Info label="Estudio de seguridad" value={installation.estudio_seguridad_fecha} />
+            <Info label="Usuario creador" value="No disponible en el modelo de puesto actual" />
             <Info label="Creado" value={dateTime(installation.created_at)} />
             <Info label="Última actualización" value={dateTime(installation.updated_at)} />
           </div>
