@@ -12,7 +12,8 @@ type Route = { id:string; instalacion_id:string; nombre:string; descripcion:stri
 type RoutePoint = { id:string; ruta_id:string; activo_id:string; orden:number; obligatorio:boolean };
 type Round = { id:string; ruta_id:string; instalacion_id:string; guarda_id:string|null; guarda_nombre:string|null; programada_at:string; iniciada_at:string|null; finalizada_at:string|null; estado:string; observaciones:string|null; created_at:string };
 type RoundMark = { id:string; ronda_id:string; punto_ruta_id:string; activo_id:string; metodo:string; marcado_at:string; latitud:number|null; longitud:number|null; distancia_m:number|null };
-type Props = { token:string; tenantId:string; installations:Site[]; rules:Rule[]; users:Staff[]; shifts:Shift[] };
+type Asset = { id:string; nombre_activo:string; codigo_activo:string|null; qr_codigo:string|null; nfc_codigo:string|null };
+type Props = { token:string; tenantId:string; installations:Site[]; assets:Asset[]; rules:Rule[]; users:Staff[]; shifts:Shift[] };
 type DailyRow = { key:string; sortAt:string; fecha:string; puesto:string; codigoPuesto:string; supervisor:string; codigo:string; metodo:string; gps:string; estado:string; novedad:string; evidencias:string; esOmisio:boolean; esDuplicada:boolean };
 type MonthlyRow = { id:string; codigo:string; puesto:string; programadas:number; ejecutadas:number; repetidas:number; omisas:number; aTiempo:number; efectividad:number; status:string };
 type RoundRow = { id:string; fecha:string; puesto:string; ruta:string; guarda:string; inicio:string; fin:string; tiempo:number|null; estimado:number; puntos:string; porcentaje:number; salteados:string; estado:string; alerta:string };
@@ -116,7 +117,7 @@ function toXlsx(sheets:{name:string;rows:Cell[][]}[]){
  return createZip(items);
 }
 
-export default function SupervisionReports({token,tenantId,installations,rules,users,shifts}:Props){
+export default function SupervisionReports({token,tenantId,installations,assets,rules,users,shifts}:Props){
  const db=useMemo(()=>createAuthedSupabaseClient(token),[token]),initial=useMemo(()=>initialRange(),[]);
  const [startAt,setStartAt]=useState(initial.start),[endAt,setEndAt]=useState(initial.end),[appliedRange,setAppliedRange]=useState(initial);
  const [mode,setMode]=useState<'diario'|'mensual'|'rondas'>('diario'),[siteSearch,setSiteSearch]=useState(''),[selectedSites,setSelectedSites]=useState<string[]>([]);
@@ -169,17 +170,17 @@ export default function SupervisionReports({token,tenantId,installations,rules,u
   const onTime=filteredRows.filter(r=>r.estado==='A tiempo').length;
   return {programmed,executed,repeated,omitted,rate:programmed?Math.min(100,Math.round(onTime/programmed*100)):0};
  },[monthlyRows,filteredRows]);
- const siteMap=useMemo(()=>new Map(installations.map(s=>[s.id,s])),[installations]),routeMap=useMemo(()=>new Map(routes.map(r=>[r.id,r])),[routes]),staffMap=useMemo(()=>new Map(users.map(s=>[s.id,s])),[users]);
- const roundRows=useMemo<RoundRow[]>(()=>rounds.filter(r=>(!selectedSites.length||selectedSites.includes(r.instalacion_id))&&(!supervisorId||r.guarda_id===supervisorId)&& (method==='todos'||marks.some(m=>m.ronda_id===r.id&&m.metodo===method)) && (!codeSearch||(routeMap.get(r.ruta_id)?.nombre||'').toLowerCase().includes(codeSearch.toLowerCase()))).map(round=>{
+ const siteMap=useMemo(()=>new Map(installations.map(s=>[s.id,s])),[installations]),routeMap=useMemo(()=>new Map(routes.map(r=>[r.id,r])),[routes]),staffMap=useMemo(()=>new Map(users.map(s=>[s.id,s])),[users]),assetMap=useMemo(()=>new Map(assets.map(a=>[a.id,a])),[assets]);
+ const roundRows=useMemo<RoundRow[]>(()=>rounds.filter(r=>(!selectedSites.length||selectedSites.includes(r.instalacion_id))&&(!supervisorId||r.guarda_id===supervisorId)&&(method==='todos'||marks.some(m=>m.ronda_id===r.id&&m.metodo===method))&&(!codeSearch||(routeMap.get(r.ruta_id)?.nombre||'').toLowerCase().includes(codeSearch.toLowerCase())||points.filter(p=>p.ruta_id===r.ruta_id).some(p=>{const a=assetMap.get(p.activo_id);return ((a?.nombre_activo||'')+' '+(a?.codigo_activo||'')+' '+(a?.qr_codigo||'')+' '+(a?.nfc_codigo||'')).toLowerCase().includes(codeSearch.toLowerCase());}))).map(round=>{
   const route=routeMap.get(round.ruta_id),site=siteMap.get(round.instalacion_id),required=points.filter(p=>p.ruta_id===round.ruta_id&&p.obligatorio),visitedMarks=marks.filter(m=>m.ronda_id===round.id),visited=new Set(visitedMarks.map(m=>m.punto_ruta_id));
   const count=required.filter(p=>visited.has(p.id)).length,skipped=required.filter(p=>!visited.has(p.id)).map(p=>'Punto '+p.orden).join(', ')||'—';
   const elapsed=round.iniciada_at&&round.finalizada_at?Math.max(0,Math.round((new Date(round.finalizada_at).getTime()-new Date(round.iniciada_at).getTime())/60000)):null;
   const late=!!round.iniciada_at&&new Date(round.iniciada_at).getTime()>new Date(round.programada_at).getTime()+15*60000;
   const alert=round.estado==='Omitida'?'Omisión de ronda':late?'Inicio tardío':round.estado==='Programada'&&new Date(round.programada_at).getTime()<Date.now()?'Ronda no iniciada':skipped!=='—'&&round.estado==='Completada'?'Puntos salteados':'—';
   return {id:round.id,fecha:fmtDateTime(round.programada_at),puesto:site?.nombre||'Puesto',ruta:route?.nombre||'Ruta',guarda:round.guarda_nombre||staffMap.get(round.guarda_id||'')?.nombre||round.guarda_id||'—',inicio:fmtDateTime(round.iniciada_at),fin:fmtDateTime(round.finalizada_at),tiempo:elapsed,estimado:route?.tiempo_estimado_minutos||0,puntos:count+' de '+required.length,porcentaje:required.length?Math.round(count/required.length*100):0,salteados:skipped,estado:round.estado,alerta:alert};
- }),[rounds,selectedSites,supervisorId,method,codeSearch,routeMap,siteMap,points,marks,staffMap]);
+ }),[rounds,selectedSites,supervisorId,method,codeSearch,routeMap,siteMap,points,marks,staffMap,assetMap]);
  const avgRound=roundRows.length?Math.round(roundRows.reduce((n,r)=>n+r.porcentaje,0)/roundRows.length):0,lateTone=(v:number)=>v>=90?'green':v>=75?'amber':'red';
- const supervisorOptions=users.filter(u=>u.activo&&(/supervisor|supervision/i.test(u.rol)||allRows.some(r=>reviews.find(x=>x.id===r.key)?.supervisor_id===u.id)));
+ const supervisorOptions=mode==='rondas'?users.filter(u=>u.activo):users.filter(u=>u.activo&&(/supervisor|supervision/i.test(u.rol)||allRows.some(r=>reviews.find(x=>x.id===r.key)?.supervisor_id===u.id)));
  const shownSites=installations.filter(s=>(s.codigo_puesto+' '+s.nombre).toLowerCase().includes(siteSearch.toLowerCase()));
  const rangeCaption=fmtDateTime(new Date(appliedRange.start).toISOString())+' — '+fmtDateTime(new Date(appliedRange.end).toISOString());
  const title=mode==='diario'?'Reporte operativo diario · Revistas de supervisión':mode==='mensual'?'Cumplimiento ejecutivo · Revistas de supervisión':'Reporte de rondas operativas';
@@ -195,6 +196,7 @@ export default function SupervisionReports({token,tenantId,installations,rules,u
   exportRows=roundRows.map(r=>[r.fecha,r.puesto,r.ruta,r.guarda,r.inicio,r.fin,r.tiempo,r.estimado,r.puntos,r.porcentaje+'%',r.salteados,r.estado,r.alerta]);
  }
  const apply=()=>setAppliedRange({start:startAt,end:endAt}),toggleSite=(id:string)=>setSelectedSites(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);
+ const setDatePreset=(preset:'semana'|'mes')=>{const n=new Date();let a:Date;if(preset==='semana'){a=new Date(n.getFullYear(),n.getMonth(),n.getDate()-6,0,0);}else{a=new Date(n.getFullYear(),n.getMonth(),1,0,0);}const b=new Date(n.getFullYear(),n.getMonth(),n.getDate(),23,59);const range={start:toLocalInput(a),end:toLocalInput(b)};setStartAt(range.start);setEndAt(range.end);setAppliedRange(range);};
  const exportCsv=()=>download(safeName(title)+'.csv',new Blob([toCsv([headers,...exportRows])],{type:'text/csv;charset=utf-8;'}));
  const exportExcel=()=>{
   let rows:Cell[][]=[headers,...exportRows];
@@ -223,13 +225,14 @@ export default function SupervisionReports({token,tenantId,installations,rules,u
 
  return <section className="ar-report-shell">
   <header className="ar-report-head"><div><span className="ar-report-eyebrow">ANALÍTICA OPERATIVA / ENTERPRISE</span><h2>Reportes y cumplimiento</h2><p>Revistas de supervisión y rondas de guardas se consultan como operaciones separadas.</p></div><button className="ar-report-refresh" onClick={()=>void loadData(appliedRange)} disabled={loading}>{loading?'Consultando…':'↻ Actualizar datos'}</button></header>
-  <div className="ar-report-tabs" role="tablist" aria-label="Tipo de reporte"><button className={mode==='diario'?'active':''} onClick={()=>setMode('diario')} role="tab" aria-selected={mode==='diario'}>01 · Revistas diarias</button><button className={mode==='mensual'?'active':''} onClick={()=>setMode('mensual')} role="tab" aria-selected={mode==='mensual'}>02 · Cumplimiento mensual</button><button className={mode==='rondas'?'active':''} onClick={()=>setMode('rondas')} role="tab" aria-selected={mode==='rondas'}>03 · Rondas operativas</button></div>
+  <div className="ar-report-tabs" role="tablist" aria-label="Tipo de reporte"><button className={mode==='diario'?'active':''} onClick={()=>setMode('diario')} role="tab" aria-selected={mode==='diario'}>01 · Revistas diarias</button><button className={mode==='mensual'?'active':''} onClick={()=>setMode('mensual')} role="tab" aria-selected={mode==='mensual'}>02 · Cumplimiento mensual</button><button className={mode==='rondas'?'active':''} onClick={()=>{setMode('rondas');if(method==='GPS')setMethod('todos');}} role="tab" aria-selected={mode==='rondas'}>03 · Rondas operativas</button></div>
   <section className="ar-report-filter"><div className="ar-report-filter-head"><div><span className="ar-report-eyebrow">CONSULTA</span><h3>Filtros avanzados</h3></div><span className="ar-report-range">{rangeCaption}</span></div>
+   <div className="ar-report-presets"><span>Periodo rápido</span><button type="button" onClick={()=>setDatePreset('semana')}>Últimos 7 días</button><button type="button" onClick={()=>setDatePreset('mes')}>Este mes</button><span className="custom">Rango personalizado en los selectores</span></div>
    <div className="ar-report-filter-grid">
     <label>Fecha y hora de inicio<input type="datetime-local" value={startAt} onChange={e=>setStartAt(e.target.value)}/></label><label>Fecha y hora de fin<input type="datetime-local" value={endAt} onChange={e=>setEndAt(e.target.value)}/></label>
     <label>Supervisor activo<select value={supervisorId} onChange={e=>setSupervisorId(e.target.value)}><option value="">Todos los supervisores</option>{supervisorOptions.map(u=><option key={u.id} value={u.id}>{u.nombre||u.username||u.id}</option>)}</select></label>
     <label>Método de marcación<select value={method} onChange={e=>setMethod(e.target.value)}><option value="todos">Todos los métodos</option><option value="GPS">Validación GPS</option><option value="QR">Código QR</option><option value="NFC">NFC / ficha</option></select></label>
-    <label>Ficha / código QR / NFC<input value={codeSearch} onChange={e=>setCodeSearch(e.target.value)} placeholder="Buscar código leído…"/></label>
+    <label>{mode==='rondas'?'Ruta / punto QR o NFC':'Ficha / código QR / NFC'}<input value={codeSearch} onChange={e=>setCodeSearch(e.target.value)} placeholder={mode==='rondas'?'Buscar ruta, punto o ficha…':'Buscar código leído…'}/></label>
     <div className="ar-report-sites"><span className="ar-report-label">Puestos · selección múltiple</span><div className="ar-report-sites-box"><input aria-label="Buscar puesto" placeholder="⌕ Buscar puesto…" value={siteSearch} onChange={e=>setSiteSearch(e.target.value)}/><div className="ar-report-site-list">{shownSites.map(s=><label key={s.id}><input type="checkbox" checked={selectedSites.includes(s.id)} onChange={()=>toggleSite(s.id)}/><span>{s.codigo_puesto||'SIN CÓDIGO'} · {s.nombre}</span></label>)}</div><div className="ar-report-site-foot"><span>{selectedSites.length?selectedSites.length+' seleccionado(s)':'Todos los puestos'}</span><button type="button" onClick={()=>setSelectedSites([])}>Limpiar</button></div></div></div>
    </div><div className="ar-report-filter-actions"><button className="ar-report-apply" onClick={apply}>Aplicar filtros</button><button className="ar-report-reset" onClick={()=>{const r=initialRange();setStartAt(r.start);setEndAt(r.end);setAppliedRange(r);setSelectedSites([]);setSiteSearch('');setSupervisorId('');setMethod('todos');setCodeSearch('');}}>Restablecer</button><span>{loading?'Actualizando fuentes…':loaded?'Datos consultados desde Supabase':'Esperando primera consulta'}</span></div>
   </section>
