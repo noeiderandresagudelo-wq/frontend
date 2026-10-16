@@ -197,3 +197,119 @@
 #supervision-react-mount .supervision-modal .panel{padding:18px}
 @media(max-width:900px){#supervision-react-mount .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#supervision-react-mount .content-grid{grid-template-columns:1fr}}
 @media(max-width:620px){#supervision-react-mount .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#supervision-react-mount .stat-card{padding:10px}#supervision-react-mount .stat-card strong{font-size:22px}}
+
+
+/* ALARVIX | Enterprise reporting workspace */
+#supervision-react-mount .ar-report-shell{display:flex;flex-direction:column;gap:14px;min-width:0;color:#dbe6f4}
+#supervision-react-mount .ar-report-head{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 20px;border:1px solid #26364b;border-radius:13px;background:linear-gradient(135deg,#0b1523 0%,#101d2f 66%,#102a32 100%)}
+#supervision-react-mount .ar-report-eyebrow{display:block;color:#6ee7b7;font-size:9px;font-weight:800;letter-spacing:.13em;text-transform:uppercase}
+#supervision-react-mount .ar-report-head h2{margin:6px 0 4px;color:#f8fafc;font-size:23px;letter-spacing:-.035em}
+#supervision-react-mount .ar-report-head p{margin:0;color:#96a9c1;font-size:11px;line-height:1.5}
+#supervision-react-mount .ar-report-refresh,#supervision-react-mount .ar-report-tabs button,#supervision-react-mount .ar-report-filter-actions button,#supervision-react-mount .ar-report-export-actions button,#supervision-react-mount .ar-report-modal-actions button{font:inherit;font-size:10px;font-weight:750;border-radius:8px;cursor:pointer;transition:border-color .16s ease,background .16s ease}
+#supervision-react-mount .ar-report-refresh{flex:0 0 auto;padding:10px 12px;border:1px solid #35516a;background:#132337;color:#dbeafe}
+#supervision-react-mount .ar-report-refresh:hover{border-color:#5a7a9a;background:#1a304a}
+#supervision-react-mount .ar-report-tabs{display:flex;gap:6px;padding:5px;border:1px solid #243247;border-radius:10px;background:#09111d}
+#supervision-react-mount .ar-report-tabs button{flex:1;min-width:0;padding:11px 10px;border:1px solid transparent;color:#8fa4bc;background:transparent;text-align:left}
+#supervision-react-mount .ar-report-tabs button:hover{color:#e2e8f0;background:#111d2c}
+#supervision-react-mount .ar-report-tabs button.active{border-color:#36536b;color:#f0fdf4;background:linear-gradient(135deg,rgba(16,185,129,.16),rgba(15,118,110,.10));box-shadow:inset 3px 0 #10b981}
+#supervision-react-mount .ar-report-filter{padding:16px;border:1px solid #26364b;border-radius:12px;background:#0b1421}
+#supervision-react-mount .ar-report-filter-head,#supervision-react-mount .ar-report-panel-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:12px}
+#supervision-react-mount .ar-report-filter-head h3,#supervision-react-mount .ar-report-panel-head h3,#supervision-react-mount .ar-report-export h3{margin:4px 0 0;color:#f1f5f9;font-size:14px;font-weight:750}
+#supervision-react-mount .ar-report-range{color:#8ea2bb;font-size:9px;font-variant-numeric:tabular-nums}
+#supervision-react-mount .ar-report-filter-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+#supervision-react-mount .ar-report-filter-grid>label{display:flex;flex-direction:column;gap:6px;min-width:0;color:#9eb0c7;font-size:10px;font-weight:650}
+#supervision-react-mount .ar-report-filter-grid input:not([type=checkbox]),#supervision-react-mount .ar-report-filter-grid select,#supervision-react-mount .ar-report-sites-box>input,#supervision-react-mount .ar-report-modal input{width:100%;min-width:0;min-height:34px;padding:8px 9px;border:1px solid #2a3a50;border-radius:7px;outline:none;background:#0e1928;color:#e2e8f0;font:inherit;font-size:10px}
+#supervision-react-mount .ar-report-filter-grid input:focus,#supervision-react-mount .ar-report-filter-grid select:focus,#supervision-react-mount .ar-report-sites-box>input:focus,#supervision-react-mount .ar-report-modal input:focus{border-color:#10b981;box-shadow:0 0 0 2px rgba(16,185,129,.12)}
+#supervision-react-mount .ar-report-sites{display:flex;flex-direction:column;gap:6px;min-width:0}
+#supervision-react-mount .ar-report-label{color:#9eb0c7;font-size:10px;font-weight:650}
+#supervision-react-mount .ar-report-sites-box{padding:7px;border:1px solid #2a3a50;border-radius:8px;background:#0e1928}
+#supervision-react-mount .ar-report-site-list{display:flex;flex-direction:column;gap:4px;max-height:115px;overflow:auto;margin:7px 0}
+#supervision-react-mount .ar-report-site-list label{display:flex;align-items:center;gap:7px;padding:5px 4px;border-radius:5px;color:#c3d0e0;font-size:9px;cursor:pointer}
+#supervision-react-mount .ar-report-site-list label:hover{background:#17263a}
+#supervision-react-mount .ar-report-site-list input{accent-color:#10b981}
+#supervision-react-mount .ar-report-site-list span{overflow-wrap:anywhere}
+#supervision-react-mount .ar-report-site-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#849ab4;font-size:9px}
+#supervision-react-mount .ar-report-site-foot button{border:0;background:transparent;color:#6ee7b7;font-size:9px;cursor:pointer}
+#supervision-react-mount .ar-report-filter-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid #202e42}
+#supervision-react-mount .ar-report-filter-actions span{margin-left:auto;color:#71869f;font-size:9px}
+#supervision-react-mount .ar-report-apply{padding:9px 13px;border:1px solid #047857;background:#059669;color:#fff}
+#supervision-react-mount .ar-report-apply:hover{background:#10b981}
+#supervision-react-mount .ar-report-reset{padding:9px 13px;border:1px solid #2c3b50;background:#111d2c;color:#a8bbd2}
+#supervision-react-mount .ar-report-reset:hover{background:#1a293d;color:#f8fafc}
+#supervision-react-mount .ar-report-error{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid rgba(239,68,68,.35);border-radius:8px;background:rgba(127,29,29,.18);color:#fecaca;font-size:10px}
+#supervision-react-mount .ar-report-error button{border:0;background:transparent;color:#fecaca;cursor:pointer;font-size:10px}
+#supervision-react-mount .ar-report-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+#supervision-react-mount .ar-report-kpis article{min-width:0;padding:14px;border:1px solid #26364b;border-radius:10px;background:linear-gradient(155deg,#101b2a,#0b1421)}
+#supervision-react-mount .ar-report-kpis article>span{display:block;color:#9eafc4;font-size:10px;line-height:1.35}
+#supervision-react-mount .ar-report-kpis article>strong{display:block;margin:9px 0 4px;color:#f8fafc;font-size:25px;letter-spacing:-.04em;line-height:1.05;font-variant-numeric:tabular-nums}
+#supervision-react-mount .ar-report-kpis article>strong em{font-size:13px;font-style:normal;color:#97a8bd}
+#supervision-react-mount .ar-report-kpis small{display:block;margin-top:6px;color:#71869e;font-size:9px;line-height:1.45}
+#supervision-react-mount .ar-report-kpis .tone-green,#supervision-react-mount .tone-green{color:#10b981!important}
+#supervision-react-mount .ar-report-kpis .tone-amber,#supervision-react-mount .tone-amber{color:#f59e0b!important}
+#supervision-react-mount .ar-report-kpis .tone-red,#supervision-react-mount .tone-red{color:#ef4444!important}
+#supervision-react-mount .ar-report-kpis .tone-blue,#supervision-react-mount .tone-blue{color:#60a5fa!important}
+#supervision-react-mount .ar-report-panel{min-width:0;overflow:hidden;border:1px solid #26364b;border-radius:11px;background:#0b1421}
+#supervision-react-mount .ar-report-panel-head{padding:14px 15px;margin:0;border-bottom:1px solid #223147}
+#supervision-react-mount .ar-report-panel-head>span{color:#8298b2;font-size:9px;white-space:nowrap}
+#supervision-react-mount .ar-report-table-wrap{width:100%;overflow:auto;overscroll-behavior-x:contain}
+#supervision-react-mount .ar-report-table{width:100%;min-width:970px;border-collapse:separate;border-spacing:0;text-align:left}
+#supervision-react-mount .ar-report-table th{position:sticky;top:0;z-index:1;padding:10px 11px;border-bottom:1px solid #2a3a50;background:#111e2e;color:#91a6c0;font-size:9px;font-weight:800;letter-spacing:.045em;text-transform:uppercase;white-space:nowrap}
+#supervision-react-mount .ar-report-table td{padding:10px 11px;border-bottom:1px solid rgba(39,55,75,.65);color:#bdcadb;font-size:10px;vertical-align:top;line-height:1.5}
+#supervision-react-mount .ar-report-table tbody tr:hover{background:rgba(36,55,78,.22)}
+#supervision-react-mount .ar-report-table tbody tr:last-child td{border-bottom:0}
+#supervision-react-mount .ar-report-table td strong{display:block;color:#e6edf6;font-size:10px;font-weight:700}
+#supervision-react-mount .ar-report-table td small{display:block;margin-top:3px;color:#70869f;font-size:9px;overflow-wrap:anywhere}
+#supervision-react-mount .ar-report-table .is-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9px;font-variant-numeric:tabular-nums}
+#supervision-react-mount .ar-report-method{display:inline-block;padding:3px 6px;border:1px solid #2d435a;border-radius:5px;background:#101e30;color:#bcd2e9;font-size:9px}
+#supervision-react-mount .ar-report-badge{display:inline-flex;align-items:center;max-width:190px;padding:4px 7px;border:1px solid #344255;border-radius:6px;font-size:9px;font-weight:750;line-height:1.35;white-space:normal}
+#supervision-react-mount .ar-report-badge.green{border-color:rgba(16,185,129,.32);background:rgba(16,185,129,.10);color:#34d399}
+#supervision-react-mount .ar-report-badge.amber{border-color:rgba(245,158,11,.32);background:rgba(245,158,11,.10);color:#fbbf24}
+#supervision-react-mount .ar-report-badge.red{border-color:rgba(239,68,68,.32);background:rgba(239,68,68,.10);color:#f87171}
+#supervision-react-mount .ar-report-badge.blue{border-color:rgba(96,165,250,.30);background:rgba(96,165,250,.09);color:#93c5fd}
+#supervision-react-mount .ar-report-evidence{display:block;max-width:300px;margin-top:5px;color:#93c5fd!important;overflow-wrap:anywhere}
+#supervision-react-mount .ar-report-empty{padding:30px 16px!important;text-align:center;color:#8497ae!important}
+#supervision-react-mount .ar-report-footnote{margin:0;padding:10px 14px;border-top:1px solid #1e2c40;color:#71869f;font-size:9px;line-height:1.55}
+#supervision-react-mount .ar-report-progress{width:100%;height:5px;overflow:hidden;border-radius:20px;background:#253247}
+#supervision-react-mount .ar-report-progress i{display:block;height:100%;border-radius:20px;transition:width .2s ease}
+#supervision-react-mount .ar-report-progress i.green{background:#10b981}
+#supervision-react-mount .ar-report-progress i.amber{background:#f59e0b}
+#supervision-react-mount .ar-report-progress i.red{background:#ef4444}
+#supervision-react-mount .ar-report-rate{display:flex;flex-direction:column;gap:6px;min-width:66px}
+#supervision-react-mount .ar-report-rate strong{font-size:10px;font-variant-numeric:tabular-nums}
+#supervision-react-mount .ar-report-table tfoot td{border-top:1px solid #2c3f55;border-bottom:0;background:#111e2d;color:#e2e8f0;font-weight:800}
+#supervision-react-mount .ar-report-export{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:15px;border:1px solid #26364b;border-radius:11px;background:#0d1725}
+#supervision-react-mount .ar-report-export p{margin:5px 0 0;color:#8297b0;font-size:10px;line-height:1.5}
+#supervision-react-mount .ar-report-export-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}
+#supervision-react-mount .ar-report-export-actions button{padding:9px 11px;border:1px solid #2b3b50;background:#111e2e;color:#c7d5e6;white-space:nowrap}
+#supervision-react-mount .ar-report-export-actions button:hover{border-color:#47617d;background:#1a2b41}
+#supervision-react-mount .ar-report-export-actions button.send{border-color:#047857;background:rgba(5,150,105,.12);color:#6ee7b7}
+#supervision-react-mount .ar-report-modal-backdrop{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:16px;background:rgba(2,6,14,.78);backdrop-filter:blur(4px)}
+#supervision-react-mount .ar-report-modal{position:relative;width:min(100%,460px);padding:21px;border:1px solid #32445c;border-radius:13px;background:#0e1928;box-shadow:0 25px 80px rgba(0,0,0,.45)}
+#supervision-react-mount .ar-report-modal h3{margin:6px 0;color:#f8fafc;font-size:18px}
+#supervision-react-mount .ar-report-modal p{color:#91a4bb;font-size:10px;line-height:1.55}
+#supervision-react-mount .ar-report-modal label{display:flex;flex-direction:column;gap:6px;margin-top:14px;color:#bdcadb;font-size:10px}
+#supervision-react-mount .ar-report-modal-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:15px}
+#supervision-react-mount .ar-report-modal-close{position:absolute;top:10px;right:10px;width:28px;height:28px;border:1px solid #33445a;border-radius:7px;background:#172438;color:#dbeafe;cursor:pointer;font-size:18px}
+@media(max-width:1000px){
+ #supervision-react-mount .ar-report-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #supervision-react-mount .ar-report-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #supervision-react-mount .ar-report-export{align-items:flex-start;flex-direction:column}
+ #supervision-react-mount .ar-report-export-actions{justify-content:flex-start}
+}
+@media(max-width:620px){
+ #supervision-react-mount .ar-report-head{align-items:flex-start;flex-direction:column;padding:14px}
+ #supervision-react-mount .ar-report-head h2{font-size:20px}
+ #supervision-react-mount .ar-report-refresh{align-self:stretch}
+ #supervision-react-mount .ar-report-tabs{flex-direction:column}
+ #supervision-react-mount .ar-report-tabs button{padding:9px}
+ #supervision-react-mount .ar-report-filter{padding:12px}
+ #supervision-react-mount .ar-report-filter-grid{grid-template-columns:minmax(0,1fr)}
+ #supervision-react-mount .ar-report-filter-head{align-items:flex-start;flex-direction:column}
+ #supervision-react-mount .ar-report-range{white-space:normal}
+ #supervision-react-mount .ar-report-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+ #supervision-react-mount .ar-report-kpis article{padding:10px}
+ #supervision-react-mount .ar-report-kpis article>strong{font-size:22px}
+ #supervision-react-mount .ar-report-filter-actions span{width:100%;margin-left:0}
+ #supervision-react-mount .ar-report-export-actions{display:grid;width:100%;grid-template-columns:repeat(2,minmax(0,1fr))}
+ #supervision-react-mount .ar-report-export-actions button{white-space:normal}
+}
