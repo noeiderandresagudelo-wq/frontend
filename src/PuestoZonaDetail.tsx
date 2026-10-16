@@ -18,6 +18,8 @@ type Assignment = { id: string; instalacion_id: string; usuario_id: string; rol:
 type SupervisionUser = { id: string; nombre: string; username: string; rol: string; activo: boolean };
 type Shift = { id: string; nombre: string; hora_inicio: string; hora_fin: string; frecuencia_revistas: number; activo: boolean };
 type RoundConfig = { id: string; nombre: string; puntos: string[]; frecuenciaMinutos: number; toleranciaMetros: number; horaInicio: string; horaFin: string; activo: boolean };
+type SupervisionWindow = { inicio: string; fin: string };
+type SupervisionRule = { id: string; tenant_id: string; instalacion_id: string; revistas_requeridas: number; periodo_objetivo: 'dia' | 'turno'; ventanas_horarias: SupervisionWindow[]; requerir_qr: boolean; requerir_gps: boolean; requerir_firma: boolean; tolerancia_omision_min: number; activo: boolean; created_at: string; updated_at: string };
 type TabKey = 'info' | 'geo' | 'points' | 'rounds' | 'log' | 'supervision' | 'contacts';
 
 const tabs: { id: TabKey; label: string; icon: string }[] = [
@@ -33,10 +35,11 @@ const isAdmin = (role: UserRole) => role === 'admin' || role === 'manager';
 const dateTime = (value: string | null | undefined) => value ? new Date(value).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' }) : 'Sin registro';
 
 export default function PuestoZonaDetail({
-  installation, assets, tickets, reviews, assignments, users, shifts, role, onEdit, assignUser, createAsset,
+  installation, assets, tickets, reviews, assignments, users, shifts, supervisionRules, saveSupervisionRule, role, onEdit, assignUser, createAsset,
 }: {
   installation: Installation; assets: Asset[]; tickets: Ticket[]; reviews: Review[]; assignments: Assignment[];
-  users: SupervisionUser[]; shifts: Shift[]; role: UserRole; onEdit: () => void;
+  users: SupervisionUser[]; shifts: Shift[]; supervisionRules: SupervisionRule[]; role: UserRole; onEdit: () => void;
+  saveSupervisionRule: (rule: Omit<SupervisionRule, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>) => Promise<boolean>;
   assignUser: (e: FormEvent<HTMLFormElement>) => Promise<void>;
   createAsset: (e: FormEvent<HTMLFormElement>) => Promise<void>;
 }) {
@@ -44,12 +47,23 @@ export default function PuestoZonaDetail({
   const [roundConfigs, setRoundConfigs] = useState<RoundConfig[]>([]);
   const [roundModalOpen, setRoundModalOpen] = useState(false);
   const [editingRound, setEditingRound] = useState<RoundConfig | null>(null);
+  const [ruleModalOpen, setRuleModalOpen] = useState(false);
   const activeShifts = useMemo(() => shifts.filter(s => s.activo), [shifts]);
   const activeAssignments = assignments.filter(a => a.activo);
   const openTickets = tickets.filter(t => !['cerrado', 'closed', 'resuelto'].includes(t.estado_ticket.toLowerCase()));
   const pendingReviews = reviews.filter(r => ['pendiente', 'programada', 'atrasada', 'ausente'].includes(r.estado.toLowerCase()));
   const hasGps = installation.latitud !== null && installation.longitud !== null;
   const mapsUrl = hasGps ? `https://www.google.com/maps?q=${installation.latitud},${installation.longitud}` : null;
+  const supervisionRule = supervisionRules.find(rule => rule.instalacion_id === installation.id) || null;
+  const todayKey = bogotaDateKey(new Date().toISOString());
+  const reviewsToday = reviews.filter(review => review.fecha_checkin && bogotaDateKey(review.fecha_checkin) === todayKey);
+  const currentTime = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
+  const currentShift = activeShifts.find(shift => timeIsInWindow(currentTime, shift.hora_inicio, shift.hora_fin)) || null;
+  const complianceReviews = supervisionRule?.periodo_objetivo === 'turno' && currentShift ? reviewsToday.filter(review => review.turno_id === currentShift.id) : reviewsToday;
+  const visitsDone = complianceReviews.length;
+  const visitsRequired = supervisionRule?.revistas_requeridas || 0;
+  const compliancePercent = visitsRequired ? Math.min(100, Math.round(visitsDone / visitsRequired * 100)) : 0;
+  const omissionDue = !!(supervisionRule?.activo && visitsRequired > visitsDone && supervisionRule.ventanas_horarias.some(window => windowExceededTolerance(currentTime, window.fin, supervisionRule.tolerancia_omision_min)));
 
   return <section className="pz-detail">
     <header className="pz-hero">
@@ -185,14 +199,36 @@ export default function PuestoZonaDetail({
         {!tickets.length && <Empty text="La minuta aparecerá aquí cuando se registren novedades para este puesto." />}
       </section>}
 
-      {activeTab === 'supervision' && <section className="pz-card">
-        <CardHeading eyebrow="REVISTAS DE CONTROL" title="Registros de supervisión" />
-        <div className="pz-metrics pz-metrics-three"><Metric label="Total revistas" value={reviews.length} icon="✓" /><Metric label="Con check-in" value={reviews.filter(r => !!r.fecha_checkin).length} icon="⌖" /><Metric label="Pendientes según estado" value={pendingReviews.length} icon="!" tone={pendingReviews.length ? 'warning' : 'good'} /></div>
-        <div className="pz-table-wrap"><table className="pz-table"><thead><tr><th>Revista</th><th>Programada</th><th>Check-in</th><th>Método</th><th>Distancia</th><th>Estado</th><th>Observaciones</th></tr></thead><tbody>
-          {[...reviews].sort((a, b) => new Date(b.fecha_programada || b.fecha_checkin || 0).getTime() - new Date(a.fecha_programada || a.fecha_checkin || 0).getTime()).map(r => <tr key={r.id}><td>#{r.numero_revista}</td><td>{dateTime(r.fecha_programada)}</td><td>{dateTime(r.fecha_checkin)}</td><td>{r.metodo_checkin || '—'}</td><td>{r.distancia_checkin_m !== null ? `${Math.round(r.distancia_checkin_m)} m` : '—'}</td><td><span className={`pz-state-pill ${r.fecha_checkin ? 'good' : 'warning'}`}>{r.estado}</span></td><td>{r.observaciones || '—'}</td></tr>)}
-        </tbody></table></div>
-        {!reviews.length && <Empty text="Aún no hay revistas registradas para este puesto." />}
-      </section>}
+      {activeTab === 'supervision' && <div className="pz-supervision-view">
+        <section className="pz-card pz-supervision-config">
+          <div className="pz-supervision-config-head"><div><CardHeading eyebrow="REGLAS DEL PUESTO" title="Configuración de reglas de inspección" /><p className="pz-muted">Define la obligación operativa y los criterios que debe cumplir cada revista.</p></div>{isAdmin(role) && <button type="button" className="pz-primary" onClick={() => setRuleModalOpen(true)}>⚙ Configurar parámetros de revista</button>}</div>
+          {supervisionRule ? <div className="pz-rule-summary">
+            <div className="pz-rule-summary-item"><small>Frecuencia requerida</small><strong>{supervisionRule.revistas_requeridas} revistas / {supervisionRule.periodo_objetivo === 'dia' ? 'día' : 'turno'}</strong></div>
+            <div className="pz-rule-summary-item"><small>Ventanas permitidas</small><strong>{supervisionRule.ventanas_horarias.length ? supervisionRule.ventanas_horarias.map(window => `${window.inicio}–${window.fin}`).join(' · ') : 'Sin franjas'}</strong></div>
+            <div className="pz-rule-summary-item"><small>Validaciones obligatorias</small><strong>{[supervisionRule.requerir_qr && 'QR', supervisionRule.requerir_gps && 'GPS', supervisionRule.requerir_firma && 'Firma digital'].filter(Boolean).join(' + ') || 'Sin método obligatorio'}</strong></div>
+            <div className="pz-rule-summary-item"><small>Tolerancia de omisión</small><strong>{supervisionRule.tolerancia_omision_min} minutos</strong></div>
+            <span className={`pz-state-pill ${supervisionRule.activo ? 'good' : 'neutral'}`}>{supervisionRule.activo ? 'Regla activa' : 'Regla inactiva'}</span>
+          </div> : <Empty text="Aún no se han definido reglas de revista para este puesto. Configura la frecuencia, las franjas horarias y los métodos obligatorios para medir el cumplimiento." />}
+        </section>
+
+        <section className="pz-card pz-compliance-card">
+          <div className="pz-compliance-head"><div><p className="pz-eyebrow">ESTATUS DE CUMPLIMIENTO DE HOY</p><h3>{supervisionRule?.periodo_objetivo === 'turno' ? 'Cumplimiento del turno actual' : 'Cumplimiento diario'}</h3><p>{new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota', dateStyle: 'full' })}{supervisionRule?.periodo_objetivo === 'turno' && currentShift ? ` · ${currentShift.nombre}` : ''}</p></div><span className={`pz-compliance-percent ${compliancePercent >= 100 ? 'is-complete' : ''}`}>{supervisionRule ? `${compliancePercent}%` : '—'}</span></div>
+          {supervisionRule ? <>
+            <div className="pz-progress-track" role="progressbar" aria-label="Cumplimiento de revistas" aria-valuemin={0} aria-valuemax={100} aria-valuenow={compliancePercent}><span style={{ width: `${compliancePercent}%` }} /></div>
+            <div className="pz-compliance-footer"><strong>{visitsDone} de {visitsRequired} revistas realizadas {supervisionRule.periodo_objetivo === 'dia' ? 'hoy' : 'en este turno'}</strong><span>{compliancePercent}% cumplido</span></div>
+            <div className="pz-compliance-alerts">{omissionDue ? <span className="pz-omission-pill">Omisión potencial: superó la tolerancia configurada</span> : visitsDone >= visitsRequired ? <span className="pz-complete-pill">Meta alcanzada</span> : <span className="pz-pending-pill">Pendiente de completar la meta</span>}{supervisionRule.periodo_objetivo === 'turno' && !currentShift && <span className="pz-pending-pill">No se detectó un turno activo; se cuentan las revistas de hoy</span>}</div>
+            <div className="pz-window-status"><small>Franjas de inspección</small>{supervisionRule.ventanas_horarias.map((window, index) => <span key={index} className={windowExceededTolerance(currentTime, window.fin, supervisionRule.tolerancia_omision_min) ? 'is-past' : ''}>{`Rango ${index + 1}: ${window.inicio}–${window.fin}`}</span>)}</div>
+          </> : <Empty text="El indicador de cumplimiento aparecerá cuando guardes las reglas de inspección." />}
+        </section>
+
+        <section className="pz-card">
+          <div className="pz-history-header"><div><CardHeading eyebrow="TRAZABILIDAD OPERATIVA" title="Historial de revistas ejecutadas" /><p className="pz-muted">Registros reales de check-in y cierre asociados al puesto.</p></div><span className="pz-history-count">{reviews.length} registros</span></div>
+          <div className="pz-table-wrap"><table className="pz-table"><thead><tr><th>Fecha / hora</th><th>Supervisor asignado</th><th>Método</th><th>Distancia GPS</th><th>Estado</th><th>Novedades / observaciones</th></tr></thead><tbody>
+            {[...reviews].sort((a, b) => new Date(b.fecha_checkin || b.fecha_programada || 0).getTime() - new Date(a.fecha_checkin || a.fecha_programada || 0).getTime()).map(review => <tr key={review.id}><td>{dateTime(review.fecha_checkin || review.fecha_programada)}</td><td>{users.find(user => user.id === review.supervisor_id)?.nombre || 'Supervisor sin nombre disponible'}</td><td>{review.metodo_checkin || '—'}</td><td>{review.distancia_checkin_m != null ? `${Math.round(review.distancia_checkin_m)} m` : '—'}</td><td><span className={`pz-state-pill ${review.estado === 'Completada' ? 'good' : review.estado === 'Incidencia' ? 'warning' : 'neutral'}`}>{review.estado}</span></td><td>{review.observaciones || '—'}</td></tr>)}
+          </tbody></table></div>
+          {!reviews.length && <Empty text="Todavía no hay revistas registradas para este puesto. Las nuevas revistas aparecerán aquí con su fecha, método, distancia y observaciones." />}
+        </section>
+      </div>}
 
       {activeTab === 'contacts' && <div className="pz-columns">
         <section className="pz-card">
@@ -209,15 +245,52 @@ export default function PuestoZonaDetail({
       </div>}
     </div>
 
+    {ruleModalOpen && <SupervisionRuleModal installationId={installation.id} installationName={installation.nombre} defaultTolerance={installation.geocerca_radio_m} currentRule={supervisionRule} onClose={() => setRuleModalOpen(false)} onSave={saveSupervisionRule} />}
     {roundModalOpen && <RoundConfigModal assets={assets} installation={installation} editing={editingRound} onClose={() => setRoundModalOpen(false)} onSave={route => { setRoundConfigs(current => editingRound ? current.map(item => item.id === editingRound.id ? { ...route, id: editingRound.id } : item) : [...current, { ...route, id: `route-${Date.now()}` }]); setRoundModalOpen(false); setEditingRound(null); }} />}
-    <section className="pz-schedule">
-      <div className="pz-schedule-header"><div><p className="pz-eyebrow">COBERTURA OPERATIVA</p><h3>Programación de turnos</h3><p>Resumen de turnos activos y estado de las revistas asociadas al puesto.</p></div><button className="pz-primary" onClick={() => setActiveTab('rounds')}>⚙ Configurar programación</button></div>
-      <div className="pz-schedule-stats"><div><span>Turnos activos disponibles</span><strong>{activeShifts.length}</strong></div><div><span>Revistas registradas</span><strong>{reviews.length}</strong></div><div><span>Check-ins registrados</span><strong>{reviews.filter(r => !!r.fecha_checkin).length}</strong></div><div><span>Alertas de estado</span><strong className={pendingReviews.length || activeShifts.length === 0 ? 'pz-number-warning' : 'pz-number-good'}>{pendingReviews.length + (activeShifts.length === 0 ? 1 : 0)}</strong></div></div>
-      <div className="pz-table-wrap"><table className="pz-table"><thead><tr><th>Día</th><th>Cuadrante asignado</th><th>Horario</th><th>Frecuencia de revistas</th><th>Estado</th></tr></thead><tbody>
-        {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(day => <tr key={day}><td>{day}</td><td className="pz-schedule-muted">—</td><td className="pz-schedule-muted">—</td><td className="pz-schedule-muted">—</td><td><span className="pz-schedule-muted">{activeShifts.length ? 'Sin asignación' : 'Sin turno'}</span></td></tr>)}
-      </tbody></table></div>
-    </section>
+
   </section>;
+}
+
+function SupervisionRuleModal({ installationId, installationName, defaultTolerance, currentRule, onClose, onSave }: { installationId: string; installationName: string; defaultTolerance: number; currentRule: SupervisionRule | null; onClose: () => void; onSave: (rule: Omit<SupervisionRule, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>) => Promise<boolean> }) {
+  const [revistasRequeridas, setRevistasRequeridas] = useState(String(currentRule?.revistas_requeridas ?? 2));
+  const [periodoObjetivo, setPeriodoObjetivo] = useState<'dia' | 'turno'>(currentRule?.periodo_objetivo || 'dia');
+  const [ventanas, setVentanas] = useState<SupervisionWindow[]>(currentRule?.ventanas_horarias?.length ? currentRule.ventanas_horarias : [{ inicio: '22:00', fin: '02:00' }, { inicio: '10:00', fin: '14:00' }]);
+  const [requerirQr, setRequerirQr] = useState(currentRule?.requerir_qr ?? true);
+  const [requerirGps, setRequerirGps] = useState(currentRule?.requerir_gps ?? true);
+  const [requerirFirma, setRequerirFirma] = useState(currentRule?.requerir_firma ?? false);
+  const [tolerancia, setTolerancia] = useState(String(currentRule?.tolerancia_omision_min ?? 30));
+  const [activo, setActivo] = useState(currentRule?.activo ?? true);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const updateWindow = (index: number, field: keyof SupervisionWindow, value: string) => setVentanas(current => current.map((window, position) => position === index ? { ...window, [field]: value } : window));
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); setSaveError('');
+    const validWindows = ventanas.filter(window => window.inicio && window.fin);
+    if (!validWindows.length) { setSaveError('Agrega al menos una franja horaria completa.'); return; }
+    if (!requerirQr && !requerirGps && !requerirFirma) { setSaveError('Selecciona al menos un método de verificación obligatorio.'); return; }
+    setSaving(true);
+    const saved = await onSave({
+      instalacion_id: installationId,
+      revistas_requeridas: Math.max(1, Math.min(100, Number(revistasRequeridas) || 1)),
+      periodo_objetivo: periodoObjetivo,
+      ventanas_horarias: validWindows,
+      requerir_qr: requerirQr, requerir_gps: requerirGps, requerir_firma: requerirFirma,
+      tolerancia_omision_min: Math.max(0, Math.min(1440, Number(tolerancia) || 0)),
+      activo,
+    });
+    setSaving(false);
+    if (saved) onClose(); else setSaveError('No se pudieron guardar los parámetros. Revisa los permisos o vuelve a intentarlo.');
+  };
+  return <div className="pz-modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !saving) onClose(); }}>
+    <form className="pz-round-modal pz-supervision-rule-modal" role="dialog" aria-modal="true" aria-labelledby="pz-supervision-modal-title" onSubmit={event => void submit(event)}>
+      <div className="pz-round-modal-head"><div><p className="pz-eyebrow">OBLIGACIÓN OPERATIVA</p><h3 id="pz-supervision-modal-title">Configurar parámetros de revista</h3><p>{installationName}</p></div><button type="button" className="pz-close-button" onClick={onClose} disabled={saving} aria-label="Cerrar">×</button></div>
+      <div className="pz-round-form-grid"><label>Frecuencia requerida<input type="number" min="1" max="100" value={revistasRequeridas} onChange={event => setRevistasRequeridas(event.target.value)} required /></label><label>Periodo de cumplimiento<select value={periodoObjetivo} onChange={event => setPeriodoObjetivo(event.target.value as 'dia' | 'turno')}><option value="dia">Por día</option><option value="turno">Por turno activo</option></select></label><label>Tolerancia para alerta (minutos)<input type="number" min="0" max="1440" value={tolerancia} onChange={event => setTolerancia(event.target.value)} required /></label><label>Estado de la regla<select value={activo ? 'activo' : 'inactivo'} onChange={event => setActivo(event.target.value === 'activo')}><option value="activo">Activa</option><option value="inactivo">Inactiva</option></select></label></div>
+      <fieldset className="pz-rule-windows"><legend>Franjas horarias permitidas</legend>{ventanas.map((window, index) => <div className="pz-rule-window-row" key={index}><strong>Rango {index + 1}</strong><label>Inicio<input type="time" value={window.inicio} onChange={event => updateWindow(index, 'inicio', event.target.value)} required /></label><label>Fin<input type="time" value={window.fin} onChange={event => updateWindow(index, 'fin', event.target.value)} required /></label><button type="button" className="pz-text-button" onClick={() => setVentanas(current => current.filter((_, position) => position !== index))} disabled={ventanas.length <= 1}>Quitar</button></div>)}<button type="button" className="pz-secondary pz-add-window" onClick={() => setVentanas(current => [...current, { inicio: '08:00', fin: '09:00' }])}>+ Agregar franja</button></fieldset>
+      <fieldset className="pz-rule-methods"><legend>Métodos de verificación obligatorios</legend><label><input type="checkbox" checked={requerirQr} onChange={event => setRequerirQr(event.target.checked)} /><span><strong>Escaneo QR del puesto</strong><small>Lectura del código físico asociado al puesto</small></span></label><label><input type="checkbox" checked={requerirGps} onChange={event => setRequerirGps(event.target.checked)} /><span><strong>Geolocalización GPS en sitio</strong><small>Validación dentro de la geocerca configurada</small></span></label><label><input type="checkbox" checked={requerirFirma} onChange={event => setRequerirFirma(event.target.checked)} /><span><strong>Firma digital del guarda</strong><small>Requerida como evidencia de validación</small></span></label></fieldset>
+      {saveError && <p className="pz-rule-error" role="alert">{saveError}</p>}
+      <div className="pz-round-modal-actions"><button type="button" className="pz-secondary" onClick={onClose} disabled={saving}>Cancelar</button><button type="submit" className="pz-primary" disabled={saving}>{saving ? 'Guardando…' : 'Guardar parámetros'}</button></div>
+    </form>
+  </div>;
 }
 
 function RoundConfigModal({ assets, installation, editing, onClose, onSave }: { assets: Asset[]; installation: Installation; editing: RoundConfig | null; onClose: () => void; onSave: (route: Omit<RoundConfig, 'id'>) => void }) {
@@ -244,6 +317,22 @@ function RoundConfigModal({ assets, installation, editing, onClose, onSave }: { 
   </div>;
 }
 
+function bogotaDateKey(value: string) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(value));
+}
+function clockMinutes(value: string) {
+  const [hours, minutes] = value.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+function timeIsInWindow(current: string, start: string, end: string) {
+  const now = clockMinutes(current), from = clockMinutes(start), to = clockMinutes(end);
+  return from <= to ? now >= from && now < to : now >= from || now < to;
+}
+function windowExceededTolerance(current: string, end: string, tolerance: number) {
+  const now = clockMinutes(current), deadline = (clockMinutes(end) + tolerance) % 1440, rawDeadline = clockMinutes(end) + tolerance;
+  if (rawDeadline < 1440) return now >= deadline;
+  return now < clockMinutes(end) && now >= deadline;
+}
 function Quick({ label, value, icon }: { label: string; value: string; icon: string }) {
   return <div className="pz-quick"><span className="pz-quick-icon">{icon}</span><div><small>{label}</small><strong>{value}</strong></div></div>;
 }
