@@ -300,7 +300,7 @@ export default function SupervisionModule({token,tenantId,role}:Props){
         <div className="content-title"><div><span className="eyebrow">Submódulo</span><h3>{labels[tab]}</h3></div>{tab!=='puestos'&&tab!=='resumen'&&<div className="installation-context"><label>Puesto operativo<select value={selectedId} onChange={e=>setSelectedId(e.target.value)}><option value="">Seleccionar…</option>{installations.map(i=><option key={i.id} value={i.id}>{i.codigo_puesto||'Puesto'} · {i.nombre}</option>)}</select></label></div>}</div>
 
         {loading?<div className="panel loading-state">Cargando Supervisión Física…</div>:
-        tab==='resumen'?<Dashboard installations={installations} openTickets={openTickets} critical={critical} overdue={overdue} anomalies={pendingAnomalies} unread={unread} reviews={reviews} onTab={setTab} selected={selected} onSelect={setSelectedId}/>:
+        tab==='resumen'?<Dashboard installations={installations} openTickets={openTickets} critical={critical} overdue={overdue} anomalies={pendingAnomalies} unread={unread} reviews={reviews} shifts={shifts} onTab={setTab} selected={selected} onSelect={setSelectedId}/>:
         tab==='puestos'?<PostsView installations={installations} selected={selected} assets={assets} tickets={tickets} reviews={reviews} assignments={assignments} users={users} shifts={shifts} role={role} onRefresh={()=>void refresh()} onSelect={setSelectedId} onNew={()=>{setEditingPost(null);setShowPostForm(true)}} onEdit={p=>{setEditingPost(p);setShowPostForm(true)}} onArchive={archivePost} assignUser={assignUser} createAsset={createAsset}/>:
         tab==='turnos'?<ShiftsView shifts={shifts} role={role} createShift={createShift} toggleShift={toggleShift}/>:
         tab==='activos'?<AssetsView assets={assets} installations={installations} selectedId={selectedId} role={role} createAsset={createAsset}/>:
@@ -320,30 +320,36 @@ export default function SupervisionModule({token,tenantId,role}:Props){
   </div>;
 }
 
-function Dashboard({installations,openTickets,critical,overdue,anomalies,unread,reviews,onTab,selected,onSelect}:{installations:Installation[];openTickets:Ticket[];critical:Ticket[];overdue:Ticket[];anomalies:Anomaly[];unread:Notification[];reviews:Review[];onTab:(t:Tab)=>void;selected:Installation|null;onSelect:(id:string)=>void}){
-  return <div className="data-list"><section className="stats-grid">
-    <Stat title="Puestos activos" value={installations.filter(i=>i.estado==='Activa').length} meta={installations.length+' registrados'}/>
-    <Stat title="Novedades abiertas" value={openTickets.length} meta="Seguimiento activo"/>
-    <Stat title="Críticas abiertas" value={critical.length} meta="Atención prioritaria"/>
-    <Stat title="SLA vencidos" value={overdue.length} meta="Requieren acción"/>
-    <Stat title="Anomalías pendientes" value={anomalies.length} meta="Control de excepciones"/>
-    <Stat title="Notificaciones" value={unread.length} meta="Pendientes"/>
-    <Stat title="Revistas" value={reviews.length} meta="Histórico"/>
-    <Stat title="Puestos con GPS" value={installations.filter(i=>i.latitud!==null&&i.longitud!==null).length} meta="Geocerca disponible"/>
-  </section><section className="content-grid">
-    <div className="panel supervision-wide"><div className="panel-header"><div><p className="eyebrow">Puestos</p><h3>Operación por ubicación</h3></div><button className="ghost-button" onClick={()=>onTab('puestos')}>Abrir puestos</button></div>
-      <div className="data-list">{installations.slice(0,8).map(i=><div className={'data-item '+(selected?.id===i.id?'supervision-select selected':'')} key={i.id}><div><span className="code">{i.codigo_puesto||'SIN CÓDIGO'} · {i.estado}</span><h3>{i.nombre}</h3><p>{i.ciudad||'Sin ciudad'} · {i.direccion||'Sin dirección'}</p></div><button className="text-button" onClick={()=>onSelect(i.id)}>Ficha</button></div>)}{!installations.length&&<div className="empty-state">No hay puestos registrados para este tenant.</div>}</div>
-    </div><div className="panel"><div className="panel-header"><div><p className="eyebrow">Alertas</p><h3>Atención prioritaria</h3></div></div><div className="data-list">{critical.slice(0,3).map(t=><button className="data-item" key={t.id} onClick={()=>onTab('novedades')}><div><span className="code">CRÍTICA · #{t.numero_ticket}</span><h3>{t.tipo_novedad}</h3><p>{t.descripcion}</p></div></button>)}{anomalies.slice(0,3).map(a=><button className="data-item" key={a.id} onClick={()=>onTab('anomalias')}><div><span className="code">{a.severidad} · {a.estado}</span><h3>{a.tipo_anomalia}</h3><p>{a.descripcion}</p></div></button>)}{!critical.length&&!anomalies.length&&<div className="empty-state">Sin alertas prioritarias.</div>}</div></div>
-  </section></div>;
+function Dashboard({installations,openTickets,critical,overdue,anomalies,unread,reviews,shifts,onTab,selected,onSelect}:{installations:Installation[];openTickets:Ticket[];critical:Ticket[];overdue:Ticket[];anomalies:Anomaly[];unread:Notification[];reviews:Review[];shifts:Shift[];onTab:(t:Tab)=>void;selected:Installation|null;onSelect:(id:string)=>void}){
+  const activePosts = installations.filter(i=>i.estado.toLowerCase()==='activa');
+  const scheduledPosts = activePosts.filter(i=>i.proxima_revista_at && new Date(i.proxima_revista_at).getTime() >= Date.now()).length;
+  const coverage = activePosts.length ? Math.round((scheduledPosts / activePosts.length) * 100) : 0;
+  const today = new Date().toDateString();
+  const reviewsToday = reviews.filter(r=>[r.fecha_checkin,r.fecha_programada].some(value=>!!value && new Date(value).toDateString()===today)).length;
+  const alertCount = openTickets.length + anomalies.length;
+  return <div className="data-list supervision-dashboard">
+    <section className="stats-grid">
+      <Stat title="Puestos activos" value={activePosts.length} meta={`${installations.length} puestos registrados`} tone="green"/>
+      <Stat title="Cobertura programada" value={`${coverage}%`} meta={`${scheduledPosts} de ${activePosts.length} puestos activos`} tone="blue"/>
+      <Stat title="Revistas hoy" value={reviewsToday} meta="Programadas o registradas hoy" tone="violet"/>
+      <Stat title="Alertas y novedades" value={alertCount} meta={`${openTickets.length} novedades · ${anomalies.length} anomalías`} tone={alertCount?'amber':'green'}/>
+    </section>
+    <section className="content-grid">
+      <div className="panel supervision-wide"><div className="panel-header"><div><p className="eyebrow">Puestos</p><h3>Operación por ubicación</h3></div><button className="ghost-button" onClick={()=>onTab('puestos')}>Ver todos</button></div>
+        <div className="data-list">{installations.slice(0,6).map(i=><button type="button" className={'data-item '+(selected?.id===i.id?'supervision-select selected':'')} key={i.id} onClick={()=>onSelect(i.id)}><div><span className={`posts-status ${i.estado.toLowerCase()==='activa'?'is-active':'is-inactive'}`}>{i.estado.toLowerCase()==='activa'?'Activo':'Inhabilitado'}</span><h3>{i.codigo_puesto||'SIN CÓDIGO'} · {i.nombre}</h3><p>{[i.ciudad,i.direccion].filter(Boolean).join(' · ')||'Ubicación no registrada'}</p></div><span className="dashboard-row-action" aria-hidden="true">↗</span></button>)}{!installations.length&&<div className="empty-state">No hay puestos registrados.</div>}</div>
+      </div>
+      <div className="panel"><div className="panel-header"><div><p className="eyebrow">Atención</p><h3>Prioridades operativas</h3></div></div><div className="data-list">{critical.slice(0,3).map(t=><button type="button" className="data-item" key={t.id} onClick={()=>onTab('novedades')}><div><span className="code">CRÍTICA · #{t.numero_ticket}</span><h3>{t.tipo_novedad}</h3><p>{t.descripcion}</p></div></button>)}{anomalies.slice(0,3).map(a=><button type="button" className="data-item" key={a.id} onClick={()=>onTab('anomalias')}><div><span className="code">{a.severidad} · {a.estado}</span><h3>{a.tipo_anomalia}</h3><p>{a.descripcion}</p></div></button>)}{!critical.length&&!anomalies.length&&<div className="empty-state">Todo al día. Sin alertas prioritarias.</div>}</div></div>
+    </section>
+  </div>;
 }
-function Stat({title,value,meta}:{title:string;value:number;meta:string}){return <article className="stat-card"><span>{title}</span><strong>{value}</strong><em>{meta}</em></article>}
+function Stat({title,value,meta,tone='blue'}:{title:string;value:number|string;meta:string;tone?:'green'|'blue'|'violet'|'amber'}){return <article className={`stat-card tone-${tone}`}><span>{title}</span><strong>{value}</strong><em>{meta}</em></article>}
 
 function PostsView({installations,selected,assets,tickets,reviews,assignments,users,shifts,role,onRefresh,onSelect,onNew,onEdit,onArchive,assignUser,createAsset}:{installations:Installation[];selected:Installation|null;assets:Asset[];tickets:Ticket[];reviews:Review[];assignments:Assignment[];users:SupervisionUser[];shifts:Shift[];role:UserRole;onRefresh:()=>void;onSelect:(id:string)=>void;onNew:()=>void;onEdit:(p:Installation)=>void;onArchive:(id:string)=>Promise<void>;assignUser:(e:FormEvent<HTMLFormElement>)=>Promise<void>;createAsset:(e:FormEvent<HTMLFormElement>)=>Promise<void>}){
   const selectedAssets=selected?assets.filter(a=>a.instalacion_id===selected.id):[];
   const selectedTickets=selected?tickets.filter(t=>t.instalacion_id===selected.id):[];
   const selectedReviews=selected?reviews.filter(r=>r.instalacion_id===selected.id):[];
   const selectedAssignments=selected?assignments.filter(a=>a.instalacion_id===selected.id):[];
-  return <section className="content-grid"><div className="panel supervision-wide"><div className="panel-header"><div><p className="eyebrow">Maestro operativo</p><h3>Todos los puestos</h3><p className="helper-text">La ficha del puesto concentra ubicación, geocerca, responsable, estado y relación con la operación.</p></div>{canAdmin(role)&&<button className="primary-button" onClick={onNew}>+ Nuevo puesto</button>}</div>
+  return <section className="content-grid"><div className="panel supervision-wide"><div className="panel-header"><div><p className="eyebrow">Maestro operativo</p><h3>Todos los puestos</h3></div>{canAdmin(role)&&<button className="primary-button" onClick={onNew}>+ Nuevo puesto</button>}</div>
     {installations.length ? <div className="posts-table-wrap"><table className="posts-table">
       <thead><tr><th>Puesto</th><th>Estado operativo</th><th>Ubicación / geocerca</th><th>Última revista</th><th>Próximo turno</th><th>Acciones</th></tr></thead>
       <tbody>{installations.map(i=>{
@@ -357,10 +363,10 @@ function PostsView({installations,selected,assets,tickets,reviews,assignments,us
           <td><div className="posts-location-cell"><strong>{i.direccion||i.ciudad||'Ubicación pendiente'}</strong><span>{i.latitud!==null&&i.longitud!==null?i.latitud.toFixed(5)+', '+i.longitud.toFixed(5):'Sin coordenadas GPS'} · Radio {i.geocerca_radio_m} m</span></div></td>
           <td><div className="posts-location-cell"><strong>{lastReview?.fecha_checkin?new Date(lastReview.fecha_checkin).toLocaleString('es-CO',{dateStyle:'medium',timeStyle:'short'}):i.ultima_revista_at?new Date(i.ultima_revista_at).toLocaleString('es-CO',{dateStyle:'medium',timeStyle:'short'}):'Sin revista registrada'}</strong><span>{lastReview?lastReview.estado:'Pendiente de registro'}</span></div></td>
           <td><div className="posts-location-cell"><strong>{i.proxima_revista_at?new Date(i.proxima_revista_at).toLocaleString('es-CO',{dateStyle:'medium',timeStyle:'short'}):nextShift?.nombre||'Sin turno activo'}</strong><span>{nextShift?nextShift.hora_inicio+' – '+nextShift.hora_fin:'Configura un turno para generar alertas'}</span></div></td>
-          <td><div className="posts-actions"><button className="text-button" onClick={()=>onSelect(i.id)}>Abrir ficha</button>{canAdmin(role)&&<button className="text-button" onClick={()=>onEdit(i)}>Editar</button>}{canAdmin(role)&&isActive&&<button className="text-button danger" onClick={()=>void onArchive(i.id)}>Inhabilitar</button>}</div></td>
+          <td><div className="posts-actions"><button type="button" className="posts-icon-button" title="Abrir ficha" aria-label="Abrir ficha" onClick={()=>onSelect(i.id)}>↗</button>{canAdmin(role)&&<button type="button" className="posts-icon-button" title="Editar puesto" aria-label="Editar puesto" onClick={()=>onEdit(i)}>✎</button>}{canAdmin(role)&&isActive&&<button type="button" className="posts-icon-button is-danger" title="Inhabilitar puesto" aria-label="Inhabilitar puesto" onClick={()=>void onArchive(i.id)}>⊘</button>}</div></td>
         </tr>;
       })}</tbody>
-    </table></div> : <div className="posts-empty-state"><span>⌖</span><h4>No hay puestos para el tenant activo</h4><p>La lista se carga desde la sesión autenticada de Supervisión Física. Puedes actualizar la consulta o crear el primer puesto; si la sesión y el tenant no coinciden, se mostrará un error en lugar de confirmar un guardado que no aparece.</p><div><button className="ghost-button" onClick={onRefresh} type="button">↻ Actualizar lista</button>{canAdmin(role)&&<button className="primary-button" onClick={onNew} type="button">+ Nuevo puesto</button>}</div></div>}
+    </table></div> : <div className="posts-empty-state"><span>⌖</span><h4>Aún no hay puestos</h4><p>Crea el primer puesto para empezar a organizar la operación.</p><div><button className="ghost-button" onClick={onRefresh} type="button">↻ Actualizar lista</button>{canAdmin(role)&&<button className="primary-button" onClick={onNew} type="button">+ Nuevo puesto</button>}</div></div>}
   </div>
   {selected&&<PuestoZonaDetail installation={selected} assets={selectedAssets} tickets={selectedTickets} reviews={selectedReviews} assignments={selectedAssignments} users={users} shifts={shifts} role={role} onEdit={()=>onEdit(selected)} assignUser={assignUser} createAsset={createAsset}/>} 
 
