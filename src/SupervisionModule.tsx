@@ -79,11 +79,12 @@ export default function SupervisionModule({token,tenantId,role}:Props){
     // jamás deje el catálogo de puestos vacío.
     const installationResult=await db.rpc('listar_supervision_instalaciones');
     if(installationResult.error){
-      setError(installationResult.error.message);
+      setError('No fue posible cargar los puestos del tenant activo: '+installationResult.error.message);
       if(!silent)setLoading(false);
-      return;
+      return null;
     }
-    setInstallations((installationResult.data||[]) as Installation[]);
+    const loadedInstallations=(installationResult.data||[]) as Installation[];
+    setInstallations(loadedInstallations);
 
     const results=await Promise.all([
       db.from('supervision_activos').select('*').eq('tenant_id',tenantId).is('eliminado_at',null).order('nombre_activo'),
@@ -125,8 +126,15 @@ export default function SupervisionModule({token,tenantId,role}:Props){
     setCheckItems((ci.data||[]) as ChecklistItem[]);
     setUsers((u.data||[]) as SupervisionUser[]);
     if(!silent)setLoading(false);
+    return loadedInstallations;
   },[db,tenantId]);
   useEffect(()=>{void refresh();},[refresh]);
+  useEffect(()=>{
+    const channel=db.channel('supervision-instalaciones-live')
+      .on('postgres_changes',{event:'*',schema:'public',table:'supervision_instalaciones'},()=>{void refresh(true);})
+      .subscribe();
+    return()=>{void db.removeChannel(channel);};
+  },[db,refresh]);
   useEffect(()=>{
     const handler=(event:Event)=>{const next=(event as CustomEvent<Tab>).detail;if(next in labels)setTab(next);};
     window.addEventListener('alarvix-supervision-submodule',handler);
@@ -157,11 +165,12 @@ export default function SupervisionModule({token,tenantId,role}:Props){
       estudio_seguridad_fecha:String(f.get('estudio_seguridad_fecha')||'').trim()||null};
     if(!payload.nombre){setError('El nombre del puesto es obligatorio.');return;}
     setBusy(true);setError('');
+    let savedId:string|null=editingPost?.id||null;
     if(editingPost){
       const {error:e1}=await db.from('supervision_instalaciones').update(payload).eq('id',editingPost.id).eq('tenant_id',tenantId);
       if(e1){setError(e1.message);setBusy(false);return;}
     }else{
-      const {error:e2}=await db.rpc('crear_supervision_instalacion',{
+      const {data:created,error:e2}=await db.rpc('crear_supervision_instalacion',{
         p_nombre:payload.nombre,p_direccion:payload.direccion,p_ciudad:payload.ciudad,p_latitud:payload.latitud,p_longitud:payload.longitud,
         p_geocerca_radio_m:payload.geocerca_radio_m,p_estado:payload.estado,p_codigo_puesto:payload.codigo_puesto,p_tipo_puesto:payload.tipo_puesto,
         p_coordinador_nombre:payload.coordinador_nombre,p_telefono_contacto:payload.telefono_contacto,p_sector:payload.sector,
@@ -169,9 +178,27 @@ export default function SupervisionModule({token,tenantId,role}:Props){
         p_estudio_seguridad_fecha:payload.estudio_seguridad_fecha||null
       });
       if(e2){setError(e2.message);setBusy(false);return;}
+      const createdRow=(Array.isArray(created)?created[0]:created) as Installation|undefined;
+      savedId=createdRow?.id||null;
+      if(createdRow?.tenant_id && String(createdRow.tenant_id)!==String(tenantId)){
+        setError('El servidor creó el puesto en un tenant distinto al que muestra esta pantalla. Se bloqueó el mensaje de éxito; verifica el tenant de la sesión.');
+        setBusy(false);
+        return;
+      }
     }
-    setNotice(editingPost?'Puesto actualizado correctamente.':'Puesto creado correctamente.');
-    setShowPostForm(false);setEditingPost(null);setTab('puestos');await refresh(true);setBusy(false);
+    setShowPostForm(false);setEditingPost(null);setTab('puestos');
+    const refreshed=await refresh(true);
+    if(!refreshed){setBusy(false);return;}
+    const savedVisible=savedId ? refreshed.some(i=>i.id===savedId) : refreshed.some(i=>i.nombre===payload.nombre);
+    if(!savedVisible){
+      setNotice('');
+      setError('La operación se guardó, pero el puesto no aparece en la consulta del tenant activo. No se mostrará un éxito falso; revisa la sesión/RLS y vuelve a actualizar.');
+      setBusy(false);
+      return;
+    }
+    setSelectedId(savedId||refreshed.find(i=>i.nombre===payload.nombre)?.id||'');
+    setNotice(editingPost?'Puesto actualizado y sincronizado.':'Puesto creado y sincronizado correctamente.');
+    setBusy(false);
   };
 
   const archivePost=async(id:string)=>{
@@ -317,7 +344,23 @@ function PostsView({installations,selected,assets,tickets,reviews,assignments,us
   const selectedReviews=selected?reviews.filter(r=>r.instalacion_id===selected.id):[];
   const selectedAssignments=selected?assignments.filter(a=>a.instalacion_id===selected.id):[];
   return <section className="content-grid"><div className="panel supervision-wide"><div className="panel-header"><div><p className="eyebrow">Maestro operativo</p><h3>Todos los puestos</h3><p className="helper-text">La ficha del puesto concentra ubicación, geocerca, responsable, estado y relación con la operación.</p></div>{canAdmin(role)&&<button className="primary-button" onClick={onNew}>+ Nuevo puesto</button>}</div>
-    <div className="data-list">{installations.map(i=><article className={'data-item '+(selected?.id===i.id?'supervision-select selected':'')} key={i.id}><div><span className="code">{i.codigo_puesto||'SIN CÓDIGO'} · {i.estado}</span><h3>{i.nombre}</h3><p>{i.tipo_puesto||'Fijo'} · {i.ciudad||'Sin ciudad'} · {i.sector||'Sin sector'}</p><p>{i.direccion||'Sin dirección'} · geocerca {i.geocerca_radio_m} m</p></div><div className="data-item-side"><button className="text-button" onClick={()=>onSelect(i.id)}>Ficha</button>{canAdmin(role)&&<button className="text-button" onClick={()=>onEdit(i)}>Editar</button>}{canAdmin(role)&&i.estado==='Activa'&&<button className="text-button danger" onClick={()=>void onArchive(i.id)}>Archivar</button>}</div></article>)}{!installations.length&&<div className="empty-state">No hay puestos registrados para este tenant.</div>}</div>
+    {installations.length ? <div className="posts-table-wrap"><table className="posts-table">
+      <thead><tr><th>Puesto</th><th>Estado operativo</th><th>Ubicación / geocerca</th><th>Última revista</th><th>Próximo turno</th><th>Acciones</th></tr></thead>
+      <tbody>{installations.map(i=>{
+        const postReviews=reviews.filter(r=>r.instalacion_id===i.id).sort((a,b)=>new Date(b.fecha_checkin||b.fecha_programada||b.created_at).getTime()-new Date(a.fecha_checkin||a.fecha_programada||a.created_at).getTime());
+        const lastReview=postReviews[0];
+        const nextShift=shifts.find(s=>s.activo);
+        const isActive=i.estado.toLowerCase()==='activa';
+        return <tr key={i.id} className={selected?.id===i.id?'posts-row-selected':''}>
+          <td><div className="posts-name-cell"><strong>{i.codigo_puesto||'SIN CÓDIGO'} · {i.nombre}</strong><span>{i.tipo_puesto||'Fijo'}{i.sector?' · '+i.sector:''}</span></div></td>
+          <td><div className="posts-status-stack"><span className={'posts-status '+(isActive?'is-active':'is-inactive')}>{isActive?'Activo':'Inhabilitado'}</span>{!nextShift&&<span className="posts-status is-alert">Alerta de turno</span>}</div></td>
+          <td><div className="posts-location-cell"><strong>{i.direccion||i.ciudad||'Ubicación pendiente'}</strong><span>{i.latitud!==null&&i.longitud!==null?i.latitud.toFixed(5)+', '+i.longitud.toFixed(5):'Sin coordenadas GPS'} · Radio {i.geocerca_radio_m} m</span></div></td>
+          <td><div className="posts-location-cell"><strong>{lastReview?.fecha_checkin?new Date(lastReview.fecha_checkin).toLocaleString('es-CO',{dateStyle:'medium',timeStyle:'short'}):i.ultima_revista_at?new Date(i.ultima_revista_at).toLocaleString('es-CO',{dateStyle:'medium',timeStyle:'short'}):'Sin revista registrada'}</strong><span>{lastReview?lastReview.estado:'Pendiente de registro'}</span></div></td>
+          <td><div className="posts-location-cell"><strong>{i.proxima_revista_at?new Date(i.proxima_revista_at).toLocaleString('es-CO',{dateStyle:'medium',timeStyle:'short'}):nextShift?.nombre||'Sin turno activo'}</strong><span>{nextShift?nextShift.hora_inicio+' – '+nextShift.hora_fin:'Configura un turno para generar alertas'}</span></div></td>
+          <td><div className="posts-actions"><button className="text-button" onClick={()=>onSelect(i.id)}>Abrir ficha</button>{canAdmin(role)&&<button className="text-button" onClick={()=>onEdit(i)}>Editar</button>}{canAdmin(role)&&isActive&&<button className="text-button danger" onClick={()=>void onArchive(i.id)}>Inhabilitar</button>}</div></td>
+        </tr>;
+      })}</tbody>
+    </table></div> : <div className="posts-empty-state"><span>⌖</span><h4>No hay puestos para el tenant activo</h4><p>La lista se carga desde la sesión autenticada de Supervisión Física. Puedes actualizar la consulta o crear el primer puesto; si la sesión y el tenant no coinciden, se mostrará un error en lugar de confirmar un guardado que no aparece.</p><div><button className="ghost-button" onClick={()=>void refresh()} type="button">↻ Actualizar lista</button>{canAdmin(role)&&<button className="primary-button" onClick={onNew} type="button">+ Nuevo puesto</button>}</div></div>}
   </div>
   {selected&&<PuestoZonaDetail installation={selected} assets={selectedAssets} tickets={selectedTickets} reviews={selectedReviews} assignments={selectedAssignments} users={users} shifts={shifts} role={role} onEdit={()=>onEdit(selected)} assignUser={assignUser} createAsset={createAsset}/>} 
 
