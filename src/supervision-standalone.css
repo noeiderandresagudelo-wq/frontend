@@ -119,3 +119,29 @@
 @media(max-width:620px){#supervision-react-mount .supervision-head h2{font-size:19px}#supervision-react-mount .mini-kpi-grid{grid-template-columns:1fr 1fr}#supervision-react-mount .data-item{align-items:flex-start;flex-direction:column}#supervision-react-mount .data-item-side{width:100%;justify-content:flex-start}}
 
 #supervision-react-mount .supervision-layout.no-subnav{display:block}
+
+
+/* Puestos de supervisión: tabla operativa, estados y ubicación */
+#supervision-react-mount .posts-table-wrap{width:100%;overflow:auto;border:1px solid #263449;border-radius:12px;background:#0b1220}
+#supervision-react-mount .posts-table{width:100%;min-width:980px;border-collapse:separate;border-spacing:0;text-align:left}
+#supervision-react-mount .posts-table th{padding:13px 14px;background:#131f31;border-bottom:1px solid #2a3950;color:#93a8c4;font-size:9px;text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
+#supervision-react-mount .posts-table td{padding:14px;border-bottom:1px solid #1e2b3e;vertical-align:middle;color:#dce6f5;font-size:11px}
+#supervision-react-mount .posts-table tbody tr:last-child td{border-bottom:0}
+#supervision-react-mount .posts-table tbody tr:hover{background:rgba(45,65,91,.22)}
+#supervision-react-mount .posts-table tbody tr.posts-row-selected{background:rgba(37,99,235,.10);box-shadow:inset 3px 0 #60a5fa}
+#supervision-react-mount .posts-name-cell,#supervision-react-mount .posts-location-cell{display:grid;gap:5px;min-width:140px}
+#supervision-react-mount .posts-name-cell strong{color:#f1f6ff;font-size:12px;line-height:1.4}
+#supervision-react-mount .posts-name-cell span,#supervision-react-mount .posts-location-cell span{color:#8193ad;font-size:10px;line-height:1.4}
+#supervision-react-mount .posts-location-cell strong{font-weight:650;color:#dbe6f5;font-size:11px;line-height:1.4}
+#supervision-react-mount .posts-status-stack{display:grid;gap:5px;justify-items:start}
+#supervision-react-mount .posts-status{display:inline-flex;align-items:center;border:1px solid transparent;border-radius:999px;padding:5px 8px;font-size:9px;font-weight:850;white-space:nowrap}
+#supervision-react-mount .posts-status.is-active{color:#86efac;background:#102b20;border-color:#1e6041}
+#supervision-react-mount .posts-status.is-inactive{color:#fda4af;background:#351923;border-color:#783747}
+#supervision-react-mount .posts-status.is-alert{color:#fcd34d;background:#302817;border-color:#755a25}
+#supervision-react-mount .posts-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;min-width:125px}
+#supervision-react-mount .posts-empty-state{padding:28px 20px;border:1px dashed #334155;border-radius:14px;background:linear-gradient(145deg,#101a2a,#0b1220);text-align:center}
+#supervision-react-mount .posts-empty-state>span{display:grid;place-items:center;width:44px;height:44px;margin:0 auto 12px;border-radius:13px;background:#172c40;color:#67e8c0;font-size:23px}
+#supervision-react-mount .posts-empty-state h4{margin:0;color:#e5edf9;font-size:14px}
+#supervision-react-mount .posts-empty-state p{max-width:600px;margin:9px auto 16px;color:#91a0b7;font-size:11px;line-height:1.6}
+#supervision-react-mount .posts-empty-state>div{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+@media(max-width:700px){#supervision-react-mount .posts-table-wrap{border-radius:9px}#supervision-react-mount .posts-empty-state{padding:20px 12px}}
