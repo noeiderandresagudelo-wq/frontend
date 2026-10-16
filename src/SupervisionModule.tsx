@@ -347,7 +347,7 @@ function PostsView({installations,selected,assets,tickets,reviews,assignments,us
     {installations.length ? <div className="posts-table-wrap"><table className="posts-table">
       <thead><tr><th>Puesto</th><th>Estado operativo</th><th>Ubicación / geocerca</th><th>Última revista</th><th>Próximo turno</th><th>Acciones</th></tr></thead>
       <tbody>{installations.map(i=>{
-        const postReviews=reviews.filter(r=>r.instalacion_id===i.id).sort((a,b)=>new Date(b.fecha_checkin||b.fecha_programada||b.created_at).getTime()-new Date(a.fecha_checkin||a.fecha_programada||a.created_at).getTime());
+        const postReviews=reviews.filter(r=>r.instalacion_id===i.id).sort((a,b)=>new Date(b.fecha_checkin||b.fecha_programada||0).getTime()-new Date(a.fecha_checkin||a.fecha_programada||0).getTime());
         const lastReview=postReviews[0];
         const nextShift=shifts.find(s=>s.activo);
         const isActive=i.estado.toLowerCase()==='activa';
