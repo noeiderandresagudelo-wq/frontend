@@ -4,9 +4,10 @@ import { createAuthedSupabaseClient } from './lib/supabase';
 import type { UserRole } from './api';
 import './supervision-standalone.css';
 import PuestoZonaDetail from './PuestoZonaDetail';
+import SupervisionReports from './SupervisionReports';
 
 type Props = { token: string; tenantId: string; role: UserRole };
-type Tab = 'resumen'|'puestos'|'turnos'|'activos'|'revistas'|'novedades'|'evidencias'|'mantenimientos'|'anomalias'|'auditoria'|'configuracion';
+type Tab = 'resumen'|'puestos'|'turnos'|'activos'|'revistas'|'novedades'|'evidencias'|'mantenimientos'|'anomalias'|'auditoria'|'configuracion'|'reportes';
 
 type Installation = {
   id:string; tenant_id:string; codigo_puesto:string|null; nombre:string; tipo_puesto:string|null;
@@ -37,9 +38,9 @@ type ChecklistItem = { id:string; checklist_id:string; texto:string; obligatorio
 const labels:Record<Tab,string> = {
   resumen:'Resumen operativo', puestos:'Puestos de supervisión', turnos:'Turnos', activos:'Activos',
   revistas:'Revistas y check-in', novedades:'Novedades', evidencias:'Evidencias',
-  mantenimientos:'Mantenimientos', anomalias:'Anomalías', auditoria:'Auditoría', configuracion:'Configuración'
+  mantenimientos:'Mantenimientos', anomalias:'Anomalías', auditoria:'Auditoría', configuracion:'Configuración', reportes:'Reportes y analítica'
 };
-const icon:Record<Tab,string> = {resumen:'⌂',puestos:'⌖',turnos:'◷',activos:'▣',revistas:'✓',novedades:'⚑',evidencias:'▤',mantenimientos:'↻',anomalias:'⚠',auditoria:'≡',configuracion:'⚙'};
+const icon:Record<Tab,string> = {resumen:'⌂',puestos:'⌖',turnos:'◷',activos:'▣',revistas:'✓',novedades:'⚑',evidencias:'▤',mantenimientos:'↻',anomalias:'⚠',auditoria:'≡',configuracion:'⚙',reportes:'▤'};
 const canAdmin=(role:UserRole)=>role==='admin'||role==='manager';
 const canStaff=(role:UserRole)=>canAdmin(role)||role==='supervisor';
 
