@@ -208,7 +208,7 @@ export default function PuestoZonaDetail({
         </section>
         <section className="pz-card">
           <CardHeading eyebrow="ATENCIÓN PRIORITARIA" title="Acciones rápidas" />
-          <a className="pz-secondary pz-link-button" href={installation.telefono_contacto ? `tel:${installation.telefono_contacto.replace(/[^+\\d]/g, '')}` : undefined} aria-disabled={!installation.telefono_contacto}>☎ Llamar al contacto principal</a>
+          <a className="pz-secondary pz-link-button" href={installation.telefono_contacto ? `tel:${installation.telefono_contacto.replace(/[^+\d]/g, '')}` : undefined} aria-disabled={!installation.telefono_contacto}>☎ Llamar al contacto principal</a>
           {mapsUrl && <a className="pz-secondary pz-link-button" href={mapsUrl} target="_blank" rel="noreferrer">⌖ Abrir ubicación del puesto</a>}
           {!installation.telefono_contacto && <div className="pz-inline-alert">Registra un teléfono de contacto para habilitar la llamada directa.</div>}
         </section>
@@ -242,5 +242,5 @@ function Empty({ text }: { text: string }) {
   return <div className="pz-empty"><span>◇</span><p>{text}</p></div>;
 }
 function Contact({ title, name, phone }: { title: string; name: string | null; phone: string | null }) {
-  return <div className="pz-contact"><span className="pz-contact-icon">☎</span><div><small>{title}</small><strong>{name || 'Pendiente de configurar'}</strong><span>{phone || 'Sin teléfono registrado'}</span></div>{phone && <a href={`tel:${phone.replace(/[^+\\d]/g, '')}`}>Llamar</a>}</div>;
+  return <div className="pz-contact"><span className="pz-contact-icon">☎</span><div><small>{title}</small><strong>{name || 'Pendiente de configurar'}</strong><span>{phone || 'Sin teléfono registrado'}</span></div>{phone && <a href={`tel:${phone.replace(/[^+\d]/g, '')}`}>Llamar</a>}</div>;
 }
