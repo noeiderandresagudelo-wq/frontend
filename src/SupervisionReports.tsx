@@ -122,7 +122,7 @@ export default function SupervisionReports({token,tenantId,installations,rules,u
  const [mode,setMode]=useState<'diario'|'mensual'|'rondas'>('diario'),[siteSearch,setSiteSearch]=useState(''),[selectedSites,setSelectedSites]=useState<string[]>([]);
  const [supervisorId,setSupervisorId]=useState(''),[method,setMethod]=useState('todos'),[codeSearch,setCodeSearch]=useState('');
  const [reviews,setReviews]=useState<Review[]>([]),[evidence,setEvidence]=useState<Evidence[]>([]),[routes,setRoutes]=useState<Route[]>([]),[points,setPoints]=useState<RoutePoint[]>([]),[rounds,setRounds]=useState<Round[]>([]),[marks,setMarks]=useState<RoundMark[]>([]);
- const [loading,setLoading]=useState(false),[error,setError]=useState(''),[loaded,setLoaded]=useState(false),[emailOpen,setEmailOpen]=useState(false),[email,setEmail]=useState('');
+ const [loading,setLoading]=useState(false),[error,setError]=useState(''),[loaded,setLoaded]=useState(false);
  const loadData=useCallback(async(range:{start:string;end:string})=>{
   if(!range.start||!range.end||new Date(range.start).getTime()>new Date(range.end).getTime()){setError('El rango de fecha/hora no es válido.');return;}
   setLoading(true);setError('');const a=new Date(range.start).toISOString(),b=new Date(range.end).toISOString();
