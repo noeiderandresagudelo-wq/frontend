@@ -14,7 +14,7 @@ type Round = { id:string; ruta_id:string; instalacion_id:string; guarda_id:strin
 type RoundMark = { id:string; ronda_id:string; punto_ruta_id:string; activo_id:string; metodo:string; marcado_at:string; latitud:number|null; longitud:number|null; distancia_m:number|null };
 type Props = { token:string; tenantId:string; installations:Site[]; rules:Rule[]; users:Staff[]; shifts:Shift[] };
 type DailyRow = { key:string; sortAt:string; fecha:string; puesto:string; codigoPuesto:string; supervisor:string; codigo:string; metodo:string; gps:string; estado:string; novedad:string; evidencias:string; esOmisio:boolean; esDuplicada:boolean };
-type MonthlyRow = { id:string; codigo:string; puesto:string; programadas:number; ejecutadas:number; repetidas:number; omisas:number; efectividad:number; status:string };
+type MonthlyRow = { id:string; codigo:string; puesto:string; programadas:number; ejecutadas:number; repetidas:number; omisas:number; aTiempo:number; efectividad:number; status:string };
 type RoundRow = { id:string; fecha:string; puesto:string; ruta:string; guarda:string; inicio:string; fin:string; tiempo:number|null; estimado:number; puntos:string; porcentaje:number; salteados:string; estado:string; alerta:string };
 
 const TZ='America/Bogota';
@@ -36,7 +36,7 @@ function matchWindow(timestamp:string,windows:TimeWindow[],tolerance:number){
   if(end<=start)b=new Date(b.getTime()+86400000);
   if(d.getTime()>=a.getTime()&&d.getTime()<=b.getTime())return {index:i,onTime:true};
   if(d.getTime()>b.getTime()&&d.getTime()<=b.getTime()+Math.max(0,tolerance)*60000)return {index:i,onTime:false};
-  if(end<=start&&c<=end&&d.getTime()>=a.getTime()-86400000&&d.getTime()<=b.getTime()+Math.max(0,tolerance)*60000)return {index:i,onTime:d.getTime()<=b.getTime()};
+  if(end<=start&&c<=end&&d.getTime()>=a.getTime()-86400000&&d.getTime()<=b.getTime()-86400000+Math.max(0,tolerance)*60000)return {index:i,onTime:d.getTime()<=b.getTime()};
  }
  return {index:-1,onTime:false};
 }
@@ -159,25 +159,25 @@ export default function SupervisionReports({token,tenantId,installations,rules,u
  const dailyRows=useMemo(()=>[...filteredRows,...missing].sort((a,b)=>new Date(b.sortAt).getTime()-new Date(a.sortAt).getTime()),[filteredRows,missing]);
  const dayCount=useMemo(()=>{const a=new Date(dateKey(new Date(appliedRange.start).toISOString())+'T12:00:00-05:00'),b=new Date(dateKey(new Date(appliedRange.end).toISOString())+'T12:00:00-05:00');return Math.max(1,Math.floor((b.getTime()-a.getTime())/86400000)+1);},[appliedRange]);
  const monthlyRows=useMemo<MonthlyRow[]>(()=>installations.filter(s=>!selectedSites.length||selectedSites.includes(s.id)).map(site=>{
-  const rule=rules.find(r=>r.instalacion_id===site.id&&r.activo),programmed=rule?Math.max(0,rule.revistas_requeridas||0)*dayCount*(rule.periodo_objetivo==='turno'?Math.max(1,shifts.filter(x=>x.activo).length):1):0;
-  const rows=allRows.filter(row=>reviews.find(r=>r.id===row.key)?.instalacion_id===site.id),executed=rows.filter(row=>!row.esDuplicada).length,repeated=rows.filter(row=>row.esDuplicada).length,onTime=rows.filter(row=>row.estado==='A tiempo').length;
+  const rule=rules.find(r=>r.instalacion_id===site.id&&r.activo),programmed=rule?Math.max(rule.revistas_requeridas||0,rule.ventanas_horarias?.length||0)*dayCount*(rule.periodo_objetivo==='turno'?Math.max(1,shifts.filter(x=>x.activo).length):1):0;
+  const rows=filteredRows.filter(row=>reviews.find(r=>r.id===row.key)?.instalacion_id===site.id),executed=rows.filter(row=>!row.esDuplicada).length,repeated=rows.filter(row=>row.esDuplicada).length,onTime=rows.filter(row=>row.estado==='A tiempo').length;
   const effectiveness=programmed?Math.min(100,Math.round(onTime/programmed*100)):0,omitted=Math.max(0,programmed-executed);
-  return {id:site.id,codigo:site.codigo_puesto||'—',puesto:site.nombre,programadas:programmed,ejecutadas:executed,repetidas:repeated,omisas:omitted,efectividad:effectiveness,status:!rule?'Sin parametrización':effectiveness>=90?'Cumplimiento alto':effectiveness>=75?'Atención':'Crítico'};
- }),[installations,selectedSites,rules,dayCount,shifts,allRows,reviews]);
+  return {id:site.id,codigo:site.codigo_puesto||'—',puesto:site.nombre,programadas:programmed,ejecutadas:executed,repetidas:repeated,omisas:omitted,aTiempo:onTime,efectividad:effectiveness,status:!rule?'Sin parametrización':effectiveness>=90?'Cumplimiento alto':effectiveness>=75?'Atención':'Crítico'};
+ }),[installations,selectedSites,rules,dayCount,shifts,filteredRows,reviews]);
  const overall=useMemo(()=>{
   const programmed=monthlyRows.reduce((n,r)=>n+r.programadas,0),executed=monthlyRows.reduce((n,r)=>n+r.ejecutadas,0),repeated=monthlyRows.reduce((n,r)=>n+r.repetidas,0),omitted=monthlyRows.reduce((n,r)=>n+r.omisas,0);
-  const onTime=allRows.filter(r=>r.estado==='A tiempo'&&(!selectedSites.length||selectedSites.includes(reviews.find(x=>x.id===r.key)?.instalacion_id||''))).length;
+  const onTime=filteredRows.filter(r=>r.estado==='A tiempo').length;
   return {programmed,executed,repeated,omitted,rate:programmed?Math.min(100,Math.round(onTime/programmed*100)):0};
- },[monthlyRows,allRows,selectedSites,reviews]);
+ },[monthlyRows,filteredRows]);
  const siteMap=useMemo(()=>new Map(installations.map(s=>[s.id,s])),[installations]),routeMap=useMemo(()=>new Map(routes.map(r=>[r.id,r])),[routes]),staffMap=useMemo(()=>new Map(users.map(s=>[s.id,s])),[users]);
- const roundRows=useMemo<RoundRow[]>(()=>rounds.filter(r=>!selectedSites.length||selectedSites.includes(r.instalacion_id)).map(round=>{
+ const roundRows=useMemo<RoundRow[]>(()=>rounds.filter(r=>(!selectedSites.length||selectedSites.includes(r.instalacion_id))&&(!supervisorId||r.guarda_id===supervisorId)&& (method==='todos'||marks.some(m=>m.ronda_id===r.id&&m.metodo===method)) && (!codeSearch||(routeMap.get(r.ruta_id)?.nombre||'').toLowerCase().includes(codeSearch.toLowerCase()))).map(round=>{
   const route=routeMap.get(round.ruta_id),site=siteMap.get(round.instalacion_id),required=points.filter(p=>p.ruta_id===round.ruta_id&&p.obligatorio),visitedMarks=marks.filter(m=>m.ronda_id===round.id),visited=new Set(visitedMarks.map(m=>m.punto_ruta_id));
   const count=required.filter(p=>visited.has(p.id)).length,skipped=required.filter(p=>!visited.has(p.id)).map(p=>'Punto '+p.orden).join(', ')||'—';
   const elapsed=round.iniciada_at&&round.finalizada_at?Math.max(0,Math.round((new Date(round.finalizada_at).getTime()-new Date(round.iniciada_at).getTime())/60000)):null;
   const late=!!round.iniciada_at&&new Date(round.iniciada_at).getTime()>new Date(round.programada_at).getTime()+15*60000;
   const alert=round.estado==='Omitida'?'Omisión de ronda':late?'Inicio tardío':round.estado==='Programada'&&new Date(round.programada_at).getTime()<Date.now()?'Ronda no iniciada':skipped!=='—'&&round.estado==='Completada'?'Puntos salteados':'—';
   return {id:round.id,fecha:fmtDateTime(round.programada_at),puesto:site?.nombre||'Puesto',ruta:route?.nombre||'Ruta',guarda:round.guarda_nombre||staffMap.get(round.guarda_id||'')?.nombre||round.guarda_id||'—',inicio:fmtDateTime(round.iniciada_at),fin:fmtDateTime(round.finalizada_at),tiempo:elapsed,estimado:route?.tiempo_estimado_minutos||0,puntos:count+' de '+required.length,porcentaje:required.length?Math.round(count/required.length*100):0,salteados:skipped,estado:round.estado,alerta:alert};
- }),[rounds,selectedSites,routeMap,siteMap,points,marks,staffMap]);
+ }),[rounds,selectedSites,supervisorId,method,codeSearch,routeMap,siteMap,points,marks,staffMap]);
  const avgRound=roundRows.length?Math.round(roundRows.reduce((n,r)=>n+r.porcentaje,0)/roundRows.length):0,lateTone=(v:number)=>v>=90?'green':v>=75?'amber':'red';
  const supervisorOptions=users.filter(u=>u.activo&&(/supervisor|supervision/i.test(u.rol)||allRows.some(r=>reviews.find(x=>x.id===r.key)?.supervisor_id===u.id)));
  const shownSites=installations.filter(s=>(s.codigo_puesto+' '+s.nombre).toLowerCase().includes(siteSearch.toLowerCase()));
@@ -188,8 +188,8 @@ export default function SupervisionReports({token,tenantId,installations,rules,u
   headers=['Fecha/hora registro','Código puesto','Puesto','Supervisor','Ficha / QR / NFC leído','Método','Coordenadas GPS / geocerca','Estado cumplimiento','Novedades','Evidencias / fotos'];
   exportRows=dailyRows.map(r=>[r.fecha,r.codigoPuesto,r.puesto,r.supervisor,r.codigo,r.metodo,r.gps,r.estado,r.novedad,r.evidencias]);
  }else if(mode==='mensual'){
-  headers=['Código puesto','Nombre del puesto','Revistas programadas','Revistas ejecutadas','Revistas repetidas','Revistas omisas','Efectividad %','Semáforo'];
-  exportRows=monthlyRows.map(r=>[r.codigo,r.puesto,r.programadas,r.ejecutadas,r.repetidas,r.omisas,r.efectividad+'%',r.status]);
+  headers=['Código puesto','Nombre del puesto','Revistas programadas','Revistas ejecutadas','Revistas repetidas','Revistas omisas','A tiempo','Efectividad %','Semáforo'];
+  exportRows=monthlyRows.map(r=>[r.codigo,r.puesto,r.programadas,r.ejecutadas,r.repetidas,r.omisas,r.aTiempo,r.efectividad+'%',r.status]);
  }else{
   headers=['Fecha programada','Puesto','Ruta','Guarda / rondero','Inicio','Fin','Tiempo real (min)','Tiempo estimado (min)','Puntos visitados','Porcentaje recorrido','Puntos salteados','Estado','Alerta'];
   exportRows=roundRows.map(r=>[r.fecha,r.puesto,r.ruta,r.guarda,r.inicio,r.fin,r.tiempo,r.estimado,r.puntos,r.porcentaje+'%',r.salteados,r.estado,r.alerta]);
@@ -199,9 +199,9 @@ export default function SupervisionReports({token,tenantId,installations,rules,u
  const exportExcel=()=>{
   let rows:Cell[][]=[headers,...exportRows];
   if(mode==='mensual'){
-   rows=[['Código puesto','Nombre del puesto','Programadas','Ejecutadas','Repetidas','Omisas','Efectividad %','Semáforo'],
-    ...monthlyRows.map((r,i)=>[r.codigo,r.puesto,r.programadas,r.ejecutadas,r.repetidas,r.omisas,{formula:'IF(C'+(i+2)+'=0,0,D'+(i+2)+'/C'+(i+2)+')',value:r.programadas?r.ejecutadas/r.programadas:0,style:1},r.status] as Cell[]),
-    ['TOTAL','',overall.programmed,overall.executed,overall.repeated,overall.omitted,{formula:'IF(C'+(monthlyRows.length+2)+'=0,0,D'+(monthlyRows.length+2)+'/C'+(monthlyRows.length+2)+')',value:overall.programmed?overall.executed/overall.programmed:0,style:1},'']];
+   rows=[['Código puesto','Nombre del puesto','Programadas','Ejecutadas','Repetidas','Omisas','A tiempo','Efectividad %','Semáforo'],
+    ...monthlyRows.map((r,i)=>[r.codigo,r.puesto,r.programadas,r.ejecutadas,r.repetidas,r.omisas,r.aTiempo,{formula:'IF(C'+(i+2)+'=0,0,G'+(i+2)+'/C'+(i+2)+')',value:r.efectividad/100,style:1},r.status] as Cell[]),
+    ['TOTAL','',overall.programmed,overall.executed,overall.repeated,overall.omitted,monthlyRows.reduce((n,r)=>n+r.aTiempo,0),{formula:'IF(C'+(monthlyRows.length+2)+'=0,0,G'+(monthlyRows.length+2)+'/C'+(monthlyRows.length+2)+')',value:overall.rate/100,style:1},'']];
   }
   download(safeName(title)+'.xlsx',toXlsx([{name:mode==='diario'?'Revistas':mode==='mensual'?'Cumplimiento':'Rondas',rows}]));
  };
