@@ -145,3 +145,55 @@
 #supervision-react-mount .posts-empty-state p{max-width:600px;margin:9px auto 16px;color:#91a0b7;font-size:11px;line-height:1.6}
 #supervision-react-mount .posts-empty-state>div{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
 @media(max-width:700px){#supervision-react-mount .posts-table-wrap{border-radius:9px}#supervision-react-mount .posts-empty-state{padding:20px 12px}}
+
+
+/* Premium enterprise refresh: compact hierarchy, quiet surfaces and actionable data. */
+#supervision-react-mount .supervision-shell{gap:14px}
+#supervision-react-mount .supervision-head{gap:12px}
+#supervision-react-mount .supervision-tabs{gap:4px;border-bottom:1px solid #273449;padding:0 0 1px}
+#supervision-react-mount .supervision-tabs button{background:transparent;border:1px solid transparent;border-radius:7px 7px 0 0;padding:9px 12px;font-size:11px;color:#94a3b8}
+#supervision-react-mount .supervision-tabs button.active{background:transparent;border-color:transparent;border-bottom:2px solid #60a5fa;color:#f1f5f9}
+#supervision-react-mount .panel{border-radius:11px;padding:14px;background:#0e1624;border-color:#243044;box-shadow:none}
+#supervision-react-mount .panel-header{margin-bottom:11px}
+#supervision-react-mount .panel-header h3{font-size:14px}
+#supervision-react-mount .stats-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+#supervision-react-mount .stat-card{min-height:0;padding:12px 14px;gap:4px;border-radius:10px;background:#0e1624;box-shadow:none}
+#supervision-react-mount .stat-card span{font-size:9px;letter-spacing:.07em}
+#supervision-react-mount .stat-card strong{font-size:25px;line-height:1.2;color:#e2e8f0;font-weight:650;letter-spacing:-.04em}
+#supervision-react-mount .stat-card em{font-size:10px;line-height:1.35}
+#supervision-react-mount .stat-card.tone-green{border-color:#24463c}
+#supervision-react-mount .stat-card.tone-green strong{color:#6ee7b7}
+#supervision-react-mount .stat-card.tone-blue{border-color:#273d59}
+#supervision-react-mount .stat-card.tone-blue strong{color:#93c5fd}
+#supervision-react-mount .stat-card.tone-violet{border-color:#3a3456}
+#supervision-react-mount .stat-card.tone-violet strong{color:#c4b5fd}
+#supervision-react-mount .stat-card.tone-amber{border-color:#3c3540}
+#supervision-react-mount .stat-card.tone-amber strong{color:#fda4af}
+#supervision-react-mount .content-grid{gap:12px}
+#supervision-react-mount .data-list{gap:6px}
+#supervision-react-mount .data-item{padding:10px 11px;border-radius:8px;background:#0b1320;border-color:#202d40}
+#supervision-react-mount .data-item h3{font-size:12px;font-weight:650}
+#supervision-react-mount .data-item p{font-size:10px;line-height:1.45}
+#supervision-react-mount .data-item .posts-status{margin-bottom:3px}
+#supervision-react-mount .dashboard-row-action{color:#64748b;font-size:16px;align-self:center}
+#supervision-react-mount .posts-table-wrap{border-color:#243044;border-radius:10px}
+#supervision-react-mount .posts-table{min-width:900px}
+#supervision-react-mount .posts-table th{padding:10px 12px;background:#111b2a;font-size:9px}
+#supervision-react-mount .posts-table td{padding:10px 12px;font-size:10px}
+#supervision-react-mount .posts-name-cell strong,#supervision-react-mount .posts-location-cell strong{font-size:11px;font-weight:650}
+#supervision-react-mount .posts-name-cell span,#supervision-react-mount .posts-location-cell span{font-size:10px;line-height:1.4}
+#supervision-react-mount .posts-status{padding:4px 7px;font-size:9px}
+#supervision-react-mount .posts-status.is-active{color:#6ee7b7;background:rgba(16,185,129,.09);border-color:rgba(16,185,129,.2)}
+#supervision-react-mount .posts-status.is-inactive{color:#fda4af;background:rgba(244,63,94,.08);border-color:rgba(244,63,94,.2)}
+#supervision-react-mount .posts-status.is-alert{color:#cbd5e1;background:#172033;border-color:#2b374a}
+#supervision-react-mount .posts-actions{gap:5px;min-width:0}
+#supervision-react-mount .posts-icon-button{width:29px;height:29px;display:inline-grid;place-items:center;border:1px solid #2a394e;border-radius:7px;background:#111b2a;color:#a9bbd3;cursor:pointer;font-size:13px}
+#supervision-react-mount .posts-icon-button:hover{border-color:#4b6382;color:#f8fafc;background:#172438}
+#supervision-react-mount .posts-icon-button.is-danger{color:#cbd5e1}
+#supervision-react-mount .posts-empty-state{padding:22px 14px;border-style:solid;border-color:#243044;border-radius:10px;background:#0b1320}
+#supervision-react-mount .posts-empty-state>span{width:36px;height:36px;margin-bottom:9px;border-radius:10px;font-size:18px}
+#supervision-react-mount .posts-empty-state h4{font-size:13px}
+#supervision-react-mount .posts-empty-state p{font-size:10px;margin:6px auto 12px}
+#supervision-react-mount .supervision-modal .panel{padding:18px}
+@media(max-width:900px){#supervision-react-mount .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#supervision-react-mount .content-grid{grid-template-columns:1fr}}
+@media(max-width:620px){#supervision-react-mount .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#supervision-react-mount .stat-card{padding:10px}#supervision-react-mount .stat-card strong{font-size:22px}}
