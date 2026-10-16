@@ -56,14 +56,14 @@ export default function PuestoZonaDetail({
   const mapsUrl = hasGps ? `https://www.google.com/maps?q=${installation.latitud},${installation.longitud}` : null;
   const supervisionRule = supervisionRules.find(rule => rule.instalacion_id === installation.id) || null;
   const todayKey = bogotaDateKey(new Date().toISOString());
-  const reviewsToday = reviews.filter(review => review.fecha_checkin && bogotaDateKey(review.fecha_checkin) === todayKey);
+  const reviewsToday = reviews.filter(review => review.fecha_checkin && review.estado.toLowerCase() === 'completada' && bogotaDateKey(review.fecha_checkin) === todayKey);
   const currentTime = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
   const currentShift = activeShifts.find(shift => timeIsInWindow(currentTime, shift.hora_inicio, shift.hora_fin)) || null;
   const complianceReviews = supervisionRule?.periodo_objetivo === 'turno' && currentShift ? reviewsToday.filter(review => review.turno_id === currentShift.id) : reviewsToday;
   const visitsDone = complianceReviews.length;
   const visitsRequired = supervisionRule?.revistas_requeridas || 0;
   const compliancePercent = visitsRequired ? Math.min(100, Math.round(visitsDone / visitsRequired * 100)) : 0;
-  const omissionDue = !!(supervisionRule?.activo && visitsRequired > visitsDone && supervisionRule.ventanas_horarias.some(window => windowExceededTolerance(currentTime, window.fin, supervisionRule.tolerancia_omision_min)));
+  const omissionDue = !!(supervisionRule?.activo && visitsRequired > visitsDone && supervisionRule.ventanas_horarias.some(window => windowExceededTolerance(currentTime, window.inicio, window.fin, supervisionRule.tolerancia_omision_min)));
 
   return <section className="pz-detail">
     <header className="pz-hero">
@@ -245,13 +245,13 @@ export default function PuestoZonaDetail({
       </div>}
     </div>
 
-    {ruleModalOpen && <SupervisionRuleModal installationId={installation.id} installationName={installation.nombre} defaultTolerance={installation.geocerca_radio_m} currentRule={supervisionRule} onClose={() => setRuleModalOpen(false)} onSave={saveSupervisionRule} />}
+    {ruleModalOpen && <SupervisionRuleModal installationId={installation.id} installationName={installation.nombre} currentRule={supervisionRule} onClose={() => setRuleModalOpen(false)} onSave={saveSupervisionRule} />}
     {roundModalOpen && <RoundConfigModal assets={assets} installation={installation} editing={editingRound} onClose={() => setRoundModalOpen(false)} onSave={route => { setRoundConfigs(current => editingRound ? current.map(item => item.id === editingRound.id ? { ...route, id: editingRound.id } : item) : [...current, { ...route, id: `route-${Date.now()}` }]); setRoundModalOpen(false); setEditingRound(null); }} />}
 
   </section>;
 }
 
-function SupervisionRuleModal({ installationId, installationName, defaultTolerance, currentRule, onClose, onSave }: { installationId: string; installationName: string; defaultTolerance: number; currentRule: SupervisionRule | null; onClose: () => void; onSave: (rule: Omit<SupervisionRule, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>) => Promise<boolean> }) {
+function SupervisionRuleModal({ installationId, installationName, currentRule, onClose, onSave }: { installationId: string; installationName: string; currentRule: SupervisionRule | null; onClose: () => void; onSave: (rule: Omit<SupervisionRule, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>) => Promise<boolean> }) {
   const [revistasRequeridas, setRevistasRequeridas] = useState(String(currentRule?.revistas_requeridas ?? 2));
   const [periodoObjetivo, setPeriodoObjetivo] = useState<'dia' | 'turno'>(currentRule?.periodo_objetivo || 'dia');
   const [ventanas, setVentanas] = useState<SupervisionWindow[]>(currentRule?.ventanas_horarias?.length ? currentRule.ventanas_horarias : [{ inicio: '22:00', fin: '02:00' }, { inicio: '10:00', fin: '14:00' }]);
@@ -328,10 +328,16 @@ function timeIsInWindow(current: string, start: string, end: string) {
   const now = clockMinutes(current), from = clockMinutes(start), to = clockMinutes(end);
   return from <= to ? now >= from && now < to : now >= from || now < to;
 }
-function windowExceededTolerance(current: string, end: string, tolerance: number) {
-  const now = clockMinutes(current), deadline = (clockMinutes(end) + tolerance) % 1440, rawDeadline = clockMinutes(end) + tolerance;
-  if (rawDeadline < 1440) return now >= deadline;
-  return now < clockMinutes(end) && now >= deadline;
+function windowExceededTolerance(current: string, start: string, end: string, tolerance: number) {
+  const now = clockMinutes(current), from = clockMinutes(start), to = clockMinutes(end);
+  const rawDeadline = to + tolerance;
+  const deadline = rawDeadline % 1440;
+  if (from > to) {
+    if (now >= from) return false;
+    return now >= deadline;
+  }
+  if (rawDeadline < 1440) return now >= rawDeadline;
+  return false;
 }
 function Quick({ label, value, icon }: { label: string; value: string; icon: string }) {
   return <div className="pz-quick"><span className="pz-quick-icon">{icon}</span><div><small>{label}</small><strong>{value}</strong></div></div>;
