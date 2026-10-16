@@ -92,7 +92,7 @@ function createZip(files:{name:string;data:Uint8Array}[]){
   const c=new Uint8Array(46+name.length),cv=new DataView(c.buffer);u32(cv,0,0x02014b50);u16(cv,4,20);u16(cv,6,20);u16(cv,8,0);u16(cv,10,0);u16(cv,12,0);u16(cv,14,0);u32(cv,16,crc);u32(cv,20,data.length);u32(cv,24,data.length);u16(cv,28,name.length);u16(cv,30,0);u16(cv,32,0);u16(cv,34,0);u16(cv,36,0);u32(cv,38,0);u32(cv,42,offset);c.set(name,46);central.push(c);offset+=l.length;centralLength+=c.length;
  });
  const end=new Uint8Array(22),v=new DataView(end.buffer);u32(v,0,0x06054b50);u16(v,4,0);u16(v,6,0);u16(v,8,files.length);u16(v,10,files.length);u32(v,12,centralLength);u32(v,16,offset);u16(v,20,0);
- const chunks=[...local,...central,end],total=chunks.reduce((n,chunk)=>n+chunk.byteLength,0),merged=new Uint8Array(total);let cursor=0;chunks.forEach(chunk=>{merged.set(chunk,cursor);cursor+=chunk.byteLength;});return new Blob([merged.buffer as ArrayBuffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+ const chunks=[...local,...central,end],total=chunks.reduce((n,chunk)=>n+chunk.byteLength,0),buffer=new ArrayBuffer(total),merged=new Uint8Array(buffer);let cursor=0;chunks.forEach(chunk=>{merged.set(chunk,cursor);cursor+=chunk.byteLength;});return new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
 }
 function toXlsx(sheets:{name:string;rows:Cell[][]}[]){
  const enc=new TextEncoder(),items:{name:string;data:Uint8Array}[]=[];
