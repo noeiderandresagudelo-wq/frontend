@@ -17,6 +17,7 @@ type Review = { id: string; numero_revista: number; instalacion_id: string; supe
 type Assignment = { id: string; instalacion_id: string; usuario_id: string; rol: string; activo: boolean };
 type SupervisionUser = { id: string; nombre: string; username: string; rol: string; activo: boolean };
 type Shift = { id: string; nombre: string; hora_inicio: string; hora_fin: string; frecuencia_revistas: number; activo: boolean };
+type RoundConfig = { id: string; nombre: string; puntos: string[]; frecuenciaMinutos: number; toleranciaMetros: number; horaInicio: string; horaFin: string; activo: boolean };
 type TabKey = 'info' | 'geo' | 'points' | 'rounds' | 'log' | 'supervision' | 'contacts';
 
 const tabs: { id: TabKey; label: string; icon: string }[] = [
@@ -40,6 +41,9 @@ export default function PuestoZonaDetail({
   createAsset: (e: FormEvent<HTMLFormElement>) => Promise<void>;
 }) {
   const [activeTab, setActiveTab] = useState<TabKey>('info');
+  const [roundConfigs, setRoundConfigs] = useState<RoundConfig[]>([]);
+  const [roundModalOpen, setRoundModalOpen] = useState(false);
+  const [editingRound, setEditingRound] = useState<RoundConfig | null>(null);
   const activeShifts = useMemo(() => shifts.filter(s => s.activo), [shifts]);
   const activeAssignments = assignments.filter(a => a.activo);
   const openTickets = tickets.filter(t => !['cerrado', 'closed', 'resuelto'].includes(t.estado_ticket.toLowerCase()));
@@ -159,17 +163,19 @@ export default function PuestoZonaDetail({
         {!assets.length && <Empty text="No hay puntos de control registrados. Registra uno con QR o NFC para comenzar." />}
       </section>}
 
-      {activeTab === 'rounds' && <div className="pz-columns">
+      {activeTab === 'rounds' && <div className="pz-rounds-view">
         <section className="pz-card">
-          <CardHeading eyebrow="RUTAS Y FRECUENCIAS" title="Configuración de rondas" />
-          {activeShifts.map(s => <article className="pz-shift-card" key={s.id}><div><span className="pz-state-pill good">Activo</span><h4>{s.nombre}</h4><p>{s.hora_inicio} – {s.hora_fin}</p></div><div className="pz-shift-frequency"><strong>{s.frecuencia_revistas}</strong><small>revista(s)</small></div></article>)}
-          {!activeShifts.length && <Empty text="No hay turnos activos configurados en el módulo. Configura turnos desde la sección Turnos." />}
+          <div className="pz-rounds-heading"><CardHeading eyebrow="RUTAS Y FRECUENCIAS" title="Configuración de rondas" /><button type="button" className="pz-primary" onClick={() => { setEditingRound(null); setRoundModalOpen(true); }}>+ Configurar ruta</button></div>
+          <p className="pz-muted">Define los puntos que debe recorrer el supervisor, la frecuencia de validación y el horario de cada ruta.</p>
+          {roundConfigs.length > 0 ? <div className="pz-table-wrap"><table className="pz-table"><thead><tr><th>Ruta</th><th>Puntos de control</th><th>Frecuencia</th><th>Tolerancia</th><th>Horario</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+            {roundConfigs.map(route => <tr key={route.id}><td><strong>{route.nombre}</strong></td><td>{route.puntos.map(id => assets.find(a => a.id === id)?.nombre_activo || id).join(', ') || 'Sin puntos'}</td><td>Cada {route.frecuenciaMinutos} min</td><td>{route.toleranciaMetros} m</td><td>{route.horaInicio} – {route.horaFin}</td><td><span className={`pz-state-pill ${route.activo ? 'good' : 'neutral'}`}>{route.activo ? 'Activa' : 'Inactiva'}</span></td><td><div className="pz-round-actions"><button type="button" className="pz-text-button" onClick={() => { setEditingRound(route); setRoundModalOpen(true); }}>Editar</button><button type="button" className="pz-text-button" onClick={() => setRoundConfigs(current => current.map(item => item.id === route.id ? { ...item, activo: !item.activo } : item))}>{route.activo ? 'Desactivar' : 'Activar'}</button></div></td></tr>)}
+          </tbody></table></div> : <Empty text="Aún no hay rutas definidas. Usa “Configurar ruta” para establecer puntos, frecuencia, tolerancia y horario." />}
+          <div className="pz-divider" /><h4 className="pz-subtitle">Turnos disponibles</h4>
+          <div className="pz-shift-grid">{activeShifts.map(s => <article className="pz-shift-card" key={s.id}><div><span className="pz-state-pill good">Turno activo</span><h4>{s.nombre}</h4><p>{s.hora_inicio} – {s.hora_fin}</p></div><div className="pz-shift-frequency"><strong>{s.frecuencia_revistas}</strong><small>revista(s)</small></div></article>)}{!activeShifts.length && <Empty text="No hay turnos activos registrados." />}</div>
         </section>
         <section className="pz-card">
           <CardHeading eyebrow="CONTROL DE CUMPLIMIENTO" title="Actividad de rondas" />
-          <Metric label="Revistas registradas" value={reviews.length} icon="✓" />
-          <Metric label="Pendientes / ausentes (según estado)" value={pendingReviews.length} icon="!" tone={pendingReviews.length ? 'warning' : 'good'} />
-          <Metric label="Sin check-in GPS" value={reviews.filter(r => r.latitud_checkin === null || r.longitud_checkin === null).length} icon="⌖" tone="warning" />
+          <div className="pz-metrics"><Metric label="Rutas definidas" value={roundConfigs.filter(route => route.activo).length} icon="↻" /><Metric label="Revistas registradas" value={reviews.length} icon="✓" /><Metric label="Pendientes / ausentes" value={pendingReviews.length} icon="!" tone={pendingReviews.length ? 'warning' : 'good'} /><Metric label="Sin check-in GPS" value={reviews.filter(r => r.latitud_checkin === null || r.longitud_checkin === null).length} icon="⌖" tone="warning" /></div>
         </section>
       </div>}
 
@@ -203,6 +209,7 @@ export default function PuestoZonaDetail({
       </div>}
     </div>
 
+    {roundModalOpen && <RoundConfigModal assets={assets} installation={installation} editing={editingRound} onClose={() => setRoundModalOpen(false)} onSave={route => { setRoundConfigs(current => editingRound ? current.map(item => item.id === editingRound.id ? { ...route, id: editingRound.id } : item) : [...current, { ...route, id: `route-${Date.now()}` }]); setRoundModalOpen(false); setEditingRound(null); }} />}
     <section className="pz-schedule">
       <div className="pz-schedule-header"><div><p className="pz-eyebrow">COBERTURA OPERATIVA</p><h3>Programación de turnos</h3><p>Resumen de turnos activos y estado de las revistas asociadas al puesto.</p></div><button className="pz-primary" onClick={() => setActiveTab('rounds')}>⚙ Configurar programación</button></div>
       <div className="pz-schedule-stats"><div><span>Turnos activos disponibles</span><strong>{activeShifts.length}</strong></div><div><span>Revistas registradas</span><strong>{reviews.length}</strong></div><div><span>Check-ins registrados</span><strong>{reviews.filter(r => !!r.fecha_checkin).length}</strong></div><div><span>Alertas de estado</span><strong className={pendingReviews.length || activeShifts.length === 0 ? 'pz-number-warning' : 'pz-number-good'}>{pendingReviews.length + (activeShifts.length === 0 ? 1 : 0)}</strong></div></div>
@@ -211,6 +218,30 @@ export default function PuestoZonaDetail({
       </tbody></table></div>
     </section>
   </section>;
+}
+
+function RoundConfigModal({ assets, installation, editing, onClose, onSave }: { assets: Asset[]; installation: Installation; editing: RoundConfig | null; onClose: () => void; onSave: (route: Omit<RoundConfig, 'id'>) => void }) {
+  const [nombre, setNombre] = useState(editing?.nombre || '');
+  const [puntos, setPuntos] = useState<string[]>(editing?.puntos || []);
+  const [frecuenciaMinutos, setFrecuenciaMinutos] = useState(String(editing?.frecuenciaMinutos || 30));
+  const [toleranciaMetros, setToleranciaMetros] = useState(String(editing?.toleranciaMetros || installation.geocerca_radio_m || 100));
+  const [horaInicio, setHoraInicio] = useState(editing?.horaInicio || '06:00');
+  const [horaFin, setHoraFin] = useState(editing?.horaFin || '18:00');
+  const [activo, setActivo] = useState(editing?.activo ?? true);
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSave({ nombre: nombre.trim(), puntos, frecuenciaMinutos: Math.max(1, Number(frecuenciaMinutos)), toleranciaMetros: Math.max(1, Number(toleranciaMetros)), horaInicio, horaFin, activo });
+  };
+  return <div className="pz-modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
+    <form className="pz-round-modal" onSubmit={submit} role="dialog" aria-modal="true" aria-labelledby="pz-round-modal-title">
+      <div className="pz-round-modal-head"><div><p className="pz-eyebrow">PLANIFICACIÓN OPERATIVA</p><h3 id="pz-round-modal-title">{editing ? 'Editar ruta de ronda' : 'Configurar ruta de ronda'}</h3><p>Configura el recorrido para {installation.nombre}.</p></div><button type="button" className="pz-close-button" onClick={onClose} aria-label="Cerrar">×</button></div>
+      <label>Nombre de la ruta<input required value={nombre} onChange={event => setNombre(event.target.value)} placeholder="Ej. Ronda perimetral nocturna" /></label>
+      <fieldset className="pz-round-points"><legend>Puntos a validar</legend>{assets.length ? assets.map(asset => <label key={asset.id}><input type="checkbox" checked={puntos.includes(asset.id)} onChange={event => setPuntos(current => event.target.checked ? [...current, asset.id] : current.filter(id => id !== asset.id))} /><span><strong>{asset.nombre_activo}</strong><small>{asset.ubicacion_detalle || asset.codigo_activo || 'Punto de control'}</small></span></label>) : <p className="pz-muted">Primero registra puntos de control QR/NFC para asignarlos a una ruta.</p>}</fieldset>
+      <div className="pz-round-form-grid"><label>Frecuencia (minutos)<input type="number" min="1" required value={frecuenciaMinutos} onChange={event => setFrecuenciaMinutos(event.target.value)} /></label><label>Tolerancia GPS (metros)<input type="number" min="1" required value={toleranciaMetros} onChange={event => setToleranciaMetros(event.target.value)} /></label><label>Hora de inicio<input type="time" required value={horaInicio} onChange={event => setHoraInicio(event.target.value)} /></label><label>Hora de fin<input type="time" required value={horaFin} onChange={event => setHoraFin(event.target.value)} /></label></div>
+      <label className="pz-round-toggle"><input type="checkbox" checked={activo} onChange={event => setActivo(event.target.checked)} /> Ruta activa</label>
+      <div className="pz-round-modal-actions"><button type="button" className="pz-secondary" onClick={onClose}>Cancelar</button><button type="submit" className="pz-primary">Guardar ruta</button></div>
+    </form>
+  </div>;
 }
 
 function Quick({ label, value, icon }: { label: string; value: string; icon: string }) {
