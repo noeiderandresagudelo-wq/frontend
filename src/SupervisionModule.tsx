@@ -322,9 +322,6 @@ function PostsView({installations,selected,assets,tickets,reviews,assignments,us
   {selected&&<PuestoZonaDetail installation={selected} assets={selectedAssets} tickets={selectedTickets} reviews={selectedReviews} assignments={selectedAssignments} users={users} shifts={shifts} role={role} onEdit={()=>onEdit(selected)} assignUser={assignUser} createAsset={createAsset}/>} 
   </section>;
 }
-function Detail({label,value}:{label:string;value:string|null|undefined}){return <div className="detail-cell"><span>{label}</span><strong>{value||'—'}</strong></div>}
-function Mini({label,value}:{label:string;value:number}){return <article className="mini-kpi"><span>{label}</span><strong>{value}</strong></article>}
-
 function PostModal({editing,role,onClose,onSave}:{editing:Installation|null;role:UserRole;onClose:()=>void;onSave:(e:FormEvent<HTMLFormElement>)=>Promise<void>}){
  return <div className="supervision-modal"><form className="panel form-panel installation-form" onSubmit={onSave}><div className="panel-header"><div><p className="eyebrow">Maestro de puestos</p><h3>{editing?'Editar puesto':'Nuevo puesto de supervisión'}</h3></div><button type="button" className="text-button" onClick={onClose}>✕</button></div>
    <div className="form-section-title">Identificación</div><div className="field-row"><label>Código<input name="codigo_puesto" defaultValue={editing?.codigo_puesto||''} placeholder="P-0001"/></label><label>Nombre<input name="nombre" required defaultValue={editing?.nombre||''}/></label></div><div className="field-row"><label>Tipo<select name="tipo_puesto" defaultValue={editing?.tipo_puesto||'Fijo'}><option>Fijo</option><option>Residencial</option><option>Comercial</option><option>Industrial</option><option>Educativo</option><option>Otro</option></select></label><label>Sector<input name="sector" defaultValue={editing?.sector||''}/></label></div>
