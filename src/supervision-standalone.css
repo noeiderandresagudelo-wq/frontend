@@ -313,3 +313,9 @@
  #supervision-react-mount .ar-report-export-actions{display:grid;width:100%;grid-template-columns:repeat(2,minmax(0,1fr))}
  #supervision-react-mount .ar-report-export-actions button{white-space:normal}
 }
+
+
+#supervision-react-mount .ar-report-presets{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:0 0 11px;color:#8196af;font-size:9px}
+#supervision-react-mount .ar-report-presets button{padding:6px 9px;border:1px solid #2a3a50;border-radius:6px;background:#101d2c;color:#bdd0e5;font-size:9px;cursor:pointer}
+#supervision-react-mount .ar-report-presets button:hover{border-color:#10b981;color:#6ee7b7}
+#supervision-react-mount .ar-report-presets .custom{margin-left:auto;color:#667d97}
