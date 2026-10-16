@@ -300,7 +300,7 @@ export default function SupervisionModule({token,tenantId,role}:Props){
         <div className="content-title"><div><span className="eyebrow">Submódulo</span><h3>{labels[tab]}</h3></div>{tab!=='puestos'&&tab!=='resumen'&&<div className="installation-context"><label>Puesto operativo<select value={selectedId} onChange={e=>setSelectedId(e.target.value)}><option value="">Seleccionar…</option>{installations.map(i=><option key={i.id} value={i.id}>{i.codigo_puesto||'Puesto'} · {i.nombre}</option>)}</select></label></div>}</div>
 
         {loading?<div className="panel loading-state">Cargando Supervisión Física…</div>:
-        tab==='resumen'?<Dashboard installations={installations} openTickets={openTickets} critical={critical} overdue={overdue} anomalies={pendingAnomalies} unread={unread} reviews={reviews} shifts={shifts} onTab={setTab} selected={selected} onSelect={setSelectedId}/>:
+        tab==='resumen'?<Dashboard installations={installations} openTickets={openTickets} critical={critical} overdue={overdue} anomalies={pendingAnomalies} unread={unread} reviews={reviews} onTab={setTab} selected={selected} onSelect={setSelectedId}/>:
         tab==='puestos'?<PostsView installations={installations} selected={selected} assets={assets} tickets={tickets} reviews={reviews} assignments={assignments} users={users} shifts={shifts} role={role} onRefresh={()=>void refresh()} onSelect={setSelectedId} onNew={()=>{setEditingPost(null);setShowPostForm(true)}} onEdit={p=>{setEditingPost(p);setShowPostForm(true)}} onArchive={archivePost} assignUser={assignUser} createAsset={createAsset}/>:
         tab==='turnos'?<ShiftsView shifts={shifts} role={role} createShift={createShift} toggleShift={toggleShift}/>:
         tab==='activos'?<AssetsView assets={assets} installations={installations} selectedId={selectedId} role={role} createAsset={createAsset}/>:
@@ -320,7 +320,7 @@ export default function SupervisionModule({token,tenantId,role}:Props){
   </div>;
 }
 
-function Dashboard({installations,openTickets,critical,overdue,anomalies,unread,reviews,shifts,onTab,selected,onSelect}:{installations:Installation[];openTickets:Ticket[];critical:Ticket[];overdue:Ticket[];anomalies:Anomaly[];unread:Notification[];reviews:Review[];shifts:Shift[];onTab:(t:Tab)=>void;selected:Installation|null;onSelect:(id:string)=>void}){
+function Dashboard({installations,openTickets,critical,overdue,anomalies,unread,reviews,onTab,selected,onSelect}:{installations:Installation[];openTickets:Ticket[];critical:Ticket[];overdue:Ticket[];anomalies:Anomaly[];unread:Notification[];reviews:Review[];onTab:(t:Tab)=>void;selected:Installation|null;onSelect:(id:string)=>void}){
   const activePosts = installations.filter(i=>i.estado.toLowerCase()==='activa');
   const scheduledPosts = activePosts.filter(i=>i.proxima_revista_at && new Date(i.proxima_revista_at).getTime() >= Date.now()).length;
   const coverage = activePosts.length ? Math.round((scheduledPosts / activePosts.length) * 100) : 0;
@@ -332,7 +332,7 @@ function Dashboard({installations,openTickets,critical,overdue,anomalies,unread,
       <Stat title="Puestos activos" value={activePosts.length} meta={`${installations.length} puestos registrados`} tone="green"/>
       <Stat title="Cobertura programada" value={`${coverage}%`} meta={`${scheduledPosts} de ${activePosts.length} puestos activos`} tone="blue"/>
       <Stat title="Revistas hoy" value={reviewsToday} meta="Programadas o registradas hoy" tone="violet"/>
-      <Stat title="Alertas y novedades" value={alertCount} meta={`${openTickets.length} novedades · ${anomalies.length} anomalías`} tone={alertCount?'amber':'green'}/>
+      <Stat title="Alertas y novedades" value={alertCount} meta={`${overdue.length} SLA vencidos · ${unread.length} notificaciones`} tone={alertCount?'amber':'green'}/>
     </section>
     <section className="content-grid">
       <div className="panel supervision-wide"><div className="panel-header"><div><p className="eyebrow">Puestos</p><h3>Operación por ubicación</h3></div><button className="ghost-button" onClick={()=>onTab('puestos')}>Ver todos</button></div>
