@@ -319,3 +319,9 @@
 #supervision-react-mount .ar-report-presets button{padding:6px 9px;border:1px solid #2a3a50;border-radius:6px;background:#101d2c;color:#bdd0e5;font-size:9px;cursor:pointer}
 #supervision-react-mount .ar-report-presets button:hover{border-color:#10b981;color:#6ee7b7}
 #supervision-react-mount .ar-report-presets .custom{margin-left:auto;color:#667d97}
+
+
+#supervision-react-mount .ar-report-sites{position:relative}
+#supervision-react-mount .ar-report-sites-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:34px;width:100%;padding:8px 10px;border:1px solid #2a3a50;border-radius:7px;background:#0e1928;color:#e2e8f0;font-size:10px;text-align:left;cursor:pointer}
+#supervision-react-mount .ar-report-sites-trigger:hover,#supervision-react-mount .ar-report-sites-trigger[aria-expanded=true]{border-color:#10b981}
+#supervision-react-mount .ar-report-sites-box{z-index:12;box-sizing:border-box;width:100%;max-width:100%;margin-top:5px;box-shadow:0 16px 36px rgba(0,0,0,.27)}
